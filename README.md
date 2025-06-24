@@ -1,5 +1,5 @@
 # LLM Serving on Heterogeneous Spot Cluster
-Currently used version of vllm : v0.8.2
+Currently used version of vllm : v0.8.1
 
 ### Install build essential & cmake
 ```bash
@@ -41,6 +41,14 @@ sudo apt install libnccl2=2.26.2-1+cuda12.8 libnccl-dev=2.26.2-1+cuda12.8
 I installed miniconda from : https://www.anaconda.com/docs/getting-started/miniconda/install#macos-linux-installation
 ```bash
 conda create -n vllm-example python=3.12 -y && conda activate vllm-example
+```
+
+### Install vLLM
+```bash
+cd HeteroSpotLLMServe
+git submodule update --init --recursive
+cd submodules/vLLM
+VLLM_USE_PRECOMPILED=1 pip install --editable .
 ```
 
 I am using vscode. If your vscode can't detect vllm package, add `"python.analysis.extraPaths": ["./submodules/vllm"]` to `settings.json` for debugging.
