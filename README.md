@@ -1,5 +1,4 @@
-# vllm-example
-This project aims to practice vllm framework for developing distributed LLM serving system.
+# LLM Serving on Heterogeneous Spot Cluster
 Currently used version of vllm : v0.8.2
 
 ### Install build essential & cmake
