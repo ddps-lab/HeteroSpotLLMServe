@@ -18,7 +18,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import partial
 from http import HTTPStatus
-from typing import Annotated, Optional, Union, Dict
+from typing import Annotated, Optional, Union, Dict, List
 
 import uvloop
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Request
@@ -89,6 +89,10 @@ from vllm.usage.usage_lib import UsageContext
 from vllm.utils import (FlexibleArgumentParser, get_open_zmq_ipc_path,
                         is_valid_ipv6_address, set_ulimit)
 from vllm.version import __version__ as VLLM_VERSION
+
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from utils import create_placement_group_and_bundle_indices
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds
 
@@ -179,7 +183,7 @@ async def build_async_engine_client(
 async def build_async_engine_client_from_engine_args(
     engine_args: AsyncEngineArgs,
     disable_frontend_multiprocessing: bool = False,
-    node_rank_mapping: Optional[Dict[str, int]] = None,
+    node_rank_mapping: Optional[Dict[str, List[int]]] = None,
 ) -> AsyncIterator[EngineClient]:
     """
     Create EngineClient, either:
@@ -196,7 +200,6 @@ async def build_async_engine_client_from_engine_args(
     # Ray를 통한 노드 배치 그룹을 설정합니다 (노드 매핑이 제공된 경우)
     if node_rank_mapping is not None:
         try:
-            from utils import create_placement_group_and_bundle_indices
             placement_group = create_placement_group_and_bundle_indices(node_rank_mapping)
             vllm_config.parallel_config.placement_group = placement_group
         except ImportError:
