@@ -22,6 +22,7 @@ from multiprocessing.managers import BaseManager, DictProxy
 import torch.multiprocessing as mp
 import logging
 import torch
+import socket
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(levelname)s] [Server] - %(message)s')
 
@@ -31,6 +32,9 @@ TENSOR_DICT_LOCK = threading.Lock()
 MANAGER_HOST = '127.0.0.1'
 MANAGER_PORT = 50001
 MANAGER_AUTHKEY = b'param_store'
+
+STATUS_HOST = '0.0.0.0'
+STATUS_PORT = 10001
 
 DTYPE = torch.float16
 
@@ -56,6 +60,9 @@ OUTPUT_DIM = 1
 DIV_COLUMN_WISE_LIST = ["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj"]
 DIV_ROW_WISE_LIST = ["o_proj", "down_proj"]
 VOCAB_PADDING_SIZE = 64
+
+# Whether the model weights have been fully loaded.
+MODEL_LOAD_COMPLETE = False
 
 def get_tensor_dict():
     return TENSOR_DICT
@@ -166,6 +173,10 @@ def parse_args():
     parser.add_argument("--end-layer-id", type=int, default=-1)
     parser.add_argument("--use-cpu-loading", action="store_true", 
                         help="Load tensors to CPU first, then transfer to GPU (safer for multi-threading)")
+    parser.add_argument("--status-host", type=str, default=STATUS_HOST,
+                        help="Host interface for readiness TCP server")
+    parser.add_argument("--status-port", type=int, default=STATUS_PORT,
+                        help="Port for readiness TCP server (TCP). A short message 'READY' or 'NOT_READY' is returned per connection.")
     return parser.parse_args()
 
 def set_global_variables(args: argparse.Namespace, config_dict: dict):
@@ -359,9 +370,36 @@ def fuse_tensor(layer_idx: int):
     del TENSOR_DICT[gate_proj_tensor_name]
     del TENSOR_DICT[up_proj_tensor_name]
 
+# ------------------------
+# Readiness status TCP server
+# ------------------------
+
+def _status_server(host: str, port: int):
+    """Simple TCP server that replies 'READY' or 'NOT_READY'."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind((host, port))
+        srv.listen()
+        logging.info(f"Status server is listening on {host}:{port}")
+        while True:
+            conn, _ = srv.accept()
+            with conn:
+                # Send binary '1' or '0' to represent readiness as bool.
+                msg = b"1" if MODEL_LOAD_COMPLETE else b"0"
+                try:
+                    conn.sendall(msg)
+                except Exception:
+                    pass
+
 def main():
     args = parse_args()
     model_name = args.model_name
+    # Start the readiness status server in a background thread as early as
+    # possible so that external systems can poll it.
+    threading.Thread(target=_status_server,
+                     args=(args.status_host, args.status_port),
+                     daemon=True).start()
+
     logging.info(f"args: {args}")
 
     try:
@@ -454,6 +492,12 @@ def main():
         server = manager.get_server()
         logging.info("Manager server running. Waiting for client connections...")
         logging.info("Press Ctrl+C to stop.")
+
+        # Mark model as loaded so that the status server replies READY.
+        global MODEL_LOAD_COMPLETE
+        MODEL_LOAD_COMPLETE = True
+        logging.info("Model weight loading completed. Status server will now return 'READY'.")
+
         server.serve_forever() # 블로킹 호출
 
     except OSError as bind_e:
