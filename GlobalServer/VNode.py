@@ -5,7 +5,10 @@ import subprocess
 import logging
 import time
 import os
-from command import get_tensor_store_command, get_api_server_command
+from command import get_tensor_store_command, get_api_server_command, DEFAULT_TENSOR_STORE_BASE_PORT
+import json
+import sys
+import threading
 
 class Cluster:
     def __init__(self):
@@ -123,6 +126,7 @@ class Pipeline:
         """Wait for all tensor stores and API server to be ready."""
         tensor_store_statuses = [False] * len(self.vnodes)
         api_server_ready = False
+        dots = 0
         
         while not (all(tensor_store_statuses) and api_server_ready):
             # Check tensor store status for all nodes
@@ -136,11 +140,30 @@ class Pipeline:
             
             ready_ts = sum(tensor_store_statuses)
             api_status = "Ready" if api_server_ready else "Not ready"
-            logging.info(f"Waiting for services... Tensor stores: {ready_ts}/{len(self.vnodes)}, "
-                        f"API server: {api_status}")
+            
+            # Create dynamic dots animation
+            dots = (dots + 1) % 4
+            dots_str = "." * dots + " " * (3 - dots)
+            
+            # Use carriage return to overwrite the same line
+            status_msg = f"\rWaiting for services{dots_str} Tensor stores: {ready_ts}/{len(self.vnodes)}, API server: {api_status}"
+            sys.stdout.write(status_msg)
+            sys.stdout.flush()
             
             if not (all(tensor_store_statuses) and api_server_ready):
-                time.sleep(3)
+                time.sleep(1)
+        
+        # Print final status on a new line
+        print(f"\n✓ All services ready! Tensor stores: {len(self.vnodes)}/{len(self.vnodes)}, API server: Ready")
+    
+    def start_log_streaming(self):
+        """Start streaming logs from all VNodes."""
+        logging.info("Starting log streaming from all nodes...")
+        threads = []
+        for vnode in self.vnodes:
+            thread = vnode.stream_logs_continuously()
+            threads.append(thread)
+        return threads
 
 
 class VNode:
@@ -187,11 +210,14 @@ class VNode:
         self.is_first_stage = (layer_start_id == 0)
         self.is_last_stage = (layer_end_id >= total_layers)
         
+        # Log streaming thread
+        self.log_streaming_thread = None
+        
         logging.info(f"VNode created: {self}")
     
     def __repr__(self):
         return (f"VNode(ip={self.node_ip}, gpus={self.num_gpu}, "
-                f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id}), "
+                f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id})], "
                 f"TP={self.tensor_parallel_size})")
 
     def start_tensor_store(self, tensor_store_port: int, config: Dict):
@@ -219,7 +245,13 @@ class VNode:
             log_path = os.path.join(self.log_dir, log_filename)
             
             # Use SSH to start the process on the remote node with log redirection
-            ssh_command = f"ssh {self.node_ip} '{command} > {log_path} 2>&1 &'"
+            # Add SSH options to avoid host key verification prompts
+            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+            # Ensure log directory exists on remote node and run the command
+            ssh_command = f"ssh {ssh_options} {self.node_ip} 'mkdir -p {self.log_dir} && {command} > {log_path} 2>&1 &'"
+            
+            # Debug: print the command
+            logging.info(f"Executing SSH command: {ssh_command}")
             
             try:
                 process = subprocess.Popen(
@@ -230,10 +262,24 @@ class VNode:
                 )
                 self.tensor_store_processes.append(process)
                 logging.info(f"Started tensor store process (rank {local_rank}) on {self.node_ip}, log: {log_path}")
+                
+                # Wait a bit and check if process started successfully
+                time.sleep(0.5)
+                _, stderr = process.communicate(timeout=0.1)
+                if stderr:
+                    logging.error(f"SSH command stderr: {stderr.decode()}")
+            except subprocess.TimeoutExpired:
+                # This is expected - process is still running
+                pass
             except Exception as e:
                 logging.error(f"Failed to start tensor store on {self.node_ip}: {e}")
                 
         logging.info(f"Started {self.num_gpu} tensor store processes on {self.node_ip}")
+        
+        # Start log streaming immediately after starting processes
+        if self.log_streaming_thread is None:
+            logging.info(f"Starting log streaming for {self.node_ip}")
+            self.log_streaming_thread = self.stream_logs_continuously()
     
     def start_api_server(self, api_server_port: int, config: Dict):
         """Start API server on this VNode (should only be called for pipeline rank 0)."""
@@ -264,7 +310,13 @@ class VNode:
         log_path = os.path.join(self.log_dir, log_filename)
         
         # Use SSH to start the API server on the remote node with log redirection
-        ssh_command = f"ssh {self.node_ip} '{command} > {log_path} 2>&1 &'"
+        # Add SSH options to avoid host key verification prompts
+        ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        # Ensure log directory exists on remote node and run the command
+        ssh_command = f"ssh {ssh_options} {self.node_ip} 'mkdir -p {self.log_dir} && {command} > {log_path} 2>&1 &'"
+        
+        # Debug: print the command
+        logging.info(f"Executing SSH command for API server: {ssh_command}")
         
         try:
             self.api_server_process = subprocess.Popen(
@@ -274,15 +326,26 @@ class VNode:
                 stderr=subprocess.PIPE
             )
             logging.info(f"Started API server on {self.node_ip}:{api_server_port} (pipeline rank 0), log: {log_path}")
+            
+            # Start log streaming if not already started
+            if self.log_streaming_thread is None:
+                logging.info(f"Starting log streaming for {self.node_ip}")
+                self.log_streaming_thread = self.stream_logs_continuously()
         except Exception as e:
             logging.error(f"Failed to start API server on {self.node_ip}: {e}")
 
     def check_tensor_store_status(self, timeout: float = 2.0) -> bool:
         """Check if all tensor store servers on this node are ready."""
+        # If tensor_store_port was not set, use the default base port
+        if self.tensor_store_port is None:
+            base_port = DEFAULT_TENSOR_STORE_BASE_PORT
+        else:
+            base_port = self.tensor_store_port
+            
         all_ready = True
         
         for i in range(self.num_gpu):
-            port = self.tensor_store_port + i
+            port = base_port + i
             try:
                 with socket.create_connection((self.node_ip, port), timeout=timeout) as sock:
                     sock.settimeout(timeout)
@@ -300,7 +363,7 @@ class VNode:
     def check_api_server_status(self, timeout: float = 2.0) -> bool:
         """Check if API server is ready."""
         # Only check if this is the first node and API server was started
-        if self.pipeline_rank != 0 or self.api_server_port is None:
+        if self.pipeline_rank != 0:
             return True  # Not applicable for non-first nodes
             
         try:
@@ -316,6 +379,93 @@ class VNode:
             self.is_api_server_ready = False
             return False
     
+    def get_remote_logs(self):
+        """Get all content from remote log files."""
+        logs = {}
+        
+        # Get tensor store logs
+        for i in range(self.num_gpu):
+            log_filename = f"tensorstore_{self.node_ip}_{i}.log"
+            remote_log_path = f"~/logs/{log_filename}"
+            
+            ssh_command = f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {self.node_ip} 'cat {remote_log_path} 2>/dev/null || echo \"\"'"
+            
+            try:
+                result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True)
+                logs[log_filename] = result.stdout
+            except Exception as e:
+                logs[log_filename] = f"Failed to get log: {e}"
+        
+        # Get API server log if this is the first node
+        if self.pipeline_rank == 0:
+            log_filename = f"apiserver_{self.node_ip}.log"
+            remote_log_path = f"~/logs/{log_filename}"
+            
+            ssh_command = f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {self.node_ip} 'cat {remote_log_path} 2>/dev/null || echo \"\"'"
+            
+            try:
+                result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True)
+                logs[log_filename] = result.stdout
+            except Exception as e:
+                logs[log_filename] = f"Failed to get log: {e}"
+        
+        return logs
+    
+    def stream_logs_continuously(self, callback=None):
+        """Continuously stream logs from remote server in a separate thread."""
+        def _stream_worker():
+            last_logs = {}
+            file_found = {}  # Track which files have been found
+            local_log_files = {}  # Track local log file handles
+            
+            while True:
+                try:
+                    current_logs = self.get_remote_logs()
+                    
+                    for filename, content in current_logs.items():
+                        if filename not in last_logs:
+                            last_logs[filename] = ""
+                            file_found[filename] = False
+                            # Create local log file for this remote log
+                            local_filename = f"local_{self.node_ip}_{filename}"
+                            local_log_files[filename] = open(os.path.join(self.log_dir, local_filename), 'a')
+                            logging.info(f"Created local log file: {local_filename}")
+                        
+                        # Check if file was just created
+                        if not file_found[filename] and content:
+                            file_found[filename] = True
+                            logging.info(f"Remote log file created: {filename} on {self.node_ip}")
+                        
+                        # Check if there's new content
+                        if len(content) > len(last_logs[filename]):
+                            new_content = content[len(last_logs[filename]):]
+                            
+                            if callback:
+                                callback(filename, new_content)
+                            else:
+                                # Default: write to local log file
+                                if new_content.strip():
+                                    local_log_files[filename].write(new_content)
+                                    local_log_files[filename].flush()  # Ensure immediate write
+                            
+                            last_logs[filename] = content
+                    
+                    time.sleep(0.5)  # Check every 0.5 seconds for faster response
+                    
+                except Exception as e:
+                    # Only log error once in a while to avoid spam
+                    if not hasattr(_stream_worker, 'error_count'):
+                        _stream_worker.error_count = 0
+                    _stream_worker.error_count += 1
+                    if _stream_worker.error_count % 10 == 1:
+                        logging.error(f"Error in log streaming: {e}")
+                    time.sleep(2)  # Wait on error
+        
+        # Start the streaming thread
+        stream_thread = threading.Thread(target=_stream_worker, daemon=True)
+        stream_thread.start()
+        return stream_thread
+
     def get_node_resources(self) -> Dict:
         """Get resource information for this node."""
         return {
@@ -342,8 +492,12 @@ def example_usage():
     # Define node-layer mapping for pipeline parallelism
     # Each tuple is (node_ip, number_of_layers)
     node_layer_mapping = [
-        ("", 32)
+        ("172.31.13.201", 32)
     ]
+
+    node_rank_mapping_dict = {
+        "172.31.13.201": [0]
+    }
     
     # Create pipeline for Llama-3.1-8B (32 layers total)
     config = {
@@ -351,7 +505,7 @@ def example_usage():
         "total_num_layers": 32,
         "pp_layer_partition": "32",
         "parallel_strategy": [1],
-        "node_rank_mapping_path": "../node_rank_mapping.json",
+        "node_rank_mapping": json.dumps(node_rank_mapping_dict),
         "max_model_len": 4096,
         "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,

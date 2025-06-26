@@ -5,6 +5,8 @@ from typing import Optional, List
 DEFAULT_TENSOR_STORE_BASE_PORT = 10001
 DEFAULT_API_SERVER_BASE_PORT = 8001
 
+PYTHON = "/usr/bin/python"
+PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
 
 def get_tensor_store_command(model_name: str, 
                             tensor_parallel_size: int,
@@ -37,8 +39,7 @@ def get_tensor_store_command(model_name: str,
         final_port = status_port + local_rank
     
     cmd = (
-        f"cd {python_path} && "
-        f"python TensorStore/mt_tensor_store_server.py "
+        f"{PYTHON} {PROJECT_PATH}/TensorStore/mt_tensor_store_server.py "
         f"--model-name {model_name} "
         f"--tensor-parallel-size {tensor_parallel_size} "
         f"--local-rank {local_rank} "
@@ -93,7 +94,6 @@ def get_api_server_command(model_name: str,
             "Exactly one of 'node_rank_mapping' or 'node_rank_mapping_path' must be provided, not both or neither."
         )
     
-    python_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     # Use provided port or default base port
     if port is None:
@@ -103,8 +103,7 @@ def get_api_server_command(model_name: str,
     parallel_strategy_str = " ".join(map(str, parallel_strategy))
     
     cmd_parts = [
-        f"cd {python_path} &&",
-        f"python InferenceServer/api_server.py",
+        f"{PYTHON} {PROJECT_PATH}/InferenceServer/api_server.py",
         f"--model={model_name}",
         f"--host={host}",
         f"--port={port}",
@@ -118,7 +117,9 @@ def get_api_server_command(model_name: str,
         cmd_parts.append(f"--max_model_len={max_model_len}")
     
     if node_rank_mapping is not None:
-        cmd_parts.append(f"--node-rank-mapping='{node_rank_mapping}'")
+        # Escape quotes for SSH command execution
+        escaped_mapping = node_rank_mapping.replace('"', '\\"')
+        cmd_parts.append(f'--node-rank-mapping="{escaped_mapping}"')
     
     if node_rank_mapping_path is not None:
         cmd_parts.append(f"--node-rank-mapping-path={node_rank_mapping_path}")
