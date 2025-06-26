@@ -428,8 +428,16 @@ class VNode:
                             file_found[filename] = False
                             # Create local log file for this remote log
                             local_filename = f"local_{self.node_ip}_{filename}"
-                            local_log_files[filename] = open(os.path.join(self.log_dir, local_filename), 'a')
-                            logging.info(f"Created local log file: {local_filename}")
+                            local_log_path = os.path.join(self.log_dir, local_filename)
+                            
+                            # Remove existing file if it exists (fresh start)
+                            if os.path.exists(local_log_path):
+                                os.remove(local_log_path)
+                                logging.info(f"Removed existing log file: {local_filename}")
+                            
+                            # Create new file (use 'w' to start fresh)
+                            local_log_files[filename] = open(local_log_path, 'w')
+                            logging.info(f"Created new local log file: {local_filename}")
                         
                         # Check if file was just created
                         if not file_found[filename] and content:
@@ -450,7 +458,7 @@ class VNode:
                             
                             last_logs[filename] = content
                     
-                    time.sleep(0.5)  # Check every 0.5 seconds for faster response
+                    time.sleep(3)  # Check every 3 seconds for faster response
                     
                 except Exception as e:
                     # Only log error once in a while to avoid spam
