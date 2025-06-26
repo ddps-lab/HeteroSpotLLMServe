@@ -11,7 +11,8 @@ HeteroSpotLLMServe is a distributed LLM inference serving system designed to run
 1. **VNode (Virtual Node)**: Abstraction for GPU nodes that manages:
    - Tensor Parallelism (TP) within a node across multiple GPUs
    - Pipeline Parallelism (PP) across different nodes
-   - Each VNode runs tensor store servers and API servers
+   - Each VNode runs tensor store servers
+   - Only the first VNode (pipeline rank 0) runs the API server
 
 2. **TensorStore Server**: Separate server that loads and manages model weights
    - Multi-threaded implementation in `TensorStore/mt_tensor_store_server.py`
@@ -33,7 +34,7 @@ HeteroSpotLLMServe is a distributed LLM inference serving system designed to run
 
 ### Running TensorStore Server
 
-**Important**: TensorStore servers must be run separately for each GPU on a node. The `--local-rank` parameter determines which CUDA device is used (e.g., local-rank=1 maps to cuda:1).
+**Important**: TensorStore servers must be run separately for each GPU on a node. The `--local-rank` parameter determines which CUDA device is used (e.g., local-rank=1 maps to cuda:1). The `--status-port` parameter is required and must be unique for each TensorStore instance.
 
 #### Single GPU Example
 ```bash
@@ -43,6 +44,7 @@ python TensorStore/mt_tensor_store_server.py \
     --local-rank=0 \
     --start-layer-id=0 \
     --end-layer-id=32 \
+    --status-port=10001 \
     --dtype=float16
 ```
 
@@ -95,6 +97,8 @@ Note: Each instance needs a unique `--status-port` to avoid conflicts.
 
 ### Running API Server
 
+**Important**: The API server should only be run once per pipeline, on the first node (pipeline rank 0). All nodes run TensorStore servers, but only the first node runs the API server.
+
 #### Important Arguments Explained
 
 **`--pp-layer-partition`**: Specifies how many layers each node should handle in pipeline parallelism.
@@ -137,7 +141,7 @@ The node-rank-mapping.json would be:
 }
 ```
 
-Complete command:
+Complete command (run only on the first node in the pipeline):
 ```bash
 python InferenceServer/api_server.py \
     --model=meta-llama/Llama-3.1-8B \
@@ -149,6 +153,8 @@ python InferenceServer/api_server.py \
     --parallel-strategy 1 4 1 \
     --node-rank-mapping-path=../node_rank_mapping.json
 ```
+
+**Important**: The API server should only be started on the node with pipeline rank 0 (the first node in the pipeline). Other nodes only run TensorStore servers.
 
 ### Testing
 ```bash
@@ -168,11 +174,13 @@ cd benchmark
 
 3. **Port Management**: 
    - TensorStore: Base port + node_index * 10 + gpu_index (to ensure unique ports per GPU)
-   - API Server: Base port + node_index
+   - API Server: Only runs on the first node (pipeline rank 0)
 
 4. **Ray Integration**: Uses Ray for distributed process management and resource allocation
 
 5. **GPU-TensorStore Mapping**: Each GPU requires its own TensorStore server instance with the appropriate local-rank
+
+6. **API Server Strategy**: Only one API server per pipeline, running on the first node (pipeline rank 0)
 
 ## Key Files to Understand
 
@@ -189,3 +197,4 @@ cd benchmark
 - Status servers run on each component for health checking
 - The `node-rank-mapping` is crucial for Ray to correctly assign processes to nodes
 - Remember to start one TensorStore server per GPU with the correct local-rank
+- API server should only be started on the first node in the pipeline (pipeline rank 0)

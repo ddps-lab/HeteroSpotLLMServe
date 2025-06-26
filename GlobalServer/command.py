@@ -1,5 +1,9 @@
 import os
-from typing import List
+from typing import Optional, List
+
+# Global configuration
+DEFAULT_TENSOR_STORE_BASE_PORT = 10001
+DEFAULT_API_SERVER_BASE_PORT = 8001
 
 
 def get_tensor_store_command(model_name: str, 
@@ -7,7 +11,7 @@ def get_tensor_store_command(model_name: str,
                             local_rank: int, 
                             start_layer_id: int,
                             end_layer_id: int,
-                            status_port: int,
+                            status_port: Optional[int] = None,
                             dtype: str = "float16") -> str:
     """
     Generate command to start tensor store server.
@@ -26,6 +30,12 @@ def get_tensor_store_command(model_name: str,
     """
     python_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
+    # Use provided port + local_rank or calculate from global base port + local_rank
+    if status_port is None:
+        final_port = DEFAULT_TENSOR_STORE_BASE_PORT + local_rank
+    else:
+        final_port = status_port + local_rank
+    
     cmd = (
         f"cd {python_path} && "
         f"python TensorStore/mt_tensor_store_server.py "
@@ -34,7 +44,7 @@ def get_tensor_store_command(model_name: str,
         f"--local-rank {local_rank} "
         f"--start-layer-id {start_layer_id} "
         f"--end-layer-id {end_layer_id} "
-        f"--status-port {status_port} "
+        f"--status-port {final_port} "
         f"--dtype {dtype}"
     )
     
@@ -42,33 +52,84 @@ def get_tensor_store_command(model_name: str,
 
 
 def get_api_server_command(model_name: str,
-                          tensor_parallel_size: int,
-                          pipeline_rank: int,
-                          port: int,
-                          tensor_store_addrs: List[str]) -> str:
+                          pp_layer_partition: str,
+                          parallel_strategy: List[int],
+                          host: str = "127.0.0.1",
+                          port: Optional[int] = None,
+                          dtype: str = "float16",
+                          max_model_len: Optional[int] = None,
+                          node_rank_mapping: Optional[str] = None,
+                          node_rank_mapping_path: Optional[str] = None,
+                          gpu_memory_utilization: Optional[float] = None,
+                          max_num_batched_tokens: Optional[int] = None,
+                          max_num_seqs: Optional[int] = None) -> str:
     """
-    Generate command to start API server.
+    Generate command to start API server based on launch_server_example.sh.
+    
+    Note: TensorStore servers must be running on the same device as the API server
+    to share memory.
     
     Args:
-        model_name: Name of the model
-        tensor_parallel_size: Number of GPUs for tensor parallelism
-        pipeline_rank: Pipeline parallel rank
-        port: API server port
-        tensor_store_addrs: List of tensor store addresses (host:port)
+        model_name: Name of the model (required)
+        pp_layer_partition: Pipeline layer partition (required, comma-separated)
+        parallel_strategy: Parallel strategy (required, list of integers)
+        host: Host address for the API server
+        port: API server port (optional, uses default if None)
+        dtype: Data type for model weights
+        max_model_len: Maximum model length
+        node_rank_mapping: JSON string for node rank mapping
+        node_rank_mapping_path: Path to node rank mapping JSON file
+        gpu_memory_utilization: GPU memory utilization ratio (optional)
+        max_num_batched_tokens: Maximum number of batched tokens
+        max_num_seqs: Maximum number of sequences
     
     Returns:
         Command string to execute
     """
+    # Validate node_rank_mapping arguments
+    if (node_rank_mapping is None and node_rank_mapping_path is None) or \
+       (node_rank_mapping is not None and node_rank_mapping_path is not None):
+        raise AssertionError(
+            "Exactly one of 'node_rank_mapping' or 'node_rank_mapping_path' must be provided, not both or neither."
+        )
+    
     python_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    cmd = (
-        f"cd {python_path} && "
-        f"python InferenceServer/api_server.py "
-        f"--model {model_name} "
-        f"--tensor-parallel-size {tensor_parallel_size} "
-        f"--pipeline-rank {pipeline_rank} "
-        f"--port {port} "
-        f"--tensor-store-addrs {','.join(tensor_store_addrs)}"
-    )
+    # Use provided port or default base port
+    if port is None:
+        port = DEFAULT_API_SERVER_BASE_PORT
     
-    return cmd
+    # Convert parallel_strategy list to space-separated string
+    parallel_strategy_str = " ".join(map(str, parallel_strategy))
+    
+    cmd_parts = [
+        f"cd {python_path} &&",
+        f"python InferenceServer/api_server.py",
+        f"--model={model_name}",
+        f"--host={host}",
+        f"--port={port}",
+        f"--dtype={dtype}",
+        f'--pp-layer-partition="{pp_layer_partition}"',
+        f"--parallel-strategy={parallel_strategy_str}"
+    ]
+    
+    # Add optional arguments
+    if max_model_len is not None:
+        cmd_parts.append(f"--max_model_len={max_model_len}")
+    
+    if node_rank_mapping is not None:
+        cmd_parts.append(f"--node-rank-mapping='{node_rank_mapping}'")
+    
+    if node_rank_mapping_path is not None:
+        cmd_parts.append(f"--node-rank-mapping-path={node_rank_mapping_path}")
+    
+    if gpu_memory_utilization is not None:
+        cmd_parts.append(f"--gpu-memory-utilization={gpu_memory_utilization}")
+    
+    if max_num_batched_tokens is not None:
+        cmd_parts.append(f"--max-num-batched-tokens={max_num_batched_tokens}")
+    
+    if max_num_seqs is not None:
+        cmd_parts.append(f"--max-num-seqs={max_num_seqs}")
+    
+    return " ".join(cmd_parts)

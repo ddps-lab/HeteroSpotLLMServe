@@ -34,7 +34,6 @@ MANAGER_PORT = 50001
 MANAGER_AUTHKEY = b'param_store'
 
 STATUS_HOST = '0.0.0.0'
-STATUS_PORT = 10001
 
 DTYPE = torch.float16
 
@@ -175,7 +174,7 @@ def parse_args():
                         help="Load tensors to CPU first, then transfer to GPU (safer for multi-threading)")
     parser.add_argument("--status-host", type=str, default=STATUS_HOST,
                         help="Host interface for readiness TCP server")
-    parser.add_argument("--status-port", type=int, default=STATUS_PORT,
+    parser.add_argument("--status-port", type=int, required=True,
                         help="Port for readiness TCP server (TCP). A short message 'READY' or 'NOT_READY' is returned per connection.")
     return parser.parse_args()
 
