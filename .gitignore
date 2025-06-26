@@ -3,3 +3,4 @@
 benchmark/dataset/
 benchmark/results/
 .basedpyright
+GlobalServer/logs/**
