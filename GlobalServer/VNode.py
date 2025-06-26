@@ -5,7 +5,7 @@ import subprocess
 import logging
 import time
 import os
-from .command import get_tensor_store_command, get_api_server_command
+from command import get_tensor_store_command, get_api_server_command
 
 class Cluster:
     def __init__(self):
@@ -345,12 +345,12 @@ def example_usage():
         ("", 32)
     ]
     
-    # Create pipeline for Llama-2-7b (32 layers total)
+    # Create pipeline for Llama-3.1-8B (32 layers total)
     config = {
-        "model_name": "meta-llama/Llama-2-7b-hf",
+        "model_name": "meta-llama/Llama-3.1-8B",
         "total_num_layers": 32,
-        "pp_layer_partition": "8,8,8,8",
-        "parallel_strategy": [1, 4, 1],
+        "pp_layer_partition": "32",
+        "parallel_strategy": [1],
         "node_rank_mapping_path": "../node_rank_mapping.json",
         "max_model_len": 4096,
         "gpu_memory_utilization": 0.25,
