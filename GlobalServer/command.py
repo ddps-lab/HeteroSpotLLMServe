@@ -14,7 +14,9 @@ def get_tensor_store_command(model_name: str,
                             start_layer_id: int,
                             end_layer_id: int,
                             status_port: Optional[int] = None,
-                            dtype: str = "float16") -> str:
+                            dtype: str = "float16",
+                            s3_path: Optional[str] = None,
+                            aws_profile: Optional[str] = None) -> str:
     """
     Generate command to start tensor store server.
     
@@ -26,11 +28,12 @@ def get_tensor_store_command(model_name: str,
         end_layer_id: Ending layer index for this node (exclusive)
         status_port: Port for status/readiness check
         dtype: Data type for model weights
+        s3_path: S3 path where model tensors are stored (e.g., 's3://bucket/path/to/models')
+        aws_profile: AWS profile to use for S3 access
     
     Returns:
         Command string to execute
     """
-    python_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     # Use provided port + local_rank or calculate from global base port + local_rank
     if status_port is None:
@@ -38,16 +41,32 @@ def get_tensor_store_command(model_name: str,
     else:
         final_port = status_port + local_rank
     
-    cmd = (
-        f"{PYTHON} {PROJECT_PATH}/TensorStore/mt_tensor_store_server.py "
-        f"--model-name {model_name} "
-        f"--tensor-parallel-size {tensor_parallel_size} "
-        f"--local-rank {local_rank} "
-        f"--start-layer-id {start_layer_id} "
-        f"--end-layer-id {end_layer_id} "
-        f"--status-port {final_port} "
-        f"--dtype {dtype}"
-    )
+    # Use S3 tensor store server if s3_path is provided
+    if s3_path:
+        cmd = (
+            f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
+            f"--model-name {model_name} "
+            f"--s3-path {s3_path} "
+            f"--tensor-parallel-size {tensor_parallel_size} "
+            f"--local-rank {local_rank} "
+            f"--start-layer-id {start_layer_id} "
+            f"--end-layer-id {end_layer_id} "
+            f"--status-port {final_port}"
+        )
+        if aws_profile:
+            cmd += f" --aws-profile {aws_profile}"
+    else:
+        # Use original tensor store server for HuggingFace
+        cmd = (
+            f"{PYTHON} {PROJECT_PATH}/TensorStore/mt_tensor_store_server.py "
+            f"--model-name {model_name} "
+            f"--tensor-parallel-size {tensor_parallel_size} "
+            f"--local-rank {local_rank} "
+            f"--start-layer-id {start_layer_id} "
+            f"--end-layer-id {end_layer_id} "
+            f"--status-port {final_port} "
+            f"--dtype {dtype}"
+        )
     
     return cmd
 
