@@ -519,11 +519,14 @@ def example_usage():
     node_rank_mapping_dict = {
         "172.31.13.201": [0]
     }
+
+    model_name = "meta-llama/Llama-3.1-8B"
+    bucket_name = "hetero-spot-llm-serve-model-weights"
     
     # Create pipeline for Llama-3.1-8B (32 layers total)
     # Option 1: Using HuggingFace (default)
     config = {
-        "model_name": "meta-llama/Llama-3.1-8B",
+        "model_name": model_name,
         "total_num_layers": 32,
         "pp_layer_partition": "32",
         "parallel_strategy": [1],
@@ -532,13 +535,12 @@ def example_usage():
         "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
         "max_num_seqs": 16,
-        "model_source": "huggingface"  # Optional, default is 'huggingface'
         # tensor_store_base_port and api_server_base_port not specified - will use global defaults
     }
     
     # Option 2: Using S3 (uncomment to use)
     # config = {
-    #     "model_name": "meta-llama/Llama-3.1-8B",
+    #     "model_name": model_name,
     #     "total_num_layers": 32,
     #     "pp_layer_partition": "32",
     #     "parallel_strategy": [1],
@@ -548,7 +550,7 @@ def example_usage():
     #     "max_num_batched_tokens": 4096,
     #     "max_num_seqs": 16,
     #     "model_source": "s3",
-    #     "s3_path": "s3://your-bucket/models/meta-llama/Llama-3.1-8B",
+    #     "s3_path": f"s3://{bucket_name}/{model_name}",
     #     "aws_profile": "your-profile"  # Optional
     # }
     
