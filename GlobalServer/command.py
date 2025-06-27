@@ -14,7 +14,7 @@ def get_tensor_store_command(model_name: str,
                             start_layer_id: int,
                             end_layer_id: int,
                             status_port: Optional[int] = None,
-                            dtype: str = "float16",
+                            dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
                             aws_profile: Optional[str] = None) -> str:
     """
@@ -55,6 +55,8 @@ def get_tensor_store_command(model_name: str,
         )
         if aws_profile:
             cmd += f" --aws-profile {aws_profile}"
+        if dtype is not None:
+            cmd += f" --dtype {dtype}"
     else:
         # Use original tensor store server for HuggingFace
         cmd = (
@@ -65,8 +67,9 @@ def get_tensor_store_command(model_name: str,
             f"--start-layer-id {start_layer_id} "
             f"--end-layer-id {end_layer_id} "
             f"--status-port {final_port} "
-            f"--dtype {dtype}"
         )
+        if dtype is not None:
+            cmd += f" --dtype {dtype}"
     
     return cmd
 
@@ -76,7 +79,7 @@ def get_api_server_command(model_name: str,
                           parallel_strategy: List[int],
                           host: str,
                           port: Optional[int] = None,
-                          dtype: str = "float16",
+                          dtype: Optional[str] = None,
                           max_model_len: Optional[int] = None,
                           node_rank_mapping: Optional[str] = None,
                           node_rank_mapping_path: Optional[str] = None,
@@ -126,10 +129,12 @@ def get_api_server_command(model_name: str,
         f"--model={model_name}",
         f"--host={host}",
         f"--port={port}",
-        f"--dtype={dtype}",
         f'--pp-layer-partition="{pp_layer_partition}"',
         f"--parallel-strategy={parallel_strategy_str}"
     ]
+    
+    if dtype is not None:
+        cmd_parts.append(f"--dtype={dtype}")
     
     # Add optional arguments
     if max_model_len is not None:

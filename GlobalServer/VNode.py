@@ -229,7 +229,7 @@ class VNode:
         self.is_tensor_store_ready = False
         
         model_name = config["model_name"]
-        dtype = config.get("dtype", "float16")
+        dtype = config.get("dtype")
         
         # Check if using S3 or HuggingFace
         model_source = config.get("model_source", "huggingface")  # Default to HuggingFace
@@ -309,7 +309,7 @@ class VNode:
             parallel_strategy=config["parallel_strategy"],
             host=config.get("host", "0.0.0.0"),
             port=api_server_port,
-            dtype=config.get("dtype", "float16"),
+            dtype=config.get("dtype"),
             max_model_len=config.get("max_model_len"),
             node_rank_mapping=config.get("node_rank_mapping"),
             node_rank_mapping_path=config.get("node_rank_mapping_path"),
