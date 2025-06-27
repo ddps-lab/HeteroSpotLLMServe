@@ -1,0 +1,640 @@
+# S3 Tensor Store Server - Downloads from S3 and serves tensors
+
+import argparse
+import glob
+import json
+from typing import List, Optional, Union
+import os
+import hashlib
+import filelock
+import tempfile
+from pathlib import Path
+from tqdm.auto import tqdm
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import torch
+from multiprocessing.managers import BaseManager, DictProxy
+import torch.multiprocessing as mp
+import logging
+import socket
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(levelname)s] [S3Server] - %(message)s')
+
+TENSOR_DICT = {}
+TENSOR_DICT_LOCK = threading.Lock()
+
+MANAGER_HOST = '127.0.0.1'
+MANAGER_PORT = 50001
+MANAGER_AUTHKEY = b'param_store'
+
+STATUS_HOST = '0.0.0.0'
+
+DTYPE = None  # Will be set based on loaded tensors
+
+NUM_TENSOR_WORKERS = 16
+
+# PP Parallelism variables
+START_LAYER_ID = -1
+END_LAYER_ID = -1
+TOTAL_LAYER_NUM = -1
+# TP Parallelism variables
+TENSOR_PARALLEL_SIZE = -1
+TENSOR_PARALLEL_RANK = -1
+LOCAL_RANK = -1
+DEVICE = "cuda"
+
+# Tensor partitioning constants (from mt_tensor_store_server.py)
+INPUT_DIM = 0
+OUTPUT_DIM = 1
+DIV_COLUMN_WISE_LIST = ["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj"]
+DIV_ROW_WISE_LIST = ["o_proj", "down_proj"]
+VOCAB_PADDING_SIZE = 64
+
+MODEL_LOAD_COMPLETE = False
+
+def get_tensor_dict():
+    return TENSOR_DICT
+
+class TensorManager(BaseManager):
+    pass
+
+TensorManager.register('get_tensor_dict', callable=get_tensor_dict, proxytype=DictProxy)
+
+### Utility functions from mt_tensor_store_server.py
+class DisabledTqdm(tqdm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, disable=True)
+
+temp_dir = tempfile.gettempdir()
+
+def get_lock(model_name_or_path: Union[str, Path], cache_dir: Optional[str] = None):
+    lock_dir = cache_dir or temp_dir
+    model_name_or_path = str(model_name_or_path)
+    os.makedirs(os.path.dirname(lock_dir), exist_ok=True)
+    model_name = model_name_or_path.replace("/", "-")
+    hash_name = hashlib.sha256(model_name.encode()).hexdigest()
+    lock_file_name = hash_name + model_name + ".lock"
+    lock = filelock.FileLock(os.path.join(lock_dir, lock_file_name), mode=0o666)
+    return lock
+
+def get_range_vocabulary_embedding_tensor(vocab_size: int) -> tuple[int, int, int]:
+    padding_size = VOCAB_PADDING_SIZE
+    
+    vocab_size_padded = ((vocab_size + padding_size - 1) // padding_size) * padding_size
+    assert vocab_size_padded % TENSOR_PARALLEL_SIZE == 0
+    per_shard_vocab_size = vocab_size_padded // TENSOR_PARALLEL_SIZE
+    padded_vocab_idx_start = TENSOR_PARALLEL_RANK * per_shard_vocab_size
+    padded_vocab_idx_end = padded_vocab_idx_start + per_shard_vocab_size
+    
+    vocab_start_idx = min(padded_vocab_idx_start, vocab_size)
+    vocab_end_idx = min(padded_vocab_idx_end, vocab_size)
+    
+    return vocab_start_idx, vocab_end_idx, per_shard_vocab_size
+
+def get_tensor_idx_range(dim: int) -> tuple[int, int, int]:
+    assert dim % TENSOR_PARALLEL_SIZE == 0
+    per_shard_dim_size = dim // TENSOR_PARALLEL_SIZE
+    shard_idx_start = TENSOR_PARALLEL_RANK * per_shard_dim_size
+    shard_idx_end = shard_idx_start + per_shard_dim_size
+    return shard_idx_start, shard_idx_end, per_shard_dim_size
+
+def should_load_tensor(tensor_name: str, tie_word_embeddings: bool) -> bool:
+    """Check if tensor should be loaded based on layer partitioning logic (same as mt_tensor_store_server.py)"""
+    should_load = True
+    
+    if tensor_name.startswith("model.layers"):
+        layer_idx = int(tensor_name.split('.')[2])
+        if not (START_LAYER_ID <= layer_idx < END_LAYER_ID):
+            should_load = False
+    elif tensor_name.startswith("model.embed_tokens"):
+        if not (START_LAYER_ID <= 0):
+            if not tie_word_embeddings:
+                should_load = False
+            elif not (TOTAL_LAYER_NUM <= END_LAYER_ID):
+                should_load = False
+    elif tensor_name.startswith("model.norm"):
+        if not (TOTAL_LAYER_NUM <= END_LAYER_ID):
+            should_load = False
+    elif tensor_name.startswith("lm_head"):
+        if not (TOTAL_LAYER_NUM <= END_LAYER_ID):
+            should_load = False
+    
+    return should_load
+
+def list_tensor_files_from_s3_with_cli(bucket_name: str, base_s3_path: str) -> List[str]:
+    """Get list of all tensor file names available in S3 using AWS CLI"""
+    tensor_names = []
+    
+    try:
+        # Construct S3 path
+        if base_s3_path:
+            s3_path = f"s3://{bucket_name}/{base_s3_path}/"
+        else:
+            s3_path = f"s3://{bucket_name}/"
+        
+        # Use aws s3 ls to list files
+        import subprocess
+        
+        ls_command = ["aws", "s3", "ls", s3_path, "--recursive"]
+        
+        result = subprocess.run(ls_command, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            logging.error(f"S3 ls failed: {result.stderr}")
+            raise RuntimeError(f"S3 ls failed: {result.stderr}")
+        
+        # Parse output to extract tensor names
+        for line in result.stdout.strip().split('\n'):
+            if line.strip() and '.bin' in line:
+                # Line format: "2024-01-01 12:00:00     123456 path/to/file.bin"
+                parts = line.split()
+                if len(parts) >= 4:
+                    file_path = parts[3]  # Full S3 key
+                    
+                    if file_path.endswith('.bin') and not file_path.endswith('config.json'):
+                        # Extract tensor name
+                        if base_s3_path:
+                            prefix = f"{base_s3_path}/"
+                            if file_path.startswith(prefix):
+                                tensor_name = file_path[len(prefix):][:-4]  # Remove .bin
+                            else:
+                                continue
+                        else:
+                            tensor_name = file_path[:-4]  # Remove .bin extension
+                        
+                        tensor_names.append(tensor_name)
+        
+        logging.info(f"Found {len(tensor_names)} tensor files in S3")
+        
+    except subprocess.TimeoutExpired:
+        logging.error("S3 ls timed out after 60 seconds")
+        raise
+    except Exception as e:
+        logging.error(f"Error listing tensors from S3: {e}")
+        raise
+    
+    return tensor_names
+
+def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bool) -> List[str]:
+    """Filter tensor names to only include those that need to be loaded"""
+    required_tensors = []
+    
+    for tensor_name in all_tensor_names:
+        if should_load_tensor(tensor_name, tie_word_embeddings):
+            required_tensors.append(tensor_name)
+    
+    logging.info(f"Filtered to {len(required_tensors)} required tensors out of {len(all_tensor_names)} total")
+    return required_tensors
+
+def download_tensor_from_s3(s3_client, bucket_name: str, s3_key: str, local_path: str):
+    """Download a single tensor file from S3"""
+    try:
+        # Create directory if needed
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        
+        # Download file
+        s3_client.download_file(bucket_name, s3_key, local_path)
+        logging.info(f"Downloaded {s3_key} from S3")
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            logging.warning(f"Tensor file not found in S3: {s3_key}")
+            return False
+        else:
+            logging.error(f"Failed to download {s3_key} from S3: {e}")
+            raise
+    except Exception as e:
+        logging.error(f"Unexpected error downloading {s3_key}: {e}")
+        raise
+    
+    return True
+
+def process_tensor_from_file(tensor_name: str, tensor_file_path: str, tie_word_embeddings: bool):
+    """Load and process a tensor from file - use original dtype from file"""
+    global DTYPE
+    
+    try:
+        # Load tensor from file (always to CPU first)
+        full_tensor = torch.load(tensor_file_path, map_location="cpu")
+        
+        # Set global DTYPE from first tensor if not set yet
+        if DTYPE is None:
+            DTYPE = full_tensor.dtype
+            logging.info(f"Set global DTYPE to {DTYPE} from tensor file")
+        
+        # Process tensor based on type and slice as needed
+        if tensor_name.split('.')[-2] == "embed_tokens":
+            vocab_size, hidden_size = full_tensor.shape
+            start_idx, end_idx, per_shard_dim_size = get_range_vocabulary_embedding_tensor(vocab_size)
+            if end_idx - start_idx > per_shard_dim_size:
+                raise ValueError(f"vocab_end_idx - vocab_start_idx > per_shard_vocab_size")
+            elif end_idx - start_idx < per_shard_dim_size:
+                tensor = torch.zeros(per_shard_dim_size, hidden_size, dtype=full_tensor.dtype, device="cpu")
+                tensor[:end_idx - start_idx, :] = full_tensor[start_idx:end_idx, :]
+                tensor = tensor.to(device=DEVICE)
+            else:
+                tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
+        elif tensor_name.split('.')[-2] in DIV_COLUMN_WISE_LIST:
+            output_dim, input_dim = full_tensor.shape
+            start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(output_dim)
+            tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
+        elif tensor_name.split('.')[-2] in DIV_ROW_WISE_LIST:
+            output_dim, input_dim = full_tensor.shape
+            start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(input_dim)
+            tensor = full_tensor[:, start_idx:end_idx].to(device=DEVICE)
+        else:
+            tensor = full_tensor[:].to(device=DEVICE)
+        
+        assert tensor is not None
+        assert tensor.device.type == "cuda"
+        
+        # Thread-safe add to TENSOR_DICT
+        with TENSOR_DICT_LOCK:
+            TENSOR_DICT[tensor_name] = tensor
+            
+        logging.info(f"Loaded {tensor_name} / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
+        
+        # Clean up CPU tensor
+        del full_tensor
+        del tensor
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+        
+        # Remove local file after processing
+        os.remove(tensor_file_path)
+        
+        return True
+        
+    except Exception as e:
+        logging.error(f"Error processing tensor {tensor_name}: {e}")
+        raise e
+
+def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, model_name: str,
+                               tensor_name: str, tie_word_embeddings: bool):
+    """Download a tensor from S3 and process it"""
+    # Prepare paths
+    if base_s3_path:
+        s3_key = f"{base_s3_path}/{tensor_name}.bin"
+    else:
+        s3_key = f"{tensor_name}.bin"
+    local_path = f"models/{model_name}/{tensor_name}.bin"
+    
+    # Download tensor
+    success = download_tensor_from_s3(s3_client, bucket_name, s3_key, local_path)
+    if not success:
+        return
+    
+    # Process tensor
+    process_tensor_from_file(tensor_name, local_path, tie_word_embeddings)
+
+def download_required_files_with_sync(bucket_name: str, base_s3_path: str, model_name: str, 
+                                     required_tensor_names: List[str], aws_profile: Optional[str] = None) -> str:
+    """Download config.json and required tensors using s3 sync with include patterns"""
+    local_model_dir = f"models/{model_name}"
+    os.makedirs(local_model_dir, exist_ok=True)
+    
+    if not required_tensor_names:
+        logging.warning("No tensors to download")
+        return local_model_dir
+    
+    # Construct S3 source path
+    if base_s3_path:
+        s3_source = f"s3://{bucket_name}/{base_s3_path}/"
+    else:
+        s3_source = f"s3://{bucket_name}/"
+    
+    # Build sync command with selective includes
+    sync_command = [
+        "aws", "s3", "sync", 
+        s3_source, 
+        local_model_dir,
+        "--exclude", "*",  # Exclude everything first
+        "--include", "config.json"  # Always include config
+    ]
+    
+    # Add include patterns for required tensors
+    for tensor_name in required_tensor_names:
+        sync_command.extend(["--include", f"{tensor_name}.bin"])
+    
+    # Add AWS profile if specified
+    if aws_profile:
+        sync_command.extend(["--profile", aws_profile])
+    
+    logging.info(f"Syncing config.json + {len(required_tensor_names)} required tensors from {s3_source} to {os.getcwd()}/{local_model_dir}")
+    logging.info(f"Running command: aws s3 sync {s3_source} {local_model_dir} --exclude '*' --include 'config.json' + {len(required_tensor_names)} tensor includes")
+    
+    import subprocess
+    
+    try:
+        result = subprocess.run(sync_command, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            logging.error(f"S3 sync failed: {result.stderr}")
+            raise RuntimeError(f"S3 sync failed: {result.stderr}")
+        
+        logging.info(f"S3 sync completed successfully")
+        if result.stdout.strip():
+            logging.info(f"Sync output: {result.stdout}")
+        
+    except subprocess.TimeoutExpired:
+        logging.error("S3 sync timed out after 5 minutes")
+        raise
+    except Exception as e:
+        logging.error(f"Error during S3 sync: {e}")
+        raise
+    
+    return local_model_dir
+
+def load_tensors_from_local_files(local_model_dir: str, required_tensor_names: List[str], 
+                                 tie_word_embeddings: bool):
+    """Load only required tensors from local files with multi-threading"""
+    if not required_tensor_names:
+        logging.warning("No tensors to load")
+        return
+    
+    # Load tensors with multi-threading
+    max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))
+    
+    with ThreadPoolExecutor(max_workers=max_tensor_workers) as executor:
+        futures = []
+        
+        for tensor_name in required_tensor_names:
+            tensor_file_path = os.path.join(local_model_dir, f"{tensor_name}.bin")
+            
+            # Check if file exists
+            if not os.path.exists(tensor_file_path):
+                logging.warning(f"Tensor file not found: {tensor_file_path}")
+                continue
+            
+            # Submit tensor loading task
+            future = executor.submit(process_tensor_from_file, tensor_name, tensor_file_path, tie_word_embeddings)
+            futures.append(future)
+        
+        # Wait for all tasks to complete
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logging.error(f"Error in tensor processing: {e}")
+
+def fuse_tensor(layer_idx: int):
+    """Fuse tensors (same logic as mt_tensor_store_server.py)"""
+    # QKV fusion
+    q_proj_tensor_name = f"model.layers.{layer_idx}.self_attn.q_proj.weight"
+    k_proj_tensor_name = f"model.layers.{layer_idx}.self_attn.k_proj.weight"
+    v_proj_tensor_name = f"model.layers.{layer_idx}.self_attn.v_proj.weight"
+
+    if all(name in TENSOR_DICT for name in [q_proj_tensor_name, k_proj_tensor_name, v_proj_tensor_name]):
+        q_proj_tensor = TENSOR_DICT[q_proj_tensor_name]
+        k_proj_tensor = TENSOR_DICT[k_proj_tensor_name]
+        v_proj_tensor = TENSOR_DICT[v_proj_tensor_name]
+
+        qkv_proj_tensor = torch.cat((q_proj_tensor, k_proj_tensor, v_proj_tensor), dim=INPUT_DIM)
+        qkv_proj_tensor_name = f"model.layers.{layer_idx}.self_attn.qkv_proj.weight"
+
+        TENSOR_DICT[qkv_proj_tensor_name] = qkv_proj_tensor
+
+        del TENSOR_DICT[q_proj_tensor_name]
+        del TENSOR_DICT[k_proj_tensor_name]
+        del TENSOR_DICT[v_proj_tensor_name]
+
+    # Gate-Up fusion
+    gate_proj_tensor_name = f"model.layers.{layer_idx}.mlp.gate_proj.weight"
+    up_proj_tensor_name = f"model.layers.{layer_idx}.mlp.up_proj.weight"
+
+    if all(name in TENSOR_DICT for name in [gate_proj_tensor_name, up_proj_tensor_name]):
+        gate_proj_tensor = TENSOR_DICT[gate_proj_tensor_name]
+        up_proj_tensor = TENSOR_DICT[up_proj_tensor_name]
+
+        gate_up_proj_tensor = torch.cat((gate_proj_tensor, up_proj_tensor), dim=INPUT_DIM)
+        gate_up_proj_tensor_name = f"model.layers.{layer_idx}.mlp.gate_up_proj.weight"
+
+        TENSOR_DICT[gate_up_proj_tensor_name] = gate_up_proj_tensor
+
+        del TENSOR_DICT[gate_proj_tensor_name]
+        del TENSOR_DICT[up_proj_tensor_name]
+
+def _status_server(host: str, port: int):
+    """Simple TCP server that replies '1' or '0' for readiness"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind((host, port))
+        srv.listen()
+        logging.info(f"Status server is listening on {host}:{port}")
+        while True:
+            conn, _ = srv.accept()
+            with conn:
+                msg = b"1" if MODEL_LOAD_COMPLETE else b"0"
+                try:
+                    conn.sendall(msg)
+                except Exception:
+                    pass
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="S3 Tensor Store Server")
+    parser.add_argument("--model-name", type=str, required=True, help="Model name")
+    parser.add_argument("--s3-path", type=str, required=True, 
+                        help="S3 path where tensors are stored (e.g., s3://bucket-name/path/to/models)")
+    parser.add_argument("--tensor-parallel-size", type=int, default=1)
+    parser.add_argument("--local-rank", type=int, default=0)
+    parser.add_argument("--start-layer-id", type=int, default=0)
+    parser.add_argument("--end-layer-id", type=int, default=-1)
+    parser.add_argument("--status-host", type=str, default=STATUS_HOST,
+                        help="Host interface for readiness TCP server")
+    parser.add_argument("--status-port", type=int, required=True,
+                        help="Port for readiness TCP server")
+    parser.add_argument("--aws-profile", type=str, default=None,
+                        help="AWS profile to use for S3 access")
+    return parser.parse_args()
+
+def set_global_variables(args: argparse.Namespace, config_dict: dict):
+    global TENSOR_PARALLEL_SIZE, LOCAL_RANK, START_LAYER_ID, END_LAYER_ID, TOTAL_LAYER_NUM, DEVICE, TENSOR_PARALLEL_RANK
+    TENSOR_PARALLEL_SIZE = args.tensor_parallel_size
+    LOCAL_RANK = args.local_rank
+    TENSOR_PARALLEL_RANK = args.local_rank
+    DEVICE = f"cuda:{LOCAL_RANK}"
+    START_LAYER_ID = args.start_layer_id
+    END_LAYER_ID = args.end_layer_id
+    TOTAL_LAYER_NUM = config_dict["num_hidden_layers"]
+    
+    if END_LAYER_ID == -1:
+        END_LAYER_ID = config_dict["num_hidden_layers"]
+
+def main():
+    args = parse_args()
+    
+    # Start status server
+    threading.Thread(target=_status_server,
+                     args=(args.status_host, args.status_port),
+                     daemon=True).start()
+    
+    logging.info(f"args: {args}")
+    
+    # Parse S3 path
+    if not args.s3_path.startswith("s3://"):
+        raise ValueError("S3 path must start with s3://")
+    
+    # Remove s3:// prefix and split into parts
+    s3_path_without_prefix = args.s3_path[5:]
+    s3_parts = s3_path_without_prefix.split('/', 1)
+    
+    bucket_name = s3_parts[0]
+    if len(s3_parts) > 1:
+        # There's a path after bucket name
+        base_s3_path = s3_parts[1].rstrip('/')
+    else:
+        # Only bucket name provided
+        base_s3_path = ""
+    
+    logging.info(f"S3 bucket: {bucket_name}")
+    logging.info(f"S3 base path: '{base_s3_path}'")
+    
+    # Test AWS CLI access
+    try:
+        import subprocess
+        
+        # Test AWS CLI access by listing the bucket
+        test_command = ["aws", "s3", "ls", f"s3://{bucket_name}/"]
+        if args.aws_profile:
+            test_command.extend(["--profile", args.aws_profile])
+        
+        result = subprocess.run(test_command, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            logging.error(f"AWS CLI access test failed: {result.stderr}")
+            logging.error("Please ensure AWS CLI is configured and you have access to the bucket")
+            return
+        
+        logging.info(f"Successfully verified access to S3 bucket: {bucket_name}")
+        
+    except subprocess.TimeoutExpired:
+        logging.error("AWS CLI access test timed out")
+        return
+    except Exception as e:
+        logging.error(f"Error testing AWS CLI access: {e}")
+        return
+    
+    try:
+        mp.set_start_method('fork', force=True)
+        logging.info("Set multiprocessing start method to 'fork'.")
+    except RuntimeError:
+        logging.warning("Could not set start method to 'fork'. Using default.")
+    
+    logging.info("Loading strategy: CPU -> GPU transfer (S3 sync + local loading)")
+    
+    # Step 1: List all tensor files from S3 using CLI
+    logging.info("Step 1: Listing all tensor files from S3...")
+    all_tensor_names = list_tensor_files_from_s3_with_cli(bucket_name, base_s3_path)
+    
+    if not all_tensor_names:
+        logging.error("No tensor files found in S3")
+        return
+    
+    # Step 2: Download config.json first to get model configuration
+    logging.info("Step 2: Downloading config.json to determine model configuration...")
+    config_local_path = f"models/{args.model_name}/config.json"
+    os.makedirs(os.path.dirname(config_local_path), exist_ok=True)
+    
+    try:
+        if base_s3_path:
+            config_s3_path = f"s3://{bucket_name}/{base_s3_path}/config.json"
+        else:
+            config_s3_path = f"s3://{bucket_name}/config.json"
+        
+        download_command = ["aws", "s3", "cp", config_s3_path, config_local_path]
+        if args.aws_profile:
+            download_command.extend(["--profile", args.aws_profile])
+        
+        result = subprocess.run(download_command, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            logging.error(f"Failed to download config.json: {result.stderr}")
+            return
+        
+        with open(config_local_path, "r") as f:
+            config_dict = json.load(f)
+        tie_word_embeddings = config_dict["tie_word_embeddings"]
+        logging.info(f"model config: {config_dict}")
+    except Exception as e:
+        logging.error(f"Failed to download or parse config: {e}")
+        return
+    
+    set_global_variables(args, config_dict)
+    
+    # Step 3: Filter to only required tensors
+    logging.info("Step 3: Filtering to required tensors...")
+    required_tensor_names = filter_required_tensors(all_tensor_names, tie_word_embeddings)
+    
+    if not required_tensor_names:
+        logging.error("No required tensors found after filtering")
+        return
+    
+    # Step 4: Download required tensors and config using s3 sync
+    logging.info("Step 4: Downloading required files using s3 sync...")
+    download_start = time.perf_counter()
+    
+    try:
+        local_model_dir = download_required_files_with_sync(bucket_name, base_s3_path, args.model_name, 
+                                                          required_tensor_names, args.aws_profile)
+        download_end = time.perf_counter()
+        logging.info(f"Download completed in {download_end - download_start:.2f} seconds")
+        
+        # Step 5: Load tensors from local files
+        logging.info("Step 5: Loading tensors from local files...")
+        load_start = time.perf_counter()
+        
+        load_tensors_from_local_files(local_model_dir, required_tensor_names, tie_word_embeddings)
+        
+    except Exception as e:
+        logging.error(f"Model Loading Error: {e}")
+        raise e
+    
+    logging.info(f"Final DTYPE determined from tensors: {DTYPE}")
+    
+    # Fuse tensors
+    logging.info(f"Before fusing, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
+    logging.info(f"Start fusing tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
+    
+    for layer_idx in range(START_LAYER_ID, END_LAYER_ID):
+        fuse_tensor(layer_idx)
+    
+    logging.info(f"Finished fusing tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
+    logging.info("Emptying CUDA cache after fusing...")
+    torch.cuda.empty_cache()
+    logging.info(f"After emptying cache, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
+    
+    # Print final tensor list
+    for tensor_name in TENSOR_DICT:
+        logging.info(f"tensor_name: {tensor_name} / shape: {TENSOR_DICT[tensor_name].shape} / dtype: {TENSOR_DICT[tensor_name].dtype} / device: {TENSOR_DICT[tensor_name].device}")
+    
+    load_end = time.perf_counter()
+    logging.info(f"Model Loading time: {load_end - load_start} seconds")
+    
+    if not TENSOR_DICT:
+        raise ValueError("Tensor loading failed: TENSOR_DICT is empty")
+    
+    logging.info(f"Successfully loaded {len(TENSOR_DICT)} tensors")
+    
+    # Start TensorManager server
+    manager = TensorManager(address=(MANAGER_HOST, MANAGER_PORT), authkey=MANAGER_AUTHKEY)
+    
+    try:
+        logging.info(f"TensorManager server starting {MANAGER_HOST}:{MANAGER_PORT}...")
+        server = manager.get_server()
+        logging.info("Manager server running. Waiting for client connections...")
+        logging.info("Press Ctrl+C to stop.")
+        
+        global MODEL_LOAD_COMPLETE
+        MODEL_LOAD_COMPLETE = True
+        logging.info("Model weight loading completed. Status server will now return 'READY'.")
+        
+        server.serve_forever()
+        
+    except OSError as bind_e:
+        logging.error(f"Failed to bind manager server: {bind_e}. Port {MANAGER_PORT} might be in use.")
+    except KeyboardInterrupt:
+        logging.info("Received Ctrl+C. Shutting down manager server...")
+    except Exception as e:
+        logging.exception(f"An unexpected error occurred in manager server loop: {e}")
+    finally:
+        logging.info("Server shutting down.")
+
+if __name__ == "__main__":
+    main()
