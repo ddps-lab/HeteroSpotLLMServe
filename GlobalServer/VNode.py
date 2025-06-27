@@ -307,7 +307,7 @@ class VNode:
             model_name=config["model_name"],
             pp_layer_partition=config["pp_layer_partition"],
             parallel_strategy=config["parallel_strategy"],
-            host=config.get("host", "127.0.0.1"),
+            host=config.get("host", "0.0.0.0"),
             port=api_server_port,
             dtype=config.get("dtype", "float16"),
             max_model_len=config.get("max_model_len"),
@@ -551,7 +551,6 @@ def example_usage():
     #     "max_num_seqs": 16,
     #     "model_source": "s3",
     #     "s3_path": f"s3://{bucket_name}/{model_name}",
-    #     "aws_profile": "your-profile"  # Optional
     # }
     
     cluster.create_pipeline(
