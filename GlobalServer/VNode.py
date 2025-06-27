@@ -29,6 +29,9 @@ class Cluster:
                 - total_num_layers (required): Total number of layers in the model
                 - pp_layer_partition (required): Pipeline layer partition string
                 - parallel_strategy (required): List of parallel strategy integers
+                - model_source (optional): Source of model weights - 'huggingface' or 's3' (default: 'huggingface')
+                - s3_path (optional): S3 path where model tensors are stored (required if model_source='s3')
+                - aws_profile (optional): AWS profile to use for S3 access
                 - tensor_store_base_port (optional): Base port for tensor store servers
                 - api_server_base_port (optional): Base port for API servers
                 - dtype (optional): Data type for model weights
@@ -228,6 +231,14 @@ class VNode:
         model_name = config["model_name"]
         dtype = config.get("dtype", "float16")
         
+        # Check if using S3 or HuggingFace
+        model_source = config.get("model_source", "huggingface")  # Default to HuggingFace
+        s3_path = config.get("s3_path") if model_source == "s3" else None
+        aws_profile = config.get("aws_profile") if model_source == "s3" else None
+        
+        if model_source == "s3" and not s3_path:
+            raise ValueError("s3_path must be provided when model_source is 's3'")
+        
         # Start tensor store processes for each GPU (for TP)
         for local_rank in range(self.num_gpu):
             command = get_tensor_store_command(
@@ -237,7 +248,9 @@ class VNode:
                 start_layer_id=self.layer_start_id,
                 end_layer_id=self.layer_end_id,
                 status_port=tensor_store_port,  # Base port, local_rank will be added in command
-                dtype=dtype
+                dtype=dtype,
+                s3_path=s3_path,
+                aws_profile=aws_profile
             )
             
             # Prepare log files
@@ -508,6 +521,7 @@ def example_usage():
     }
     
     # Create pipeline for Llama-3.1-8B (32 layers total)
+    # Option 1: Using HuggingFace (default)
     config = {
         "model_name": "meta-llama/Llama-3.1-8B",
         "total_num_layers": 32,
@@ -517,9 +531,26 @@ def example_usage():
         "max_model_len": 4096,
         "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
-        "max_num_seqs": 16
+        "max_num_seqs": 16,
+        "model_source": "huggingface"  # Optional, default is 'huggingface'
         # tensor_store_base_port and api_server_base_port not specified - will use global defaults
     }
+    
+    # Option 2: Using S3 (uncomment to use)
+    # config = {
+    #     "model_name": "meta-llama/Llama-3.1-8B",
+    #     "total_num_layers": 32,
+    #     "pp_layer_partition": "32",
+    #     "parallel_strategy": [1],
+    #     "node_rank_mapping": json.dumps(node_rank_mapping_dict),
+    #     "max_model_len": 4096,
+    #     "gpu_memory_utilization": 0.25,
+    #     "max_num_batched_tokens": 4096,
+    #     "max_num_seqs": 16,
+    #     "model_source": "s3",
+    #     "s3_path": "s3://your-bucket/models/meta-llama/Llama-3.1-8B",
+    #     "aws_profile": "your-profile"  # Optional
+    # }
     
     cluster.create_pipeline(
         node_layer_mapping=node_layer_mapping,

@@ -436,7 +436,7 @@ def main():
     try:
         # Configure boto3 with much larger connection pool
         config = Config(
-            max_pool_connections=100,  # Large pool to handle many concurrent downloads
+            max_pool_connections=256,  # Large pool to handle many concurrent downloads
             retries={'max_attempts': 3}
         )
         
