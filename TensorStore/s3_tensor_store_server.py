@@ -19,6 +19,9 @@ from multiprocessing.managers import BaseManager, DictProxy
 import torch.multiprocessing as mp
 import logging
 import socket
+import boto3
+from botocore.exceptions import NoCredentialsError, ClientError
+from botocore.config import Config
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(levelname)s] [S3Server] - %(message)s')
 
@@ -123,55 +126,42 @@ def should_load_tensor(tensor_name: str, tie_word_embeddings: bool) -> bool:
     
     return should_load
 
-def list_tensor_files_from_s3_with_cli(bucket_name: str, base_s3_path: str) -> List[str]:
-    """Get list of all tensor file names available in S3 using AWS CLI"""
+def list_tensor_files_from_s3_with_boto3(s3_client, bucket_name: str, base_s3_path: str) -> List[str]:
+    """Get list of all tensor file names available in S3 using boto3"""
     tensor_names = []
     
     try:
-        # Construct S3 path
-        if base_s3_path:
-            s3_path = f"s3://{bucket_name}/{base_s3_path}/"
-        else:
-            s3_path = f"s3://{bucket_name}/"
+        # Set up prefix for listing
+        prefix = f"{base_s3_path}/" if base_s3_path else ""
         
-        # Use aws s3 ls to list files
-        import subprocess
+        # List objects with pagination
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
         
-        ls_command = ["aws", "s3", "ls", s3_path, "--recursive"]
-        
-        result = subprocess.run(ls_command, capture_output=True, text=True, timeout=60)
-        if result.returncode != 0:
-            logging.error(f"S3 ls failed: {result.stderr}")
-            raise RuntimeError(f"S3 ls failed: {result.stderr}")
-        
-        # Parse output to extract tensor names
-        for line in result.stdout.strip().split('\n'):
-            if line.strip() and '.bin' in line:
-                # Line format: "2024-01-01 12:00:00     123456 path/to/file.bin"
-                parts = line.split()
-                if len(parts) >= 4:
-                    file_path = parts[3]  # Full S3 key
+        for page in pages:
+            if 'Contents' in page:
+                for obj in page['Contents']:
+                    key = obj['Key']
                     
-                    if file_path.endswith('.bin') and not file_path.endswith('config.json'):
+                    if key.endswith('.bin') and not key.endswith('config.json'):
                         # Extract tensor name
                         if base_s3_path:
-                            prefix = f"{base_s3_path}/"
-                            if file_path.startswith(prefix):
-                                tensor_name = file_path[len(prefix):][:-4]  # Remove .bin
+                            if key.startswith(prefix):
+                                tensor_name = key[len(prefix):][:-4]  # Remove .bin
                             else:
                                 continue
                         else:
-                            tensor_name = file_path[:-4]  # Remove .bin extension
+                            tensor_name = key[:-4]  # Remove .bin extension
                         
                         tensor_names.append(tensor_name)
         
         logging.info(f"Found {len(tensor_names)} tensor files in S3")
         
-    except subprocess.TimeoutExpired:
-        logging.error("S3 ls timed out after 60 seconds")
+    except ClientError as e:
+        logging.error(f"Error listing tensors from S3: {e}")
         raise
     except Exception as e:
-        logging.error(f"Error listing tensors from S3: {e}")
+        logging.error(f"Unexpected error listing tensors from S3: {e}")
         raise
     
     return tensor_names
@@ -187,30 +177,39 @@ def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bo
     logging.info(f"Filtered to {len(required_tensors)} required tensors out of {len(all_tensor_names)} total")
     return required_tensors
 
-def download_tensor_from_s3(s3_client, bucket_name: str, s3_key: str, local_path: str):
-    """Download a single tensor file from S3"""
+def download_tensor_from_s3(s3_client: boto3.client, bucket_name: str, s3_key: str, local_path: str):
+    """Download a single tensor file from S3 using boto3"""
     try:
         # Create directory if needed
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         
-        # Download file
+        # Download using boto3
         s3_client.download_file(bucket_name, s3_key, local_path)
-        logging.info(f"Downloaded {s3_key} from S3")
+        
+        # Verify file was actually saved
+        if not os.path.exists(local_path):
+            raise RuntimeError(f"File was not saved to {local_path}")
+        
+        file_size = os.path.getsize(local_path)
+        if file_size == 0:
+            raise RuntimeError(f"Downloaded file is empty: {local_path}")
+        
+        logging.info(f"Downloaded {s3_key} from S3 ({file_size} bytes)")
+        return True
         
     except ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            logging.warning(f"Tensor file not found in S3: {s3_key}")
-            return False
+        error_code = e.response['Error']['Code']
+        if error_code in ['NoSuchKey', '404']:
+            logging.error(f"Tensor file not found in S3: {s3_key}")
+            raise
         else:
             logging.error(f"Failed to download {s3_key} from S3: {e}")
             raise
     except Exception as e:
         logging.error(f"Unexpected error downloading {s3_key}: {e}")
         raise
-    
-    return True
 
-def process_tensor_from_file(tensor_name: str, tensor_file_path: str, tie_word_embeddings: bool):
+def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
     """Load and process a tensor from file - use original dtype from file"""
     global DTYPE
     
@@ -262,6 +261,7 @@ def process_tensor_from_file(tensor_name: str, tensor_file_path: str, tie_word_e
         
         # Remove local file after processing
         os.remove(tensor_file_path)
+        logging.debug(f"Removed local file after processing: {tensor_file_path}")
         
         return True
         
@@ -270,7 +270,7 @@ def process_tensor_from_file(tensor_name: str, tensor_file_path: str, tie_word_e
         raise e
 
 def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, model_name: str,
-                               tensor_name: str, tie_word_embeddings: bool):
+                               tensor_name: str):
     """Download a tensor from S3 and process it"""
     # Prepare paths
     if base_s3_path:
@@ -285,88 +285,30 @@ def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, 
         return
     
     # Process tensor
-    process_tensor_from_file(tensor_name, local_path, tie_word_embeddings)
+    process_tensor_from_file(tensor_name, local_path)
 
-def download_required_files_with_sync(bucket_name: str, base_s3_path: str, model_name: str, 
-                                     required_tensor_names: List[str], aws_profile: Optional[str] = None) -> str:
-    """Download config.json and required tensors using s3 sync with include patterns"""
-    local_model_dir = f"models/{model_name}"
-    os.makedirs(local_model_dir, exist_ok=True)
-    
+def download_required_tensors_individually(s3_client, bucket_name: str, base_s3_path: str, model_name: str, 
+                                          required_tensor_names: List[str]):
+    """Download only required tensors individually from S3 using boto3"""
     if not required_tensor_names:
         logging.warning("No tensors to download")
-        return local_model_dir
-    
-    # Construct S3 source path
-    if base_s3_path:
-        s3_source = f"s3://{bucket_name}/{base_s3_path}/"
-    else:
-        s3_source = f"s3://{bucket_name}/"
-    
-    # Build sync command with selective includes
-    sync_command = [
-        "aws", "s3", "sync", 
-        s3_source, 
-        local_model_dir,
-        "--exclude", "*",  # Exclude everything first
-        "--include", "config.json"  # Always include config
-    ]
-    
-    # Add include patterns for required tensors
-    for tensor_name in required_tensor_names:
-        sync_command.extend(["--include", f"{tensor_name}.bin"])
-    
-    # Add AWS profile if specified
-    if aws_profile:
-        sync_command.extend(["--profile", aws_profile])
-    
-    logging.info(f"Syncing config.json + {len(required_tensor_names)} required tensors from {s3_source} to {os.getcwd()}/{local_model_dir}")
-    logging.info(f"Running command: aws s3 sync {s3_source} {local_model_dir} --exclude '*' --include 'config.json' + {len(required_tensor_names)} tensor includes")
-    
-    import subprocess
-    
-    try:
-        result = subprocess.run(sync_command, capture_output=True, text=True, timeout=300)
-        if result.returncode != 0:
-            logging.error(f"S3 sync failed: {result.stderr}")
-            raise RuntimeError(f"S3 sync failed: {result.stderr}")
-        
-        logging.info(f"S3 sync completed successfully")
-        if result.stdout.strip():
-            logging.info(f"Sync output: {result.stdout}")
-        
-    except subprocess.TimeoutExpired:
-        logging.error("S3 sync timed out after 5 minutes")
-        raise
-    except Exception as e:
-        logging.error(f"Error during S3 sync: {e}")
-        raise
-    
-    return local_model_dir
-
-def load_tensors_from_local_files(local_model_dir: str, required_tensor_names: List[str], 
-                                 tie_word_embeddings: bool):
-    """Load only required tensors from local files with multi-threading"""
-    if not required_tensor_names:
-        logging.warning("No tensors to load")
         return
     
-    # Load tensors with multi-threading
-    max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))
+    logging.info(f"Downloading and processing {len(required_tensor_names)} required tensors individually")
+    
+    # Use threading for parallel downloads and processing
+    max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))  
+    logging.info(f"Using {max_tensor_workers} workers for tensor downloads")
     
     with ThreadPoolExecutor(max_workers=max_tensor_workers) as executor:
         futures = []
         
         for tensor_name in required_tensor_names:
-            tensor_file_path = os.path.join(local_model_dir, f"{tensor_name}.bin")
-            
-            # Check if file exists
-            if not os.path.exists(tensor_file_path):
-                logging.warning(f"Tensor file not found: {tensor_file_path}")
-                continue
-            
-            # Submit tensor loading task
-            future = executor.submit(process_tensor_from_file, tensor_name, tensor_file_path, tie_word_embeddings)
+            # Submit download and processing task
+            future = executor.submit(
+                download_and_process_tensor,
+                s3_client, bucket_name, base_s3_path, model_name, tensor_name
+            )
             futures.append(future)
         
         # Wait for all tasks to complete
@@ -374,7 +316,9 @@ def load_tensors_from_local_files(local_model_dir: str, required_tensor_names: L
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"Error in tensor processing: {e}")
+                logging.error(f"Error in tensor download/processing: {e}")
+
+# Function removed - tensors are now processed directly after download
 
 def fuse_tensor(layer_idx: int):
     """Fuse tensors (same logic as mt_tensor_store_server.py)"""
@@ -488,28 +432,32 @@ def main():
     logging.info(f"S3 bucket: {bucket_name}")
     logging.info(f"S3 base path: '{base_s3_path}'")
     
-    # Test AWS CLI access
+    # Initialize S3 client with connection pool configuration
     try:
-        import subprocess
+        # Configure boto3 with much larger connection pool
+        config = Config(
+            max_pool_connections=100,  # Large pool to handle many concurrent downloads
+            retries={'max_attempts': 3}
+        )
         
-        # Test AWS CLI access by listing the bucket
-        test_command = ["aws", "s3", "ls", f"s3://{bucket_name}/"]
         if args.aws_profile:
-            test_command.extend(["--profile", args.aws_profile])
+            session = boto3.Session(profile_name=args.aws_profile)
+            s3_client = session.client('s3', config=config)
+        else:
+            s3_client = boto3.client('s3', config=config)
         
-        result = subprocess.run(test_command, capture_output=True, text=True, timeout=30)
-        if result.returncode != 0:
-            logging.error(f"AWS CLI access test failed: {result.stderr}")
-            logging.error("Please ensure AWS CLI is configured and you have access to the bucket")
-            return
+        # Test S3 access
+        s3_client.head_bucket(Bucket=bucket_name)
+        logging.info(f"Successfully connected to S3 bucket: {bucket_name}")
         
-        logging.info(f"Successfully verified access to S3 bucket: {bucket_name}")
-        
-    except subprocess.TimeoutExpired:
-        logging.error("AWS CLI access test timed out")
+    except NoCredentialsError:
+        logging.error("AWS credentials not found. Please configure your credentials.")
+        return
+    except ClientError as e:
+        logging.error(f"Error accessing S3 bucket: {e}")
         return
     except Exception as e:
-        logging.error(f"Error testing AWS CLI access: {e}")
+        logging.error(f"Error initializing S3 client: {e}")
         return
     
     try:
@@ -518,11 +466,11 @@ def main():
     except RuntimeError:
         logging.warning("Could not set start method to 'fork'. Using default.")
     
-    logging.info("Loading strategy: CPU -> GPU transfer (S3 sync + local loading)")
+    logging.info("Loading strategy: CPU -> GPU transfer (Individual downloads + local loading)")
     
-    # Step 1: List all tensor files from S3 using CLI
+    # Step 1: List all tensor files from S3 using boto3
     logging.info("Step 1: Listing all tensor files from S3...")
-    all_tensor_names = list_tensor_files_from_s3_with_cli(bucket_name, base_s3_path)
+    all_tensor_names = list_tensor_files_from_s3_with_boto3(s3_client, bucket_name, base_s3_path)
     
     if not all_tensor_names:
         logging.error("No tensor files found in S3")
@@ -535,23 +483,19 @@ def main():
     
     try:
         if base_s3_path:
-            config_s3_path = f"s3://{bucket_name}/{base_s3_path}/config.json"
+            config_s3_key = f"{base_s3_path}/config.json"
         else:
-            config_s3_path = f"s3://{bucket_name}/config.json"
+            config_s3_key = "config.json"
         
-        download_command = ["aws", "s3", "cp", config_s3_path, config_local_path]
-        if args.aws_profile:
-            download_command.extend(["--profile", args.aws_profile])
-        
-        result = subprocess.run(download_command, capture_output=True, text=True, timeout=30)
-        if result.returncode != 0:
-            logging.error(f"Failed to download config.json: {result.stderr}")
-            return
+        s3_client.download_file(bucket_name, config_s3_key, config_local_path)
         
         with open(config_local_path, "r") as f:
             config_dict = json.load(f)
         tie_word_embeddings = config_dict["tie_word_embeddings"]
         logging.info(f"model config: {config_dict}")
+    except ClientError as e:
+        logging.error(f"Failed to download config.json: {e}")
+        return
     except Exception as e:
         logging.error(f"Failed to download or parse config: {e}")
         return
@@ -566,21 +510,16 @@ def main():
         logging.error("No required tensors found after filtering")
         return
     
-    # Step 4: Download required tensors and config using s3 sync
-    logging.info("Step 4: Downloading required files using s3 sync...")
+    # Step 4: Download and process required tensors individually
+    logging.info("Step 4: Downloading and processing required tensors individually...")
     download_start = time.perf_counter()
     
     try:
-        local_model_dir = download_required_files_with_sync(bucket_name, base_s3_path, args.model_name, 
-                                                          required_tensor_names, args.aws_profile)
+        download_required_tensors_individually(s3_client, bucket_name, base_s3_path, args.model_name, 
+                                             required_tensor_names)
+        
         download_end = time.perf_counter()
-        logging.info(f"Download completed in {download_end - download_start:.2f} seconds")
-        
-        # Step 5: Load tensors from local files
-        logging.info("Step 5: Loading tensors from local files...")
-        load_start = time.perf_counter()
-        
-        load_tensors_from_local_files(local_model_dir, required_tensor_names, tie_word_embeddings)
+        logging.info(f"Download and processing completed in {download_end - download_start:.2f} seconds")
         
     except Exception as e:
         logging.error(f"Model Loading Error: {e}")
@@ -605,7 +544,7 @@ def main():
         logging.info(f"tensor_name: {tensor_name} / shape: {TENSOR_DICT[tensor_name].shape} / dtype: {TENSOR_DICT[tensor_name].dtype} / device: {TENSOR_DICT[tensor_name].device}")
     
     load_end = time.perf_counter()
-    logging.info(f"Model Loading time: {load_end - load_start} seconds")
+    logging.info(f"Model Loading time: {load_end - download_start} seconds")
     
     if not TENSOR_DICT:
         raise ValueError("Tensor loading failed: TENSOR_DICT is empty")
