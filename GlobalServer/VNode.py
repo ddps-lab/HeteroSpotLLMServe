@@ -5,7 +5,7 @@ import subprocess
 import logging
 import time
 import os
-from command import get_tensor_store_command, get_api_server_command, DEFAULT_TENSOR_STORE_BASE_PORT
+from command import get_tensor_store_command, get_api_server_command, DEFAULT_TENSOR_STORE_BASE_PORT, DEFAULT_API_SERVER_BASE_PORT
 import json
 import sys
 import threading
@@ -117,10 +117,9 @@ class Pipeline:
             vnode.start_tensor_store(tensor_store_port, config)
         
         # Start API server only on the first node (pipeline rank 0)
-        if len(self.vnodes) > 0:
-            first_vnode = self.vnodes[0]
-            api_server_base_port = config.get("api_server_base_port")
-            first_vnode.start_api_server(api_server_base_port, config)
+        first_vnode = self.vnodes[0]
+        api_server_base_port = config.get("api_server_base_port", DEFAULT_API_SERVER_BASE_PORT)
+        first_vnode.start_api_server(api_server_base_port, config)
         
         # Wait for all services to be ready
         self._wait_for_services()
@@ -513,11 +512,11 @@ def example_usage():
     # Define node-layer mapping for pipeline parallelism
     # Each tuple is (node_ip, number_of_layers)
     node_layer_mapping = [
-        ("172.31.13.201", 32)
+        ("172.31.17.139", 32)
     ]
 
     node_rank_mapping_dict = {
-        "172.31.13.201": [0]
+        "172.31.17.139": [0]
     }
 
     model_name = "meta-llama/Llama-3.1-8B"
@@ -525,20 +524,6 @@ def example_usage():
     
     # Create pipeline for Llama-3.1-8B (32 layers total)
     # Option 1: Using HuggingFace (default)
-    config = {
-        "model_name": model_name,
-        "total_num_layers": 32,
-        "pp_layer_partition": "32",
-        "parallel_strategy": [1],
-        "node_rank_mapping": json.dumps(node_rank_mapping_dict),
-        "max_model_len": 4096,
-        "gpu_memory_utilization": 0.25,
-        "max_num_batched_tokens": 4096,
-        "max_num_seqs": 16,
-        # tensor_store_base_port and api_server_base_port not specified - will use global defaults
-    }
-    
-    # Option 2: Using S3 (uncomment to use)
     # config = {
     #     "model_name": model_name,
     #     "total_num_layers": 32,
@@ -549,9 +534,23 @@ def example_usage():
     #     "gpu_memory_utilization": 0.25,
     #     "max_num_batched_tokens": 4096,
     #     "max_num_seqs": 16,
-    #     "model_source": "s3",
-    #     "s3_path": f"s3://{bucket_name}/{model_name}",
+    #     # tensor_store_base_port and api_server_base_port not specified - will use global defaults
     # }
+    
+    # Option 2: Using S3 (uncomment to use)
+    config = {
+        "model_name": model_name,
+        "total_num_layers": 32,
+        "pp_layer_partition": "32",
+        "parallel_strategy": [1],
+        "node_rank_mapping": json.dumps(node_rank_mapping_dict),
+        "max_model_len": 4096,
+        "gpu_memory_utilization": 0.25,
+        "max_num_batched_tokens": 4096,
+        "max_num_seqs": 16,
+        "model_source": "s3",
+        "s3_path": f"s3://{bucket_name}/{model_name}",
+    }
     
     cluster.create_pipeline(
         node_layer_mapping=node_layer_mapping,
