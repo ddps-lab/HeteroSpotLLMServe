@@ -9,6 +9,11 @@ from command import get_tensor_store_command, get_api_server_command, DEFAULT_TE
 import json
 import sys
 import threading
+import requests
+
+# Add parent directory to path for protocols import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocols import TensorStoreRequest, TensorStoreResponse
 
 class Cluster:
     def __init__(self):
@@ -51,6 +56,28 @@ class Cluster:
         pipeline = Pipeline()
         pipeline.initialize_pipeline(node_layer_mapping, config)
         self.pipelines.append(pipeline)
+
+    def stop_all_pipelines(self):
+        """Stop all pipelines in the cluster."""
+        logging.info(f"Stopping {len(self.pipelines)} pipelines...")
+        
+        # Stop all pipelines in parallel
+        with threading.ThreadPoolExecutor(max_workers=len(self.pipelines)) as executor:
+            futures = []
+            
+            for i, pipeline in enumerate(self.pipelines):
+                future = executor.submit(pipeline.stop_pipeline)
+                futures.append((i, future))
+            
+            # Wait for all to complete
+            for pipeline_idx, future in futures:
+                try:
+                    future.result(timeout=300)  # 5 minutes timeout per pipeline
+                    logging.info(f"Pipeline {pipeline_idx} stopped successfully")
+                except Exception as e:
+                    logging.error(f"Failed to stop pipeline {pipeline_idx}: {e}")
+        
+        logging.info("All pipelines stopped")
 
 class Pipeline:
     def __init__(self):
@@ -166,6 +193,34 @@ class Pipeline:
             thread = vnode.stream_logs_continuously()
             threads.append(thread)
         return threads
+
+    def stop_pipeline(self):
+        """Stop all services in the pipeline."""
+        logging.info(f"Stopping pipeline with {len(self.vnodes)} nodes...")
+        
+        # Stop all VNodes in parallel
+        with threading.ThreadPoolExecutor(max_workers=len(self.vnodes)) as executor:
+            futures = []
+            
+            # Stop tensor stores on all nodes
+            for vnode in self.vnodes:
+                future = executor.submit(vnode.stop_tensor_store)
+                futures.append(("tensor_store", vnode.node_ip, future))
+            
+            # Stop API server on first node only
+            if self.vnodes:
+                future = executor.submit(self.vnodes[0].stop_api_server)
+                futures.append(("api_server", self.vnodes[0].node_ip, future))
+            
+            # Wait for all to complete
+            for service_type, node_ip, future in futures:
+                try:
+                    future.result(timeout=120)  # 2 minutes timeout per service
+                    logging.info(f"{service_type} stopped successfully on {node_ip}")
+                except Exception as e:
+                    logging.error(f"Failed to stop {service_type} on {node_ip}: {e}")
+        
+        logging.info("Pipeline shutdown completed")
 
 
 class VNode:
@@ -500,6 +555,86 @@ class VNode:
             "api_server_ready": self.is_api_server_ready if self.pipeline_rank == 0 else "N/A (not first node)"
         }
 
+    def stop_tensor_store(self):
+        """Stop all tensor store servers on this VNode."""
+        if not self.is_tensor_store_ready or self.tensor_store_port is None:
+            logging.info(f"TensorStore not running on {self.node_ip}")
+            return
+        
+        logging.info(f"Stopping TensorStore servers on {self.node_ip}...")
+        
+        def stop_single_tensor_store(local_rank):
+            """Stop a single tensor store process."""
+            status_port = self.tensor_store_port + local_rank
+            try:
+                # Send shutdown command via TCP
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(5.0)
+                    sock.connect((self.node_ip, status_port))
+                    sock.send(TensorStoreRequest.SHUTDOWN.value)
+                    response = sock.recv(1)
+                    
+                    if response == TensorStoreResponse.OK.value:
+                        logging.info(f"TensorStore GPU {local_rank} shutdown accepted on {self.node_ip}")
+                        return True
+                    else:
+                        logging.warning(f"Unexpected response from TensorStore GPU {local_rank}: {response}")
+                        return False
+                        
+            except Exception as e:
+                logging.error(f"Failed to stop TensorStore GPU {local_rank} on {self.node_ip}: {e}")
+                return False
+        
+        # Stop all tensor store processes in parallel
+        with threading.ThreadPoolExecutor(max_workers=self.num_gpu) as executor:
+            futures = []
+            for local_rank in range(self.num_gpu):
+                future = executor.submit(stop_single_tensor_store, local_rank)
+                futures.append(future)
+            
+            # Wait for all to complete
+            success_count = 0
+            for future in futures:
+                if future.result():
+                    success_count += 1
+            
+            logging.info(f"TensorStore shutdown: {success_count}/{self.num_gpu} processes stopped successfully")
+        
+        self.is_tensor_store_ready = False
+        logging.info(f"TensorStore shutdown completed on {self.node_ip}")
+
+    def stop_api_server(self):
+        """Stop the API server on this VNode (only applicable for first node)."""
+        if self.pipeline_rank != 0:
+            logging.info(f"API server not running on {self.node_ip} (not first node)")
+            return
+            
+        if not self.is_api_server_ready or self.api_server_port is None:
+            logging.info(f"API server not running on {self.node_ip}")
+            return
+        
+        logging.info(f"Stopping API server on {self.node_ip}...")
+        
+        try:
+            # Send shutdown request via HTTP
+            url = f"http://{self.node_ip}:{self.api_server_port}/shutdown"
+            response = requests.post(url, timeout=10)
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                if response_data.get("status") == "shutdown_accepted":
+                    logging.info(f"API server shutdown accepted on {self.node_ip}")
+                else:
+                    logging.warning(f"Unexpected API server response: {response_data}")
+            else:
+                logging.error(f"Failed to stop API server: HTTP {response.status_code}")
+                
+        except Exception as e:
+            logging.error(f"Failed to stop API server on {self.node_ip}: {e}")
+        
+        self.is_api_server_ready = False
+        logging.info(f"API server shutdown completed on {self.node_ip}")
+
 
 
 def example_usage():
@@ -570,8 +705,77 @@ def example_usage():
     for vnode in cluster.pipelines[0].vnodes:
         logging.info(f"VNode resources: {vnode.get_node_resources()}")
     
-    # Note: API server runs only on the first node
-    logging.info(f"\nAPI server is running on node {cluster.pipelines[0].vnodes[0].node_ip} (pipeline rank 0)")
+    # Get API server details
+    api_node = cluster.pipelines[0].vnodes[0]
+    api_url = f"http://{api_node.node_ip}:{api_node.api_server_port}"
+    logging.info(f"\nAPI server is running on {api_url}")
+    
+    try:
+        # Interactive inference loop
+        print("\n" + "="*50)
+        print("🚀 HeteroSpotLLMServe Interactive Mode")
+        print("="*50)
+        print("Enter your prompts below. Type 'exit' to quit.")
+        print(f"API Server: {api_url}")
+        print("-"*50)
+        
+        while True:
+            try:
+                # Get user input
+                prompt = input("\n>>> ")
+                
+                # Check for exit command
+                if prompt.lower().strip() in ['exit', 'quit', 'q']:
+                    print("Exiting...")
+                    break
+                
+                if not prompt.strip():
+                    continue
+                
+                # Prepare request payload
+                payload = {
+                    "model": model_name,
+                    "prompt": prompt,
+                    "temperature": 0.7,
+                    "stream": False
+                }
+                
+                # Send request to API server
+                print("🤖 Generating response...")
+                response = requests.post(
+                    f"{api_url}/v1/completions",
+                    json=payload,
+                    timeout=60
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    assistant_message = result['choices'][0]['text']
+                    print(f"\n💬 Assistant: {assistant_message}")
+                else:
+                    print(f"❌ Error: HTTP {response.status_code}")
+                    print(f"Response: {response.text}")
+                    
+            except KeyboardInterrupt:
+                print("\n\nReceived Ctrl+C. Shutting down...")
+                break
+            except Exception as e:
+                print(f"❌ Error during inference: {e}")
+                continue
+                
+    except KeyboardInterrupt:
+        print("\n\nReceived Ctrl+C. Shutting down...")
+    except Exception as e:
+        logging.error(f"Error in interactive mode: {e}")
+    finally:
+        # Graceful shutdown
+        print("\n🛑 Initiating graceful shutdown...")
+        try:
+            cluster.stop_all_pipelines()
+            print("✅ Shutdown completed successfully!")
+        except Exception as e:
+            logging.error(f"Error during shutdown: {e}")
+            print("❌ Error during shutdown. Some processes may still be running.")
 
 
 if __name__ == "__main__":

@@ -93,6 +93,7 @@ from vllm.version import __version__ as VLLM_VERSION
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from utils import create_placement_group_and_bundle_indices
+from protocols import APIServerHTTPResponse
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds
 
@@ -318,6 +319,22 @@ async def health(raw_request: Request) -> Response:
     """Health check."""
     await engine_client(raw_request).check_health()
     return Response(status_code=200)
+
+
+@router.post("/shutdown")
+async def shutdown(raw_request: Request) -> Response:
+    """Gracefully shutdown the API server."""
+    logger.info("Received shutdown request")
+    
+    # Schedule shutdown after a short delay to allow response to be sent
+    async def delayed_shutdown():
+        await asyncio.sleep(0.5)
+        logger.info("Initiating graceful shutdown...")
+        # Send SIGTERM to self to trigger graceful shutdown
+        os.kill(os.getpid(), signal.SIGTERM)
+    
+    asyncio.create_task(delayed_shutdown())
+    return JSONResponse(APIServerHTTPResponse.SHUTDOWN_ACCEPTED.value)
 
 
 @router.get("/load")

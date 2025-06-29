@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import sys
 
 import torch
 from multiprocessing.managers import BaseManager, DictProxy
@@ -22,6 +23,10 @@ import socket
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 from botocore.config import Config
+
+# Add parent directory to path for protocols import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocols import TensorStoreRequest, TensorStoreResponse
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(levelname)s] [S3Server] - %(message)s')
 
@@ -56,6 +61,7 @@ DIV_ROW_WISE_LIST = ["o_proj", "down_proj"]
 VOCAB_PADDING_SIZE = 64
 
 MODEL_LOAD_COMPLETE = False
+SHUTDOWN_EVENT = threading.Event()
 
 def get_tensor_dict():
     return TENSOR_DICT
@@ -358,20 +364,52 @@ def fuse_tensor(layer_idx: int):
         del TENSOR_DICT[up_proj_tensor_name]
 
 def _status_server(host: str, port: int):
-    """Simple TCP server that replies '1' or '0' for readiness"""
+    """TCP server that handles status checks and shutdown commands using protocol enum."""
+    
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.settimeout(1.0)  # 1 second timeout for accept()
         srv.bind((host, port))
         srv.listen()
         logging.info(f"Status server is listening on {host}:{port}")
-        while True:
-            conn, _ = srv.accept()
-            with conn:
-                msg = b"1" if MODEL_LOAD_COMPLETE else b"0"
-                try:
-                    conn.sendall(msg)
-                except Exception:
-                    pass
+        
+        while not SHUTDOWN_EVENT.is_set():
+            try:
+                conn, addr = srv.accept()
+                with conn:
+                    conn.settimeout(5.0)  # 5 second timeout for recv
+                    try:
+                        # Receive single byte command
+                        data = conn.recv(1)
+                        
+                        if not data:
+                            # Empty connection - legacy status check
+                            msg = TensorStoreResponse.READY.value if MODEL_LOAD_COMPLETE else TensorStoreResponse.NOT_READY.value
+                            conn.sendall(msg)
+                        elif data == TensorStoreRequest.STATUS_CHECK.value:
+                            # Explicit status check
+                            msg = TensorStoreResponse.READY.value if MODEL_LOAD_COMPLETE else TensorStoreResponse.NOT_READY.value
+                            conn.sendall(msg)
+                        elif data == TensorStoreRequest.SHUTDOWN.value:
+                            # Shutdown command
+                            SHUTDOWN_EVENT.set()  # Signal the main thread
+                            conn.sendall(TensorStoreResponse.OK.value)
+                            logging.info("Received shutdown command via status server")
+                        else:
+                            # Unknown command
+                            conn.sendall(TensorStoreResponse.ERROR.value)
+                    except socket.timeout:
+                        pass
+                    except Exception as e:
+                        logging.debug(f"Error handling connection: {e}")
+            except socket.timeout:
+                # This is expected due to the timeout we set
+                continue
+            except Exception as e:
+                if not SHUTDOWN_EVENT.is_set():
+                    logging.error(f"Error in status server: {e}")
+                    
+        logging.info("Status server shutting down")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="S3 Tensor Store Server")
@@ -564,7 +602,15 @@ def main():
         MODEL_LOAD_COMPLETE = True
         logging.info("Model weight loading completed. Status server will now return 'READY'.")
         
-        server.serve_forever()
+        # Start serve_forever in a separate thread so we can check shutdown flag
+        server_thread = threading.Thread(target=server.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        
+        # Main thread waits for shutdown signal (efficient - no CPU usage while waiting)
+        SHUTDOWN_EVENT.wait()
+            
+        logging.info("Shutdown signal received, stopping manager server...")
         
     except OSError as bind_e:
         logging.error(f"Failed to bind manager server: {bind_e}. Port {MANAGER_PORT} might be in use.")
