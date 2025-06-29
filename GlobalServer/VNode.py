@@ -10,6 +10,7 @@ import json
 import sys
 import threading
 import requests
+from concurrent.futures import ThreadPoolExecutor
 
 # Add parent directory to path for protocols import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -62,7 +63,7 @@ class Cluster:
         logging.info(f"Stopping {len(self.pipelines)} pipelines...")
         
         # Stop all pipelines in parallel
-        with threading.ThreadPoolExecutor(max_workers=len(self.pipelines)) as executor:
+        with ThreadPoolExecutor(max_workers=len(self.pipelines)) as executor:
             futures = []
             
             for i, pipeline in enumerate(self.pipelines):
@@ -199,7 +200,7 @@ class Pipeline:
         logging.info(f"Stopping pipeline with {len(self.vnodes)} nodes...")
         
         # Stop all VNodes in parallel
-        with threading.ThreadPoolExecutor(max_workers=len(self.vnodes)) as executor:
+        with ThreadPoolExecutor(max_workers=len(self.vnodes)) as executor:
             futures = []
             
             # Stop tensor stores on all nodes
@@ -416,8 +417,10 @@ class VNode:
             try:
                 with socket.create_connection((self.node_ip, port), timeout=timeout) as sock:
                     sock.settimeout(timeout)
-                    resp = sock.recv(4)
-                    if resp.strip() != b"1":
+                    # Send status check command using new protocol
+                    sock.send(TensorStoreRequest.STATUS_CHECK.value)
+                    resp = sock.recv(1)
+                    if resp != TensorStoreResponse.READY.value:
                         all_ready = False
                         break
             except (socket.timeout, ConnectionRefusedError, OSError):
@@ -586,7 +589,7 @@ class VNode:
                 return False
         
         # Stop all tensor store processes in parallel
-        with threading.ThreadPoolExecutor(max_workers=self.num_gpu) as executor:
+        with ThreadPoolExecutor(max_workers=self.num_gpu) as executor:
             futures = []
             for local_rank in range(self.num_gpu):
                 future = executor.submit(stop_single_tensor_store, local_rank)
@@ -647,11 +650,11 @@ def example_usage():
     # Define node-layer mapping for pipeline parallelism
     # Each tuple is (node_ip, number_of_layers)
     node_layer_mapping = [
-        ("172.31.17.139", 32)
+        ("172.31.15.225", 32)
     ]
 
     node_rank_mapping_dict = {
-        "172.31.17.139": [0]
+        "172.31.15.225": [0]
     }
 
     model_name = "meta-llama/Llama-3.1-8B"
