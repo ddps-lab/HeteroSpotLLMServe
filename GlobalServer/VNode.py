@@ -268,8 +268,9 @@ class VNode:
         self.is_first_stage = (layer_start_id == 0)
         self.is_last_stage = (layer_end_id >= total_layers)
         
-        # Log streaming thread
-        self.log_streaming_thread = None
+        # Log streaming threads
+        self.tensor_store_log_thread = None
+        self.api_server_log_thread = None
         
         logging.info(f"VNode created: {self}")
     
@@ -344,10 +345,10 @@ class VNode:
                 
         logging.info(f"Started {self.num_gpu} tensor store processes on {self.node_ip}")
         
-        # Start log streaming immediately after starting processes
-        if self.log_streaming_thread is None:
-            logging.info(f"Starting log streaming for {self.node_ip}")
-            self.log_streaming_thread = self.stream_logs_continuously()
+        # Start tensor store log streaming immediately after starting processes
+        if self.tensor_store_log_thread is None:
+            logging.info(f"Starting tensor store log streaming for {self.node_ip}")
+            self.tensor_store_log_thread = self.stream_tensor_store_logs_continuously()
     
     def start_api_server(self, api_server_port: int, config: Dict):
         """Start API server on this VNode (should only be called for pipeline rank 0)."""
@@ -395,10 +396,10 @@ class VNode:
             )
             logging.info(f"Started API server on {self.node_ip}:{api_server_port} (pipeline rank 0), log: {log_path}")
             
-            # Start log streaming if not already started
-            if self.log_streaming_thread is None:
-                logging.info(f"Starting log streaming for {self.node_ip}")
-                self.log_streaming_thread = self.stream_logs_continuously()
+            # Start API server log streaming if not already started
+            if self.api_server_log_thread is None:
+                logging.info(f"Starting API server log streaming for {self.node_ip}")
+                self.api_server_log_thread = self.stream_api_server_logs_continuously()
         except Exception as e:
             logging.error(f"Failed to start API server on {self.node_ip}: {e}")
 
@@ -481,65 +482,120 @@ class VNode:
         
         return logs
     
-    def stream_logs_continuously(self, callback=None):
-        """Continuously stream logs from remote server in a separate thread."""
+    def _get_indexed_log_path(self, base_filename):
+        """Get a log file path with an index that doesn't exist yet."""
+        name, ext = os.path.splitext(base_filename)
+        index = 0
+        while True:
+            indexed_filename = f"{name}_{index}{ext}"
+            log_path = os.path.join(self.log_dir, indexed_filename)
+            if not os.path.exists(log_path):
+                return log_path, indexed_filename
+            index += 1
+
+    def stream_tensor_store_logs_continuously(self, callback=None):
+        """Continuously stream tensor store logs from remote server in a separate thread."""
         def _stream_worker():
             last_logs = {}
-            file_found = {}  # Track which files have been found
-            local_log_files = {}  # Track local log file handles
+            file_found = {}
+            local_log_files = {}
             
             while True:
                 try:
-                    current_logs = self.get_remote_logs()
+                    tensor_store_logs = {}
+                    for i in range(self.num_gpu):
+                        log_filename = f"tensorstore_{self.node_ip}_{i}.log"
+                        remote_log_path = f"~/logs/{log_filename}"
+                        ssh_command = f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {self.node_ip} 'cat {remote_log_path} 2>/dev/null || echo \"\"'"
+                        
+                        try:
+                            result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True)
+                            tensor_store_logs[log_filename] = result.stdout
+                        except Exception as e:
+                            tensor_store_logs[log_filename] = f"Failed to get log: {e}"
                     
-                    for filename, content in current_logs.items():
+                    for filename, content in tensor_store_logs.items():
                         if filename not in last_logs:
                             last_logs[filename] = ""
                             file_found[filename] = False
-                            # Create local log file for this remote log
                             local_filename = f"local_{self.node_ip}_{filename}"
-                            local_log_path = os.path.join(self.log_dir, local_filename)
-                            
-                            # Remove existing file if it exists (fresh start)
-                            if os.path.exists(local_log_path):
-                                os.remove(local_log_path)
-                                logging.info(f"Removed existing log file: {local_filename}")
-                            
-                            # Create new file (use 'w' to start fresh)
+                            local_log_path, indexed_filename = self._get_indexed_log_path(local_filename)
                             local_log_files[filename] = open(local_log_path, 'w')
-                            logging.info(f"Created new local log file: {local_filename}")
                         
-                        # Check if file was just created
                         if not file_found[filename] and content:
                             file_found[filename] = True
                             logging.info(f"Remote log file created: {filename} on {self.node_ip}")
                         
-                        # Check if there's new content
                         if len(content) > len(last_logs[filename]):
                             new_content = content[len(last_logs[filename]):]
-                            
                             if callback:
                                 callback(filename, new_content)
                             else:
-                                # Default: write to local log file
                                 if new_content.strip():
                                     local_log_files[filename].write(new_content)
-                                    local_log_files[filename].flush()  # Ensure immediate write
-                            
+                                    local_log_files[filename].flush()
                             last_logs[filename] = content
                     
-                    time.sleep(3)  # Check every 3 seconds for faster response
-                    
+                    time.sleep(3)
                 except Exception as e:
-                    # Only log error once in a while to avoid spam
                     if not hasattr(_stream_worker, 'error_count'):
                         _stream_worker.error_count = 0
                     _stream_worker.error_count += 1
                     if _stream_worker.error_count % 10 == 1:
-                        logging.error(f"Error in log streaming: {e}")
-                    time.sleep(2)  # Wait on error
+                        logging.error(f"Error in tensor store log streaming: {e}")
+                    time.sleep(2)
         
-        # Start the streaming thread
+        stream_thread = threading.Thread(target=_stream_worker, daemon=True)
+        stream_thread.start()
+        return stream_thread
+
+    def stream_api_server_logs_continuously(self, callback=None):
+        """Continuously stream API server logs from remote server in a separate thread."""
+        def _stream_worker():
+            last_log = ""
+            file_found = False
+            local_log_file = None
+            
+            while True:
+                try:
+                    log_filename = f"apiserver_{self.node_ip}.log"
+                    remote_log_path = f"~/logs/{log_filename}"
+                    ssh_command = f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {self.node_ip} 'cat {remote_log_path} 2>/dev/null || echo \"\"'"
+                    
+                    try:
+                        result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True)
+                        content = result.stdout
+                    except Exception as e:
+                        content = f"Failed to get log: {e}"
+                    
+                    if local_log_file is None:
+                        local_filename = f"local_{self.node_ip}_{log_filename}"
+                        local_log_path, indexed_filename = self._get_indexed_log_path(local_filename)
+                        local_log_file = open(local_log_path, 'w')
+                    
+                    if not file_found and content:
+                        file_found = True
+                        logging.info(f"Remote log file created: {log_filename} on {self.node_ip}")
+                    
+                    if len(content) > len(last_log):
+                        new_content = content[len(last_log):]
+                        if callback:
+                            callback(log_filename, new_content)
+                        else:
+                            if new_content.strip():
+                                local_log_file.write(new_content)
+                                local_log_file.flush()
+                        last_log = content
+                    
+                    time.sleep(3)
+                except Exception as e:
+                    if not hasattr(_stream_worker, 'error_count'):
+                        _stream_worker.error_count = 0
+                    _stream_worker.error_count += 1
+                    if _stream_worker.error_count % 10 == 1:
+                        logging.error(f"Error in API server log streaming: {e}")
+                    time.sleep(2)
+        
         stream_thread = threading.Thread(target=_stream_worker, daemon=True)
         stream_thread.start()
         return stream_thread
@@ -605,6 +661,12 @@ class VNode:
         
         self.is_tensor_store_ready = False
         logging.info(f"TensorStore shutdown completed on {self.node_ip}")
+        
+        # Wait 5 seconds then stop tensor store log streaming thread
+        time.sleep(5)
+        if self.tensor_store_log_thread and self.tensor_store_log_thread.is_alive():
+            logging.info(f"Stopping tensor store log streaming thread on {self.node_ip}")
+            self.tensor_store_log_thread = None
 
     def stop_api_server(self):
         """Stop the API server on this VNode (only applicable for first node)."""
@@ -637,6 +699,12 @@ class VNode:
         
         self.is_api_server_ready = False
         logging.info(f"API server shutdown completed on {self.node_ip}")
+        
+        # Wait 5 seconds then stop API server log streaming thread
+        time.sleep(5)
+        if self.api_server_log_thread and self.api_server_log_thread.is_alive():
+            logging.info(f"Stopping API server log streaming thread on {self.node_ip}")
+            self.api_server_log_thread = None
 
 
 
@@ -650,15 +718,15 @@ def example_usage():
     # Define node-layer mapping for pipeline parallelism
     # Each tuple is (node_ip, number_of_layers)
     node_layer_mapping = [
-        ("172.31.2.223", 32)
+        ("172.31.6.247", 32)
     ]
 
     node_rank_mapping_dict = {
-        "172.31.2.223": [0]
+        "172.31.6.247": [0]
     }
 
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
-    bucket_name = "hetero-spot-llm-serve-model-weights"
+    bucket_name = "hetero-spot-llm-serve-models"
     
     # Create pipeline for Llama-3.1-8B (32 layers total)
     # Option 1: Using HuggingFace (default)
