@@ -78,11 +78,10 @@ def get_api_server_command(model_name: str,
                           pp_layer_partition: str,
                           parallel_strategy: List[int],
                           host: str,
+                          node_rank_mapping: str,
                           port: Optional[int] = None,
                           dtype: Optional[str] = None,
                           max_model_len: Optional[int] = None,
-                          node_rank_mapping: Optional[str] = None,
-                          node_rank_mapping_path: Optional[str] = None,
                           gpu_memory_utilization: Optional[float] = None,
                           max_num_batched_tokens: Optional[int] = None,
                           max_num_seqs: Optional[int] = None) -> str:
@@ -100,8 +99,7 @@ def get_api_server_command(model_name: str,
         port: API server port (optional, uses default if None)
         dtype: Data type for model weights
         max_model_len: Maximum model length
-        node_rank_mapping: JSON string for node rank mapping
-        node_rank_mapping_path: Path to node rank mapping JSON file
+        node_rank_mapping: JSON string for node rank mapping (required)
         gpu_memory_utilization: GPU memory utilization ratio (optional)
         max_num_batched_tokens: Maximum number of batched tokens
         max_num_seqs: Maximum number of sequences
@@ -109,12 +107,6 @@ def get_api_server_command(model_name: str,
     Returns:
         Command string to execute
     """
-    # Validate node_rank_mapping arguments
-    if (node_rank_mapping is None and node_rank_mapping_path is None) or \
-       (node_rank_mapping is not None and node_rank_mapping_path is not None):
-        raise AssertionError(
-            "Exactly one of 'node_rank_mapping' or 'node_rank_mapping_path' must be provided, not both or neither."
-        )
     
     
     # Use provided port or default base port
@@ -140,13 +132,9 @@ def get_api_server_command(model_name: str,
     if max_model_len is not None:
         cmd_parts.append(f"--max_model_len={max_model_len}")
     
-    if node_rank_mapping is not None:
-        # Escape quotes for SSH command execution
-        escaped_mapping = node_rank_mapping.replace('"', '\\"')
-        cmd_parts.append(f'--node-rank-mapping="{escaped_mapping}"')
-    
-    if node_rank_mapping_path is not None:
-        cmd_parts.append(f"--node-rank-mapping-path={node_rank_mapping_path}")
+    # Escape quotes for SSH command execution
+    escaped_mapping = node_rank_mapping.replace('"', '\\"')
+    cmd_parts.append(f'--node-rank-mapping="{escaped_mapping}"')
     
     if gpu_memory_utilization is not None:
         cmd_parts.append(f"--gpu-memory-utilization={gpu_memory_utilization}")

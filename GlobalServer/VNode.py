@@ -80,11 +80,45 @@ class Cluster:
         
         logging.info("All pipelines stopped")
 
+    def switch_node(self, old_node_ip: str, new_node_ip: str):
+        """
+        Switch a node in the cluster by replacing old_node_ip with new_node_ip.
+        
+        Args:
+            old_node_ip: IP address of the node to be replaced
+            new_node_ip: IP address of the new node
+        """
+        logging.info(f"Starting node switch: {old_node_ip} -> {new_node_ip}")
+        
+        # Find the pipeline containing the target VNode
+        target_pipeline = None
+        target_vnode = None
+        
+        for pipeline in self.pipelines:
+            for vnode in pipeline.vnodes:
+                if vnode.node_ip == old_node_ip:
+                    target_vnode = vnode
+                    target_pipeline = pipeline
+                    break
+            if target_vnode:
+                break
+        
+        if not target_pipeline or not target_vnode:
+            raise ValueError(f"No VNode found with IP {old_node_ip}")
+        
+        logging.info(f"Found VNode in pipeline: {target_vnode}")
+        
+        # Delegate to the pipeline's switch_node method
+        target_pipeline.switch_node(old_node_ip, new_node_ip)
+        
+        logging.info(f"Node switch completed successfully: {old_node_ip} -> {new_node_ip}")
+
 class Pipeline:
     def __init__(self):
         self.vnodes: List[VNode] = []
         self.model_name: str = ""
         self.total_layers: int = 0
+        self.node_rank_mapping: Dict[str, List[int]] = {}
 
     def initialize_pipeline(self, 
                             node_layer_mapping: List[Tuple[str, int]], 
@@ -144,13 +178,28 @@ class Pipeline:
                 tensor_store_port = DEFAULT_TENSOR_STORE_BASE_PORT # use global default in command.py
             vnode.start_tensor_store(tensor_store_port, config)
         
+        # Generate node_rank_mapping based on vnodes
+        self._generate_node_rank_mapping()
+        
         # Start API server only on the first node (pipeline rank 0)
         first_vnode = self.vnodes[0]
         api_server_base_port = config.get("api_server_base_port", DEFAULT_API_SERVER_BASE_PORT)
-        first_vnode.start_api_server(api_server_base_port, config)
+        first_vnode.start_api_server(api_server_base_port, config, self.node_rank_mapping)
         
         # Wait for all services to be ready
         self._wait_for_services()
+    
+    def _generate_node_rank_mapping(self):
+        """Generate node_rank_mapping based on current vnodes."""
+        self.node_rank_mapping = {}
+        current_rank = 0
+        
+        for vnode in self.vnodes:
+            ranks = list(range(current_rank, current_rank + vnode.num_gpu))
+            self.node_rank_mapping[vnode.node_ip] = ranks
+            current_rank += vnode.num_gpu
+        
+        logging.info(f"Generated node_rank_mapping: {self.node_rank_mapping}")
     
     def _wait_for_services(self):
         """Wait for all tensor stores and API server to be ready."""
@@ -223,6 +272,103 @@ class Pipeline:
         
         logging.info("Pipeline shutdown completed")
 
+    def switch_node(self, old_node_ip: str, new_node_ip: str):
+        """
+        Switch a node in this pipeline by replacing old_node_ip with new_node_ip.
+        
+        Args:
+            old_node_ip: IP address of the node to be replaced
+            new_node_ip: IP address of the new node
+        """
+        logging.info(f"Switching node in pipeline: {old_node_ip} -> {new_node_ip}")
+        
+        # Find the target VNode
+        target_vnode = None
+        target_index = None
+        
+        for i, vnode in enumerate(self.vnodes):
+            if vnode.node_ip == old_node_ip:
+                target_vnode = vnode
+                target_index = i
+                break
+        
+        if not target_vnode:
+            raise ValueError(f"No VNode found with IP {old_node_ip} in this pipeline")
+        
+        # Get GPU count for the new node
+        new_num_gpu = None
+        while True:
+            for node_info in ray.nodes():
+                ray_node_ip = node_info.get("NodeManagerAddress")
+                if ray_node_ip == new_node_ip:
+                    new_num_gpu = int(node_info.get("Resources").get("GPU", 0))
+                    break
+            if new_num_gpu is not None and new_num_gpu > 0:
+                break
+            logging.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
+            time.sleep(1)
+        
+        # Create new VNode with same configuration but new IP and GPU count
+        new_vnode = VNode(
+            node_ip=new_node_ip,
+            num_gpu=new_num_gpu,
+            pipeline_rank=target_vnode.pipeline_rank,
+            layer_start_id=target_vnode.layer_start_id,
+            layer_end_id=target_vnode.layer_end_id,
+            total_layers=target_vnode.total_layers
+        )
+        
+        # Start tensor store on the new node
+        tensor_store_port = target_vnode.tensor_store_port
+        new_vnode.start_tensor_store(tensor_store_port, self.config)
+        
+        # Check tensor store status
+        logging.info(f"Checking tensor store status on new node {new_node_ip}")
+        status_check_time = 0
+        while not new_vnode.check_tensor_store_status():
+            status_check_time += 1
+            logging.info(f"Waiting for tensor store to be ready on new node ({status_check_time})...")
+            time.sleep(2)
+        
+        logging.info(f"Tensor store ready on new node {new_node_ip}")
+        
+        start_downtime = time.perf_counter()
+
+        # Stop API server
+        logging.info(f"Stopping API server which contains old node {old_node_ip}")
+        self.vnodes[0].stop_api_server()
+        
+        # Replace the VNode immediately (don't wait for API server stop)
+        self.vnodes[target_index] = new_vnode
+        
+        # Update node_rank_mapping
+        self._generate_node_rank_mapping()
+        
+        # Start API server on the first node (pipeline rank 0)
+        first_vnode = self.vnodes[0]
+        api_server_port = target_vnode.api_server_port if target_vnode.api_server_port else DEFAULT_API_SERVER_BASE_PORT
+        first_vnode.start_api_server(api_server_port, self.config, self.node_rank_mapping)
+        
+        # Check API server status
+        logging.info(f"Checking API server status on node {first_vnode.node_ip}")
+        status_check_time = 0
+        while not first_vnode.check_api_server_status():
+            status_check_time += 1
+            logging.info(f"Waiting for API server to be ready ({status_check_time})...")
+            time.sleep(2)
+        
+        logging.info(f"API server ready on node {first_vnode.node_ip}")
+
+        end_downtime = time.perf_counter()
+        downtime = end_downtime - start_downtime
+        logging.info(f"Downtime: {downtime} seconds")
+        
+        # Stop tensor store on old node
+        logging.info(f"Stopping tensor store on old node {old_node_ip}")
+        target_vnode.stop_tensor_store()
+        
+        logging.info(f"Node switch completed in pipeline: {old_node_ip} -> {new_node_ip}")
+
 
 class VNode:
     """
@@ -276,7 +422,7 @@ class VNode:
     
     def __repr__(self):
         return (f"VNode(ip={self.node_ip}, gpus={self.num_gpu}, "
-                f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id})], "
+                f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id}), "
                 f"TP={self.tensor_parallel_size})")
 
     def start_tensor_store(self, tensor_store_port: int, config: Dict):
@@ -350,7 +496,7 @@ class VNode:
             logging.info(f"Starting tensor store log streaming for {self.node_ip}")
             self.tensor_store_log_thread = self.stream_tensor_store_logs_continuously()
     
-    def start_api_server(self, api_server_port: int, config: Dict):
+    def start_api_server(self, api_server_port: int, config: Dict, node_rank_mapping: Dict[str, List[int]]):
         """Start API server on this VNode (should only be called for pipeline rank 0)."""
         if self.pipeline_rank != 0:
             logging.warning(f"start_api_server called on non-first node (rank {self.pipeline_rank}). Skipping.")
@@ -367,8 +513,7 @@ class VNode:
             port=api_server_port,
             dtype=config.get("dtype"),
             max_model_len=config.get("max_model_len"),
-            node_rank_mapping=config.get("node_rank_mapping"),
-            node_rank_mapping_path=config.get("node_rank_mapping_path"),
+            node_rank_mapping=json.dumps(node_rank_mapping),
             gpu_memory_utilization=config.get("gpu_memory_utilization"),
             max_num_batched_tokens=config.get("max_num_batched_tokens"),
             max_num_seqs=config.get("max_num_seqs")
@@ -662,11 +807,15 @@ class VNode:
         self.is_tensor_store_ready = False
         logging.info(f"TensorStore shutdown completed on {self.node_ip}")
         
-        # Wait 5 seconds then stop tensor store log streaming thread
-        time.sleep(5)
-        if self.tensor_store_log_thread and self.tensor_store_log_thread.is_alive():
-            logging.info(f"Stopping tensor store log streaming thread on {self.node_ip}")
-            self.tensor_store_log_thread = None
+        # Start cleanup thread for tensor store log streaming
+        def cleanup_tensor_store_log():
+            time.sleep(5)
+            if self.tensor_store_log_thread and self.tensor_store_log_thread.is_alive():
+                logging.info(f"Stopping tensor store log streaming thread on {self.node_ip}")
+                self.tensor_store_log_thread = None
+        
+        cleanup_thread = threading.Thread(target=cleanup_tensor_store_log, daemon=True)
+        cleanup_thread.start()
 
     def stop_api_server(self):
         """Stop the API server on this VNode (only applicable for first node)."""
@@ -700,11 +849,15 @@ class VNode:
         self.is_api_server_ready = False
         logging.info(f"API server shutdown completed on {self.node_ip}")
         
-        # Wait 5 seconds then stop API server log streaming thread
-        time.sleep(5)
-        if self.api_server_log_thread and self.api_server_log_thread.is_alive():
-            logging.info(f"Stopping API server log streaming thread on {self.node_ip}")
-            self.api_server_log_thread = None
+        # Start cleanup thread for API server log streaming
+        def cleanup_api_server_log():
+            time.sleep(5)
+            if self.api_server_log_thread and self.api_server_log_thread.is_alive():
+                logging.info(f"Stopping API server log streaming thread on {self.node_ip}")
+                self.api_server_log_thread = None
+        
+        cleanup_thread = threading.Thread(target=cleanup_api_server_log, daemon=True)
+        cleanup_thread.start()
 
 
 
@@ -721,10 +874,6 @@ def example_usage():
         ("172.31.6.247", 32)
     ]
 
-    node_rank_mapping_dict = {
-        "172.31.6.247": [0]
-    }
-
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
     bucket_name = "hetero-spot-llm-serve-models"
     
@@ -735,7 +884,6 @@ def example_usage():
     #     "total_num_layers": 32,
     #     "pp_layer_partition": "32",
     #     "parallel_strategy": [1],
-    #     "node_rank_mapping": json.dumps(node_rank_mapping_dict),
     #     "max_model_len": 4096,
     #     "gpu_memory_utilization": 0.25,
     #     "max_num_batched_tokens": 4096,
@@ -749,7 +897,6 @@ def example_usage():
         "total_num_layers": 32,
         "pp_layer_partition": "32",
         "parallel_strategy": [1],
-        "node_rank_mapping": json.dumps(node_rank_mapping_dict),
         "max_model_len": 4096,
         "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
@@ -838,6 +985,19 @@ def example_usage():
         print("\n\nReceived Ctrl+C. Shutting down...")
     except Exception as e:
         logging.error(f"Error in interactive mode: {e}")
+
+    try:
+        # Switching Node Test
+        print("Switching Node Test")
+        old_node_ip = node_layer_mapping[0][0]
+        new_node_ip = "172.31.14.46"
+
+        start_switch_time = time.perf_counter()
+        cluster.switch_node(old_node_ip, new_node_ip)
+        end_switch_time = time.perf_counter()
+        print(f"Switching Node Time: {end_switch_time - start_switch_time} seconds")
+
+        input("Press Enter to exit...")
     finally:
         # Graceful shutdown
         print("\n🛑 Initiating graceful shutdown...")
