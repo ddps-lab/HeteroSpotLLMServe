@@ -392,9 +392,10 @@ def _status_server(host: str, port: int):
                             conn.sendall(msg)
                         elif data == TensorStoreRequest.SHUTDOWN.value:
                             # Shutdown command
-                            SHUTDOWN_EVENT.set()  # Signal the main thread
                             conn.sendall(TensorStoreResponse.OK.value)
                             logging.info("Received shutdown command via status server")
+                            SHUTDOWN_EVENT.set()  # Signal the main thread AFTER sending response
+                            break  # Exit the loop immediately
                         else:
                             # Unknown command
                             conn.sendall(TensorStoreResponse.ERROR.value)
