@@ -139,9 +139,9 @@ class Pipeline:
         for i, vnode in enumerate(self.vnodes):
             # Each VNode gets unique ports to avoid conflicts
             if tensor_store_base_port is not None:
-                tensor_store_port = tensor_store_base_port + i * 10  # Leave room for multiple GPUs
+                tensor_store_port = tensor_store_base_port
             else:
-                tensor_store_port = None  # Will use global default in command.py
+                tensor_store_port = DEFAULT_TENSOR_STORE_BASE_PORT # use global default in command.py
             vnode.start_tensor_store(tensor_store_port, config)
         
         # Start API server only on the first node (pipeline rank 0)
@@ -406,9 +406,9 @@ class VNode:
         """Check if all tensor store servers on this node are ready."""
         # If tensor_store_port was not set, use the default base port
         if self.tensor_store_port is None:
-            base_port = DEFAULT_TENSOR_STORE_BASE_PORT
-        else:
-            base_port = self.tensor_store_port
+            raise ValueError("tensor_store_port is not set")
+
+        base_port = self.tensor_store_port
             
         all_ready = True
         
@@ -650,14 +650,14 @@ def example_usage():
     # Define node-layer mapping for pipeline parallelism
     # Each tuple is (node_ip, number_of_layers)
     node_layer_mapping = [
-        ("172.31.15.225", 32)
+        ("172.31.2.223", 32)
     ]
 
     node_rank_mapping_dict = {
-        "172.31.15.225": [0]
+        "172.31.2.223": [0]
     }
 
-    model_name = "meta-llama/Llama-3.1-8B"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     bucket_name = "hetero-spot-llm-serve-model-weights"
     
     # Create pipeline for Llama-3.1-8B (32 layers total)
