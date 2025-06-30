@@ -21,10 +21,12 @@ class Cluster:
         if not ray.is_initialized():
             ray.init(address="auto")
         self.pipelines: List[Pipeline] = []
+        self.ideal_throughput: float = 0.0
         
     def create_pipeline(self, 
                        node_layer_mapping: List[Tuple[str, int]], 
-                       config: Dict):
+                       config: Dict,
+                       ideal_throughput: float):
         """
         Create a pipeline for distributed LLM inference.
         
@@ -47,6 +49,7 @@ class Cluster:
                 - gpu_memory_utilization (optional): GPU memory utilization ratio
                 - max_num_batched_tokens (optional): Maximum number of batched tokens
                 - max_num_seqs (optional): Maximum number of sequences
+            ideal_throughput: Expected throughput for this pipeline (requests/sec)
         """
         # Validate required config parameters
         required_keys = ["model_name", "total_num_layers", "pp_layer_partition", "parallel_strategy"]
@@ -55,8 +58,9 @@ class Cluster:
                 raise ValueError(f"config must contain '{key}'")
             
         pipeline = Pipeline()
-        pipeline.initialize_pipeline(node_layer_mapping, config)
+        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput)
         self.pipelines.append(pipeline)
+        self.ideal_throughput += ideal_throughput
 
     def stop_all_pipelines(self):
         """Stop all pipelines in the cluster."""
@@ -119,10 +123,12 @@ class Pipeline:
         self.model_name: str = ""
         self.total_layers: int = 0
         self.node_rank_mapping: Dict[str, List[int]] = {}
+        self.ideal_throughput: float = 0.0
 
     def initialize_pipeline(self, 
                             node_layer_mapping: List[Tuple[str, int]], 
-                            config: Dict):
+                            config: Dict,
+                            ideal_throughput: float):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
         
         # Extract required config parameters
@@ -142,6 +148,7 @@ class Pipeline:
         self.model_name = model_name
         self.total_layers = total_num_layers
         self.config = config
+        self.ideal_throughput = ideal_throughput
         
         start_layer_idx = 0
         for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
