@@ -86,6 +86,7 @@ async def test_single_pipeline_multi_node():
         input_len=1024,   # Shorter input for faster processing
         output_len=128,   # Shorter output for faster processing
         model_name=model_name,
+        ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
     
     # Create tasks for all requests
