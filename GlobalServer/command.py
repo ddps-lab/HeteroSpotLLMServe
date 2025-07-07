@@ -122,7 +122,7 @@ def get_api_server_command(model_name: str,
         f"--host={host}",
         f"--port={port}",
         f'--pp-layer-partition="{pp_layer_partition}"',
-        f"--parallel-strategy={parallel_strategy_str}"
+        f"--parallel-strategy {parallel_strategy_str}"
     ]
     
     if dtype is not None:
