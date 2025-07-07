@@ -105,6 +105,7 @@ async def test_node_switch():
         input_len=1024,
         output_len=128,
         model_name=model_name,
+        ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
     
     # Create tasks for all requests

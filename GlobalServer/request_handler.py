@@ -44,6 +44,7 @@ class RequestInput:
     expected_output_len: int
     api_url: str = ""
     model: str = ""
+    ignore_eos: bool = False
 
 @dataclass
 class RequestOutput:
@@ -62,7 +63,8 @@ def generate_random_requests(
     input_len: int, 
     output_len: int,
     model_name: str,
-    seed: int = 0
+    seed: int = 0,
+    ignore_eos: bool = False
 ) -> List[RequestInput]:
     """
     Generate random requests for benchmarking.
@@ -73,6 +75,7 @@ def generate_random_requests(
         output_len: Expected output length
         model_name: Model name for tokenizer
         seed: Random seed
+        ignore_eos: Whether to ignore EOS token during generation
         
     Returns:
         List of RequestInput objects
@@ -100,7 +103,8 @@ def generate_random_requests(
             prompt=prompt,
             prompt_len=input_len,
             expected_output_len=output_len,
-            model=model_name
+            model=model_name,
+            ignore_eos=ignore_eos
         )
         requests.append(request)
     
@@ -137,6 +141,10 @@ async def async_request(request: Request) -> RequestOutput:
                 "include_usage": True,
             },
         }
+        
+        # Add ignore_eos if specified
+        if request_input.ignore_eos:
+            payload["ignore_eos"] = True
         
         headers = {"Content-Type": "application/json"}
         
