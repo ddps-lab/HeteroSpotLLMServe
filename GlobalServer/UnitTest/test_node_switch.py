@@ -27,7 +27,7 @@ async def test_node_switch():
     
     global_server = GlobalServer()
 
-    old_node_ip = "172.31.18.31"
+    old_node_ip = "172.31.53.208"
     new_node_ip = "172.31.23.180"
 
     node_layer_mapping = [
@@ -108,7 +108,7 @@ async def test_node_switch():
         completed_count = await send_and_monitor_requests(
             global_server,
             request_inputs,
-            delay_between_requests=5,
+            delay_between_requests=10,
             logger=test_logger,
             timeout=600,
             status_interval=60,
@@ -128,7 +128,7 @@ async def test_node_switch():
         pipeline_task.cancel()
         
         # Give tasks a chance to cancel gracefully
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1)
         
         # Force cleanup after short timeout
         try:

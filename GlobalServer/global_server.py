@@ -26,18 +26,12 @@ global_server_log_file = os.path.join(LOG_BASE_DIR, "GlobalServer.log")
 file_handler = logging.FileHandler(global_server_log_file)
 file_handler.setLevel(logging.INFO)
 
-# Create console handler for terminal output
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
 # Create formatter
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
 
-# Add handlers to logger
+# Add handlers to logger (file only, no console output)
 logger.addHandler(file_handler)
-logger.addHandler(console_handler)
 
 # Prevent propagation to root logger (we handle logging ourselves)
 logger.propagate = False
@@ -154,7 +148,10 @@ class GlobalServer:
                             task=task
                         )
                         
-                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index}")
+                        # Get head node IP for logging
+                        pipeline = self.cluster.pipelines[pipeline_index]
+                        head_node_ip = pipeline.vnodes[0].node_ip
+                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index} (head: {head_node_ip})")
                         
                     except Exception as e:
                         logger.error(f"Error dispatching request: {e}")
@@ -175,9 +172,16 @@ class GlobalServer:
         try:
             output = await self.send_request(request, pipeline_index)
             request.output = output
-            logger.info(f"Request {request.request_id} completed successfully")
+            
+            # Check if request actually succeeded, if not raise exception
+            if not output.success:
+                raise ValueError(f"{output.error}")
+                
+            logger.info(f"Request {request.request_id} completed successfully with {request.output.output_tokens} tokens")
         except Exception as e:
             logger.error(f"Request {request.request_id} failed: {e}")
+            if request.output is not None:
+                logger.info(f"Request {request.request_id} continued from where it left off: {request.output.output_tokens} tokens")
             # Mark when request was halted
             request.halted_at = time.time()
             request.retry_count += 1

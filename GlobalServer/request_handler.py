@@ -151,14 +151,11 @@ async def async_request(request: Request) -> RequestOutput:
         # Use existing output or create new one
         if request.output:
             output = request.output
-            generated_text = output.generated_text
         else:
             output = RequestOutput()
             output.prompt_len = request_input.prompt_len
-            generated_text = ""
         
-        st = time.perf_counter()
-        most_recent_timestamp = st
+        most_recent_timestamp = request.sended_at
         
         # For continued requests, we don't have a new TTFT
         first_chunk_received = request.output is not None
@@ -186,20 +183,25 @@ async def async_request(request: Request) -> RequestOutput:
                             if choices := data.get("choices"):
                                 text = choices[0].get("text", "")
                                 if text:
-                                    generated_text += text
+                                    output.generated_text += text
                                     
-                                timestamp = time.perf_counter()
+                                timestamp = time.time()
                                 # First token
                                 if not first_chunk_received:
                                     first_chunk_received = True
-                                    output.ttft = timestamp - st
+                                    output.ttft = timestamp - most_recent_timestamp
+                                    if output.output_tokens == 0:
+                                        output.output_tokens = 1
+                                    else:
+                                        output.output_tokens += 1
                                 else:
                                     # Inter-token latency
                                     output.itl.append(timestamp - most_recent_timestamp)
+                                    output.output_tokens += 1
                                 most_recent_timestamp = timestamp
-                                
+
                                 if choices[0].get("finish_reason") is not None:
-                                    output.latency = time.perf_counter() - st
+                                    output.latency = time.time() - most_recent_timestamp
                                     output.output_tokens = len(output.itl) + 1
                                     
                             # Check for usage stats
@@ -209,12 +211,11 @@ async def async_request(request: Request) -> RequestOutput:
                         except json.JSONDecodeError:
                             continue
                     
-                    output.generated_text = generated_text
                     output.success = True
                     
                     # Ensure latency is set if not already
                     if output.latency == 0:
-                        output.latency = time.perf_counter() - st
+                        output.latency = time.time() - most_recent_timestamp
                         
                 else:
                     output.error = f"HTTP {response.status}: {await response.text()}"

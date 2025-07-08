@@ -17,6 +17,7 @@ class TestMetrics:
     e2e_latency: float
     ttft: float
     avg_itl: float  # Average inter-token latency in ms
+    max_itl: float  # Maximum inter-token latency in ms
     output_tokens: int
     prompt_len: int
     halted_duration: Optional[float] = None
@@ -97,16 +98,20 @@ def calculate_metrics(request: Request) -> TestMetrics:
     # Calculate average ITL (inter-token latency)
     avg_itl = sum(request.output.itl) / len(request.output.itl) if request.output.itl else 0
     
+    # Calculate maximum ITL (inter-token latency)
+    max_itl = max(request.output.itl) if request.output.itl else 0
+    
     # Check if request was halted
     halted_duration = None
     if request.halted_at is not None and request.sended_at is not None:
-        halted_duration = request.halted_at - request.sended_at
+        halted_duration = request.sended_at - request.halted_at
     
     return TestMetrics(
         request_id=request.request_id,
         e2e_latency=e2e_latency,
         ttft=request.output.ttft,
         avg_itl=avg_itl * 1000,  # Convert to ms
+        max_itl=max_itl * 1000,  # Convert to ms
         output_tokens=request.output.output_tokens,
         prompt_len=request.output.prompt_len,
         halted_duration=halted_duration
@@ -126,11 +131,12 @@ def log_request_metrics(logger: logging.Logger, index: int, metrics: TestMetrics
     logger.info(f"[{index}]   - E2E Latency: {metrics.e2e_latency:.3f}s")
     logger.info(f"[{index}]   - TTFT: {metrics.ttft:.3f}s")
     logger.info(f"[{index}]   - Avg ITL (TPOT): {metrics.avg_itl:.2f}ms")
+    logger.info(f"[{index}]   - Max ITL: {metrics.max_itl:.2f}ms")
     logger.info(f"[{index}]   - Output Tokens: {metrics.output_tokens}")
     logger.info(f"[{index}]   - Prompt Len: {metrics.prompt_len}")
     
     if metrics.halted_duration is not None:
-        logger.info(f"[{index}]   - Request was halted after {metrics.halted_duration:.3f}s")
+        logger.info(f"[{index}]   - Request was halted during {metrics.halted_duration:.3f}s")
 
 
 async def monitor_requests_completion(
