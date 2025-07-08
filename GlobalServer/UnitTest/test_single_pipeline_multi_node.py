@@ -4,7 +4,6 @@ Tests creating one pipeline spanning across two nodes with layer partitioning.
 """
 import asyncio
 import logging
-import time
 import concurrent.futures
 import sys
 import os
@@ -14,22 +13,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from global_server import GlobalServer
 from request_handler import generate_random_requests
+from test_utils import (
+    setup_test_logger,
+    send_and_monitor_requests,
+    log_pipeline_status
+)
 
 logger = logging.getLogger(__name__)
 
 async def test_single_pipeline_multi_node():
     """Test single pipeline with multiple nodes using pipeline parallelism."""
-    # Configure logging for test script only
-    test_logger = logging.getLogger(__name__)
-    test_logger.setLevel(logging.INFO)
-    
-    # Create console handler for test logs
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-    test_logger.addHandler(console_handler)
-    test_logger.propagate = False
+    # Configure logging
+    test_logger = setup_test_logger(__name__)
     
     global_server = GlobalServer()
 
@@ -89,92 +84,56 @@ async def test_single_pipeline_multi_node():
         ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
     
-    # Create tasks for all requests
-    tasks = []
-    requests = []
-    
-    async def send_request_with_delay(index, delay):
-        """Send a request after a delay"""
-        await asyncio.sleep(delay)
-        request = await global_server.add_request(request_inputs[index])
-        test_logger.info(f"[{index}] Added request {request.request_id} with prompt: {request.input.prompt[:50]}...")
-        return request
-    
     try:
-        # Send requests with some delay between them
-        for i in range(num_requests):
-            delay = i * 3  # 3 second delay between requests
-            task = asyncio.create_task(send_request_with_delay(i, delay))
-            tasks.append(task)
-        
-        # Wait for all requests to be added
-        requests = await asyncio.gather(*tasks)
-        test_logger.info(f"All {num_requests} requests submitted to multi-node pipeline")
-        
-        # Monitor completion
-        start_time = time.time()
-        completed_count = 0
-        last_status_time = 0
-        
-        while completed_count < num_requests:
-            await asyncio.sleep(1)
-            
-            # Log pipeline status periodically
-            elapsed = time.time() - start_time
-            if elapsed - last_status_time >= 20:  # Every 20 seconds
-                last_status_time = elapsed
-                test_logger.info(f"Pipeline status at {elapsed:.0f}s:")
-                for i, pipeline in enumerate(global_server.cluster.pipelines):
-                    test_logger.info(f"  Pipeline {i}: ready={pipeline.is_ready}, throughput={pipeline.ideal_throughput}")
-                    test_logger.info(f"    Nodes: {len(pipeline.vnodes)} nodes")
-                    for j, vnode in enumerate(pipeline.vnodes):
-                        test_logger.info(f"      Node {j} ({vnode.node_ip}): layers=[{vnode.layer_start_id}, {vnode.layer_end_id})")
-            
-            # Check which requests are completed
-            for i, req in enumerate(requests):
-                if req.output and req.output.success and not hasattr(req, '_logged'):
-                    completed_count += 1
-                    req._logged = True  # Mark as logged to avoid duplicate logs
-                    
-                    test_logger.info(f"[{i}] Request {req.request_id} completed!")
-                    test_logger.info(f"[{i}] Response: {req.output.generated_text[:100]}...")
-                    test_logger.info(f"[{i}] Metrics - Tokens: {req.output.output_tokens}, "
-                                  f"Latency: {req.output.latency:.2f}s, TTFT: {req.output.ttft:.3f}s")
-            
-            # Timeout after 8 minutes
-            if elapsed > 480:
-                test_logger.warning("Timeout reached, stopping...")
-                break
+        # Send and monitor requests concurrently
+        completed_count = await send_and_monitor_requests(
+            global_server,
+            request_inputs,
+            delay_between_requests=3,
+            logger=test_logger,
+            timeout=480,
+            status_interval=20,
+            status_callback=lambda: log_pipeline_status(global_server, test_logger)
+        )
         
         # Final statistics
-        successful = sum(1 for r in requests if r.output and r.output.success)
-        test_logger.info(f"\nFinal Results: {successful}/{num_requests} requests successful")
-        
-        # Calculate average latency for successful requests
-        successful_requests = [r for r in requests if r.output and r.output.success]
-        if successful_requests:
-            avg_latency = sum(r.output.latency for r in successful_requests) / len(successful_requests)
-            avg_ttft = sum(r.output.ttft for r in successful_requests) / len(successful_requests)
-            total_tokens = sum(r.output.output_tokens for r in successful_requests)
-            test_logger.info(f"Performance metrics:")
-            test_logger.info(f"  Average latency: {avg_latency:.2f}s")
-            test_logger.info(f"  Average TTFT: {avg_ttft:.3f}s")
-            test_logger.info(f"  Total tokens generated: {total_tokens}")
-            test_logger.info(f"  Throughput: {total_tokens / (time.time() - start_time):.2f} tokens/s")
+        test_logger.info(f"\nFinal Results: {completed_count}/{num_requests} requests completed successfully")
+        test_logger.info(f"Multi-node pipeline test completed")
         
     except KeyboardInterrupt:
         test_logger.info("Shutting down...")
     finally:
         # Cancel all tasks
+        test_logger.info("Cancelling background tasks...")
         server_task.cancel()
+        pipeline_task.cancel()
         
+        # Give tasks a chance to cancel gracefully
+        await asyncio.sleep(0.1)
+        
+        # Force cleanup after short timeout
         try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+            done, pending = await asyncio.wait(
+                [server_task, pipeline_task], 
+                timeout=2.0, 
+                return_when=asyncio.ALL_COMPLETED
+            )
+            if pending:
+                test_logger.info(f"Force cancelling {len(pending)} remaining tasks")
+                for task in pending:
+                    task.cancel()
+        except Exception as e:
+            test_logger.error(f"Error during task cleanup: {e}")
         
         # Stop all pipelines
-        global_server.cluster.stop_all_pipelines()
+        test_logger.info("Stopping pipelines...")
+        try:
+            global_server.cluster.stop_all_pipelines()
+            test_logger.info("All pipelines stopped")
+        except Exception as e:
+            test_logger.error(f"Error stopping pipelines: {e}")
+        
+        test_logger.info("Cleanup completed")
 
 if __name__ == "__main__":
     asyncio.run(test_single_pipeline_multi_node())
