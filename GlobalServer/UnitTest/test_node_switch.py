@@ -3,7 +3,6 @@ Unit test for node switching functionality in GlobalServer.
 """
 import asyncio
 import logging
-import time
 import concurrent.futures
 import sys
 import os
@@ -13,22 +12,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from global_server import GlobalServer
 from request_handler import generate_random_requests
+from test_utils import (
+    setup_test_logger,
+    send_and_monitor_requests,
+    log_pipeline_status
+)
 
 logger = logging.getLogger(__name__)
 
 async def test_node_switch():
     """Test node switching functionality."""
-    # Configure logging for test script only
-    test_logger = logging.getLogger(__name__)
-    test_logger.setLevel(logging.INFO)
-    
-    # Create console handler for test logs
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-    test_logger.addHandler(console_handler)
-    test_logger.propagate = False
+    # Configure logging
+    test_logger = setup_test_logger(__name__)
     
     global_server = GlobalServer()
 
@@ -103,81 +98,61 @@ async def test_node_switch():
     request_inputs = generate_random_requests(
         num_prompts=num_requests,
         input_len=1024,
-        output_len=128,
+        output_len=1024,
         model_name=model_name,
         ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
     
-    # Create tasks for all requests
-    tasks = []
-    requests = []
-    
-    async def send_request_with_delay(index, delay):
-        """Send a request after a delay"""
-        await asyncio.sleep(delay)
-        request = await global_server.add_request(request_inputs[index])
-        test_logger.info(f"[{index}] Added request {request.request_id} with prompt: {request.input.prompt[:50]}...")
-        return request
-    
     try:
-        # Send requests with some delay between them
-        for i in range(num_requests):
-            delay = i * 5
-            task = asyncio.create_task(send_request_with_delay(i, delay))
-            tasks.append(task)
-        
-        # Wait for all requests to be added
-        requests = await asyncio.gather(*tasks)
-        test_logger.info(f"All {num_requests} requests submitted")
-        
-        # Monitor completion
-        start_time = time.time()
-        completed_count = 0
-        
-        while completed_count < num_requests:
-            await asyncio.sleep(1)
-            
-            # Check which requests are completed
-            for i, req in enumerate(requests):
-                if req.output and req.output.success and not hasattr(req, '_logged'):
-                    completed_count += 1
-                    req._logged = True  # Mark as logged to avoid duplicate logs
-                    
-                    test_logger.info(f"[{i}] Request {req.request_id} completed!")
-                    test_logger.info(f"[{i}] Response: {req.output.generated_text[:100]}...")
-                    test_logger.info(f"[{i}] Metrics - Tokens: {req.output.output_tokens}, "
-                              f"Latency: {req.output.latency:.2f}s, TTFT: {req.output.ttft:.3f}s")
-            
-            elapsed = time.time() - start_time
-            
-            # Timeout after 10 minutes
-            if elapsed > 600:
-                test_logger.warning("Timeout reached, stopping...")
-                break
+        # Send and monitor requests concurrently
+        completed_count = await send_and_monitor_requests(
+            global_server,
+            request_inputs,
+            delay_between_requests=5,
+            logger=test_logger,
+            timeout=600,
+            status_interval=60,
+            status_callback=lambda: log_pipeline_status(global_server, test_logger)
+        )
         
         # Final statistics
-        successful = sum(1 for r in requests if r.output and r.output.success)
-        test_logger.info(f"\nFinal Results: {successful}/{num_requests} requests successful")
+        test_logger.info(f"\nFinal Results: {completed_count}/{num_requests} requests completed successfully")
         
     except KeyboardInterrupt:
         test_logger.info("Shutting down...")
     finally:
         # Cancel all tasks
+        test_logger.info("Cancelling background tasks...")
         server_task.cancel()
         switch_task.cancel()
+        pipeline_task.cancel()
         
-        try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+        # Give tasks a chance to cancel gracefully
+        await asyncio.sleep(0.1)
         
+        # Force cleanup after short timeout
         try:
-            await switch_task
-        except asyncio.CancelledError:
-            pass
+            done, pending = await asyncio.wait(
+                [server_task, switch_task, pipeline_task], 
+                timeout=2.0, 
+                return_when=asyncio.ALL_COMPLETED
+            )
+            if pending:
+                test_logger.info(f"Force cancelling {len(pending)} remaining tasks")
+                for task in pending:
+                    task.cancel()
+        except Exception as e:
+            test_logger.error(f"Error during task cleanup: {e}")
         
         # Stop all pipelines
-        global_server.cluster.stop_all_pipelines()
+        test_logger.info("Stopping pipelines...")
+        try:
+            global_server.cluster.stop_all_pipelines()
+            test_logger.info("All pipelines stopped")
+        except Exception as e:
+            test_logger.error(f"Error stopping pipelines: {e}")
+        
+        test_logger.info("Cleanup completed")
 
 if __name__ == "__main__":
     asyncio.run(test_node_switch())
