@@ -4,7 +4,6 @@ Tests creating two pipelines and removing one.
 """
 import asyncio
 import logging
-import time
 import concurrent.futures
 import sys
 import os
@@ -14,27 +13,23 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from global_server import GlobalServer
 from request_handler import generate_random_requests
+from test_utils import (
+    setup_test_logger, 
+    send_and_monitor_requests,
+    log_pipeline_status
+)
 
 logger = logging.getLogger(__name__)
 
 async def test_multi_pipeline():
     """Test multiple pipeline creation and removal."""
-    # Configure logging for test script only
-    test_logger = logging.getLogger(__name__)
-    test_logger.setLevel(logging.INFO)
-    
-    # Create console handler for test logs
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-    test_logger.addHandler(console_handler)
-    test_logger.propagate = False
+    # Configure logging
+    test_logger = setup_test_logger(__name__)
     
     global_server = GlobalServer()
 
     # Configuration for two pipelines
-    node_ip_1 = "172.31.18.31"
+    node_ip_1 = "172.31.53.208"
     node_ip_2 = "172.31.23.180"
     
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
@@ -68,7 +63,7 @@ async def test_multi_pipeline():
     
     # Start pipeline creation tasks
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(node_ip_1, 100, "Pipeline 1"))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(node_ip_2, 150, "Pipeline 2"))
+    pipeline_task_2 = asyncio.create_task(create_pipeline_async(node_ip_2, 900, "Pipeline 2"))
     
     # Start the global server in the background
     server_task = asyncio.create_task(global_server.run_global_server())
@@ -82,13 +77,22 @@ async def test_multi_pipeline():
             
             # Check which pipelines are available
             test_logger.info(f"Total pipelines before removal: {len(global_server.cluster.pipelines)}")
-            for i, pipeline in enumerate(global_server.cluster.pipelines):
-                test_logger.info(f"Pipeline {i}: throughput={pipeline.ideal_throughput}, ready={pipeline.is_ready}")
             
-            # Remove pipeline 0 (first pipeline)
-            if len(global_server.cluster.pipelines) > 1:
-                pipeline_to_remove = 0
-                test_logger.info(f"Removing pipeline {pipeline_to_remove}")
+            # Find pipeline containing node_ip_2
+            pipeline_to_remove = None
+            for i, pipeline in enumerate(global_server.cluster.pipelines):
+                # Check if this pipeline contains node_ip_2
+                pipeline_node_ips = [vnode.node_ip for vnode in pipeline.vnodes]
+                test_logger.info(f"Pipeline {i}: throughput={pipeline.ideal_throughput}, ready={pipeline.is_ready}, nodes={pipeline_node_ips}")
+                
+                if node_ip_2 in pipeline_node_ips:
+                    pipeline_to_remove = i
+                    test_logger.info(f"Found pipeline {i} containing node_ip_2 ({node_ip_2})")
+                    break
+            
+            # Remove the pipeline containing node_ip_2
+            if pipeline_to_remove is not None:
+                test_logger.info(f"Removing pipeline {pipeline_to_remove} containing node {node_ip_2}")
                 
                 # Execute removal in a separate thread to avoid blocking
                 loop = asyncio.get_event_loop()
@@ -102,7 +106,7 @@ async def test_multi_pipeline():
                 test_logger.info(f"Pipeline {pipeline_to_remove} removed successfully")
                 test_logger.info(f"Remaining pipelines: {len(global_server.cluster.pipelines)}")
             else:
-                test_logger.warning("Not enough pipelines to remove")
+                test_logger.warning(f"No pipeline found containing node_ip_2 ({node_ip_2})")
                 
         except Exception as e:
             test_logger.error(f"Pipeline removal test failed: {e}")
@@ -115,89 +119,63 @@ async def test_multi_pipeline():
     request_inputs = generate_random_requests(
         num_prompts=num_requests,
         input_len=1024,
-        output_len=128,
+        output_len=512,
         model_name=model_name,
         ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
     
-    # Create tasks for all requests
-    tasks = []
-    requests = []
-    
-    async def send_request_with_delay(index, delay):
-        """Send a request after a delay"""
-        await asyncio.sleep(delay)
-        request = await global_server.add_request(request_inputs[index])
-        test_logger.info(f"[{index}] Added request {request.request_id} with prompt: {request.input.prompt[:50]}...")
-        return request
-    
     try:
-        # Send requests with some delay between them
-        for i in range(num_requests):
-            delay = i * 3  # 3 second delay between requests
-            task = asyncio.create_task(send_request_with_delay(i, delay))
-            tasks.append(task)
-        
-        # Wait for all requests to be added
-        requests = await asyncio.gather(*tasks)
-        test_logger.info(f"All {num_requests} requests submitted")
-        
-        # Monitor completion and pipeline status
-        start_time = time.time()
-        completed_count = 0
-        last_status_time = 0
-        
-        while completed_count < num_requests:
-            await asyncio.sleep(1)
-            
-            # Log pipeline status periodically
-            elapsed = time.time() - start_time
-            if elapsed - last_status_time >= 30:  # Every 30 seconds
-                last_status_time = elapsed
-                test_logger.info(f"Pipeline status at {elapsed:.0f}s:")
-                for i, pipeline in enumerate(global_server.cluster.pipelines):
-                    test_logger.info(f"  Pipeline {i}: ready={pipeline.is_ready}, throughput={pipeline.ideal_throughput}")
-            
-            # Check which requests are completed
-            for i, req in enumerate(requests):
-                if req.output and req.output.success and not hasattr(req, '_logged'):
-                    completed_count += 1
-                    req._logged = True  # Mark as logged to avoid duplicate logs
-                    
-                    test_logger.info(f"[{i}] Request {req.request_id} completed!")
-                    test_logger.info(f"[{i}] Response: {req.output.generated_text[:100]}...")
-                    test_logger.info(f"[{i}] Metrics - Tokens: {req.output.output_tokens}, "
-                              f"Latency: {req.output.latency:.2f}s")
-            
-            # Timeout after 8 minutes
-            if elapsed > 480:
-                test_logger.warning("Timeout reached, stopping...")
-                break
+        # Send and monitor requests concurrently
+        completed_count = await send_and_monitor_requests(
+            global_server,
+            request_inputs,
+            delay_between_requests=5,
+            logger=test_logger,
+            timeout=480,
+            status_interval=30,
+            status_callback=lambda: log_pipeline_status(global_server, test_logger)
+        )
         
         # Final statistics
-        successful = sum(1 for r in requests if r.output and r.output.success)
-        test_logger.info(f"\nFinal Results: {successful}/{num_requests} requests successful")
+        test_logger.info(f"\nFinal Results: {completed_count}/{num_requests} requests completed successfully")
         test_logger.info(f"Final pipeline count: {len(global_server.cluster.pipelines)}")
         
     except KeyboardInterrupt:
         test_logger.info("Shutting down...")
     finally:
         # Cancel all tasks
+        test_logger.info("Cancelling background tasks...")
         server_task.cancel()
         removal_task.cancel()
+        pipeline_task_1.cancel()
+        pipeline_task_2.cancel()
         
+        # Give tasks a chance to cancel gracefully
+        await asyncio.sleep(0.1)
+        
+        # Force cleanup after short timeout
         try:
-            await server_task
-        except asyncio.CancelledError:
-            pass
+            done, pending = await asyncio.wait(
+                [server_task, removal_task, pipeline_task_1, pipeline_task_2], 
+                timeout=2.0, 
+                return_when=asyncio.ALL_COMPLETED
+            )
+            if pending:
+                test_logger.info(f"Force cancelling {len(pending)} remaining tasks")
+                for task in pending:
+                    task.cancel()
+        except Exception as e:
+            test_logger.error(f"Error during task cleanup: {e}")
         
+        # Stop all pipelines
+        test_logger.info("Stopping pipelines...")
         try:
-            await removal_task
-        except asyncio.CancelledError:
-            pass
+            global_server.cluster.stop_all_pipelines()
+            test_logger.info("All pipelines stopped")
+        except Exception as e:
+            test_logger.error(f"Error stopping pipelines: {e}")
         
-        # Stop all remaining pipelines
-        global_server.cluster.stop_all_pipelines()
+        test_logger.info("Cleanup completed")
 
 if __name__ == "__main__":
     asyncio.run(test_multi_pipeline())

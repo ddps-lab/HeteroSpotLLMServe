@@ -7,7 +7,7 @@ import asyncio
 import time
 import os
 from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from VNode import Cluster
 from request_handler import Request, RequestInput, RequestOutput, async_request
@@ -26,18 +26,12 @@ global_server_log_file = os.path.join(LOG_BASE_DIR, "GlobalServer.log")
 file_handler = logging.FileHandler(global_server_log_file)
 file_handler.setLevel(logging.INFO)
 
-# Create console handler for terminal output
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
 # Create formatter
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
 
-# Add handlers to logger
+# Add handlers to logger (file only, no console output)
 logger.addHandler(file_handler)
-logger.addHandler(console_handler)
 
 # Prevent propagation to root logger (we handle logging ourselves)
 logger.propagate = False
@@ -53,7 +47,8 @@ class GlobalServer:
     def __init__(self, cluster: Optional[Cluster] = None):
         self.cluster = cluster if cluster is not None else Cluster()
         
-        # Request queues
+        # Request queues - urgent_queue for high priority requests (e.g., retries)
+        self.urgent_queue: asyncio.Queue[Request] = asyncio.Queue()
         self.waiting_queue: asyncio.Queue[Request] = asyncio.Queue()
         self.inflight_requests: Dict[int, InFlightRequest] = {}  # request_id -> InFlightRequest
         
@@ -122,25 +117,44 @@ class GlobalServer:
             pipeline_index = self.select_pipeline_index()
             
             # Only process requests if there are ready pipelines
-            if pipeline_index != -1 and not self.waiting_queue.empty():
-                try:
-                    # Get request from queue
-                    request = await self.waiting_queue.get()
-                    
-                    # Create task to send request
-                    task = asyncio.create_task(self._handle_request(request, pipeline_index))
-                    
-                    # Track in-flight request
-                    self.inflight_requests[request.request_id] = InFlightRequest(
-                        request=request,
-                        pipeline_index=pipeline_index,
-                        task=task
-                    )
-                    
-                    logger.info(f"Dispatched request {request.request_id} to pipeline {pipeline_index}")
-                    
-                except Exception as e:
-                    logger.error(f"Error dispatching request: {e}")
+            if pipeline_index != -1:
+                request = None
+                queue_type = None
+                
+                # Check urgent queue first, then waiting queue
+                if not self.urgent_queue.empty():
+                    try:
+                        request = await self.urgent_queue.get()
+                        queue_type = "urgent"
+                    except Exception as e:
+                        logger.error(f"Error getting request from urgent queue: {e}")
+                        
+                elif not self.waiting_queue.empty():
+                    try:
+                        request = await self.waiting_queue.get()
+                        queue_type = "waiting"
+                    except Exception as e:
+                        logger.error(f"Error getting request from waiting queue: {e}")
+                
+                if request:
+                    try:
+                        # Create task to send request
+                        task = asyncio.create_task(self._handle_request(request, pipeline_index))
+                        
+                        # Track in-flight request
+                        self.inflight_requests[request.request_id] = InFlightRequest(
+                            request=request,
+                            pipeline_index=pipeline_index,
+                            task=task
+                        )
+                        
+                        # Get head node IP for logging
+                        pipeline = self.cluster.pipelines[pipeline_index]
+                        head_node_ip = pipeline.vnodes[0].node_ip
+                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index} (head: {head_node_ip})")
+                        
+                    except Exception as e:
+                        logger.error(f"Error dispatching request: {e}")
             
             # Clean up completed requests
             await self._cleanup_completed_requests()
@@ -158,16 +172,25 @@ class GlobalServer:
         try:
             output = await self.send_request(request, pipeline_index)
             request.output = output
-            logger.info(f"Request {request.request_id} completed successfully")
+            
+            # Check if request actually succeeded, if not raise exception
+            if not output.success:
+                raise ValueError(f"{output.error}")
+                
+            logger.info(f"Request {request.request_id} completed successfully with {request.output.output_tokens} tokens")
         except Exception as e:
             logger.error(f"Request {request.request_id} failed: {e}")
             # Mark when request was halted
             request.halted_at = time.time()
             request.retry_count += 1
             
-            # Put back in waiting queue for retry
-            await self.waiting_queue.put(request)
-            logger.info(f"Request {request.request_id} added back to waiting queue for retry")
+            # Put back in urgent queue for retry (higher priority)
+            await self.urgent_queue.put(request)
+
+            log_msg = f"Request {request.request_id} added to urgent queue for retry (attempt #{request.retry_count})"
+            if request.output is not None:
+                log_msg += f", original input tokens: {request.input.prompt_len}, new input tokens: {request.output.output_tokens}"
+            logger.info(log_msg)
     
     async def _cleanup_completed_requests(self):
         """Remove completed requests from inflight tracking."""
@@ -180,18 +203,25 @@ class GlobalServer:
         for request_id in completed_ids:
             del self.inflight_requests[request_id]
     
-    async def add_request(self, request_input: RequestInput) -> Request:
-        """Add a new request to the waiting queue.
+    async def add_request(self, request_input: RequestInput, urgent: bool = False) -> Request:
+        """Add a new request to the appropriate queue.
         
         Args:
             request_input: The input for the request
+            urgent: If True, add to urgent queue; otherwise to waiting queue
             
         Returns:
             The created Request object
         """
         request = Request.create(request_input)
-        await self.waiting_queue.put(request)
-        logger.info(f"Added request {request.request_id} to waiting queue")
+        
+        if urgent:
+            await self.urgent_queue.put(request)
+            logger.info(f"Added request {request.request_id} to urgent queue")
+        else:
+            await self.waiting_queue.put(request)
+            logger.info(f"Added request {request.request_id} to waiting queue")
+            
         return request
     
     def create_pipeline(self, node_layer_mapping: List[Tuple[str, int]], 

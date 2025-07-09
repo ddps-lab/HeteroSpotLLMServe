@@ -92,6 +92,11 @@ class Cluster:
         """Stop all pipelines in the cluster."""
         cluster_logger.info(f"Stopping {len(self.pipelines)} pipelines...")
         
+        # Handle case when no pipelines exist
+        if not self.pipelines:
+            cluster_logger.info("No pipelines to stop.")
+            return
+        
         # Stop all pipelines in parallel
         with ThreadPoolExecutor(max_workers=len(self.pipelines)) as executor:
             futures = []
