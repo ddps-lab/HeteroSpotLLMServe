@@ -77,13 +77,22 @@ async def test_multi_pipeline():
             
             # Check which pipelines are available
             test_logger.info(f"Total pipelines before removal: {len(global_server.cluster.pipelines)}")
-            for i, pipeline in enumerate(global_server.cluster.pipelines):
-                test_logger.info(f"Pipeline {i}: throughput={pipeline.ideal_throughput}, ready={pipeline.is_ready}")
             
-            # Remove pipeline 0 (first pipeline)
-            if len(global_server.cluster.pipelines) > 1:
-                pipeline_to_remove = 0
-                test_logger.info(f"Removing pipeline {pipeline_to_remove}")
+            # Find pipeline containing node_ip_2
+            pipeline_to_remove = None
+            for i, pipeline in enumerate(global_server.cluster.pipelines):
+                # Check if this pipeline contains node_ip_2
+                pipeline_node_ips = [vnode.node_ip for vnode in pipeline.vnodes]
+                test_logger.info(f"Pipeline {i}: throughput={pipeline.ideal_throughput}, ready={pipeline.is_ready}, nodes={pipeline_node_ips}")
+                
+                if node_ip_2 in pipeline_node_ips:
+                    pipeline_to_remove = i
+                    test_logger.info(f"Found pipeline {i} containing node_ip_2 ({node_ip_2})")
+                    break
+            
+            # Remove the pipeline containing node_ip_2
+            if pipeline_to_remove is not None:
+                test_logger.info(f"Removing pipeline {pipeline_to_remove} containing node {node_ip_2}")
                 
                 # Execute removal in a separate thread to avoid blocking
                 loop = asyncio.get_event_loop()
@@ -97,7 +106,7 @@ async def test_multi_pipeline():
                 test_logger.info(f"Pipeline {pipeline_to_remove} removed successfully")
                 test_logger.info(f"Remaining pipelines: {len(global_server.cluster.pipelines)}")
             else:
-                test_logger.warning("Not enough pipelines to remove")
+                test_logger.warning(f"No pipeline found containing node_ip_2 ({node_ip_2})")
                 
         except Exception as e:
             test_logger.error(f"Pipeline removal test failed: {e}")
@@ -110,7 +119,7 @@ async def test_multi_pipeline():
     request_inputs = generate_random_requests(
         num_prompts=num_requests,
         input_len=1024,
-        output_len=128,
+        output_len=512,
         model_name=model_name,
         ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
@@ -120,7 +129,7 @@ async def test_multi_pipeline():
         completed_count = await send_and_monitor_requests(
             global_server,
             request_inputs,
-            delay_between_requests=3,
+            delay_between_requests=5,
             logger=test_logger,
             timeout=480,
             status_interval=30,
