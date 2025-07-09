@@ -189,7 +189,7 @@ class GlobalServer:
 
             log_msg = f"Request {request.request_id} added to urgent queue for retry (attempt #{request.retry_count})"
             if request.output is not None:
-                log_msg += f", original input tokens: {request.input.input_tokens}, new input tokens: {request.output.output_tokens}"
+                log_msg += f", original input tokens: {request.input.prompt_len}, new input tokens: {request.output.output_tokens}"
             logger.info(log_msg)
     
     async def _cleanup_completed_requests(self):
