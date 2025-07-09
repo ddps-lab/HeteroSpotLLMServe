@@ -21,7 +21,7 @@ from test_utils import (
 
 logger = logging.getLogger(__name__)
 
-async def test_single_pipeline_multi_node():
+async def test_single_pipeline_single_node():
     """Test single pipeline with multiple nodes using pipeline parallelism."""
     # Configure logging
     test_logger = setup_test_logger(__name__)
@@ -29,13 +29,11 @@ async def test_single_pipeline_multi_node():
     global_server = GlobalServer()
 
     # Configuration for single pipeline across two nodes
-    node_ip_1 = "172.31.53.208"
-    node_ip_2 = "172.31.23.180"
+    node_ip_1 = "172.31.23.180"
     
     # Pipeline Parallelism: 16 layers on each node (total 32 layers)
     node_layer_mapping = [
-        (node_ip_1, 16),  # Node 1 handles layers 0-15
-        (node_ip_2, 16)   # Node 2 handles layers 16-31
+        (node_ip_1, 32)
     ]
     
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
@@ -43,8 +41,8 @@ async def test_single_pipeline_multi_node():
     config = {
         "model_name": model_name,
         "total_num_layers": 32,
-        "pp_layer_partition": "16,16",  # Pipeline partition: 16 layers per node
-        "parallel_strategy": [1, 1],     # 1 GPU per node (no tensor parallelism)
+        "pp_layer_partition": "32",  # Pipeline partition: 16 layers per node
+        "parallel_strategy": [1],     # 1 GPU per node (no tensor parallelism)
         "max_model_len": 4096,
         "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
@@ -66,7 +64,7 @@ async def test_single_pipeline_multi_node():
                 config,
                 dummy_throughput
             )
-        test_logger.info("Multi-node pipeline creation completed")
+        test_logger.info("Single-node pipeline creation completed")
     
     # Start pipeline creation task
     pipeline_task = asyncio.create_task(create_pipeline_async())
@@ -79,7 +77,7 @@ async def test_single_pipeline_multi_node():
     request_inputs = generate_random_requests(
         num_prompts=num_requests,
         input_len=1024,   # Shorter input for faster processing
-        output_len=256,   # Shorter output for faster processing
+        output_len=1024,   # Shorter output for faster processing
         model_name=model_name,
         ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
@@ -92,13 +90,13 @@ async def test_single_pipeline_multi_node():
             delay_between_requests=5,
             logger=test_logger,
             timeout=480,
-            status_interval=20,
+            status_interval=30,
             status_callback=lambda: log_pipeline_status(global_server, test_logger)
         )
         
         # Final statistics
         test_logger.info(f"\nFinal Results: {completed_count}/{num_requests} requests completed successfully")
-        test_logger.info(f"Multi-node pipeline test completed")
+        test_logger.info(f"Single-node pipeline test completed")
         
     except KeyboardInterrupt:
         test_logger.info("Shutting down...")
@@ -109,7 +107,7 @@ async def test_single_pipeline_multi_node():
         pipeline_task.cancel()
         
         # Give tasks a chance to cancel gracefully
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(1)
         
         # Force cleanup after short timeout
         try:
@@ -136,4 +134,4 @@ async def test_single_pipeline_multi_node():
         test_logger.info("Cleanup completed")
 
 if __name__ == "__main__":
-    asyncio.run(test_single_pipeline_multi_node())
+    asyncio.run(test_single_pipeline_single_node())

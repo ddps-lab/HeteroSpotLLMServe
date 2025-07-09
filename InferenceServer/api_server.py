@@ -992,6 +992,7 @@ async def run_server(args, **uvicorn_kwargs) -> None:
             port=args.port,
             log_level=args.uvicorn_log_level,
             timeout_keep_alive=TIMEOUT_KEEP_ALIVE,
+            timeout_graceful_shutdown=0,  # Disable graceful shutdown
             ssl_keyfile=args.ssl_keyfile,
             ssl_certfile=args.ssl_certfile,
             ssl_ca_certs=args.ssl_ca_certs,
