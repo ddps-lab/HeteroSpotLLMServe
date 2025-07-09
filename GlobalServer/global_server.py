@@ -180,15 +180,17 @@ class GlobalServer:
             logger.info(f"Request {request.request_id} completed successfully with {request.output.output_tokens} tokens")
         except Exception as e:
             logger.error(f"Request {request.request_id} failed: {e}")
-            if request.output is not None:
-                logger.info(f"Request {request.request_id} continued from where it left off: {request.output.output_tokens} tokens")
             # Mark when request was halted
             request.halted_at = time.time()
             request.retry_count += 1
             
             # Put back in urgent queue for retry (higher priority)
             await self.urgent_queue.put(request)
-            logger.info(f"Request {request.request_id} added to urgent queue for retry (attempt #{request.retry_count})")
+
+            log_msg = f"Request {request.request_id} added to urgent queue for retry (attempt #{request.retry_count})"
+            if request.output is not None:
+                log_msg += f", original input tokens: {request.input.input_tokens}, new input tokens: {request.output.output_tokens}"
+            logger.info(log_msg)
     
     async def _cleanup_completed_requests(self):
         """Remove completed requests from inflight tracking."""
