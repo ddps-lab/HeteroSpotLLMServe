@@ -29,7 +29,7 @@ async def test_single_pipeline_multi_node():
     global_server = GlobalServer()
 
     # Configuration for single pipeline across two nodes
-    node_ip_1 = "172.31.18.31"
+    node_ip_1 = "172.31.53.208"
     node_ip_2 = "172.31.23.180"
     
     # Pipeline Parallelism: 16 layers on each node (total 32 layers)
@@ -79,7 +79,7 @@ async def test_single_pipeline_multi_node():
     request_inputs = generate_random_requests(
         num_prompts=num_requests,
         input_len=1024,   # Shorter input for faster processing
-        output_len=128,   # Shorter output for faster processing
+        output_len=256,   # Shorter output for faster processing
         model_name=model_name,
         ignore_eos=True  # Ignore EOS to ensure consistent output length
     )
@@ -89,7 +89,7 @@ async def test_single_pipeline_multi_node():
         completed_count = await send_and_monitor_requests(
             global_server,
             request_inputs,
-            delay_between_requests=3,
+            delay_between_requests=5,
             logger=test_logger,
             timeout=480,
             status_interval=20,

@@ -29,8 +29,8 @@ async def test_multi_pipeline():
     global_server = GlobalServer()
 
     # Configuration for two pipelines
-    node_ip_1 = "172.31.23.180"
-    node_ip_2 = "172.31.53.208"
+    node_ip_1 = "172.31.53.208"
+    node_ip_2 = "172.31.23.180"
     
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
     bucket_name = "hetero-spot-llm-serve-models"
@@ -63,7 +63,7 @@ async def test_multi_pipeline():
     
     # Start pipeline creation tasks
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(node_ip_1, 100, "Pipeline 1"))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(node_ip_2, 150, "Pipeline 2"))
+    pipeline_task_2 = asyncio.create_task(create_pipeline_async(node_ip_2, 900, "Pipeline 2"))
     
     # Start the global server in the background
     server_task = asyncio.create_task(global_server.run_global_server())
