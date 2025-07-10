@@ -106,7 +106,7 @@ class GlobalServer:
         # Mark when request was sent
         request.sended_at = time.time()
         
-        return await async_request(request)
+        return await async_request(request, logger=logger)
     
     async def run_global_server(self, check_interval: float = 0.1):
         """Main server loop that processes requests from the waiting queue.
