@@ -2,6 +2,7 @@
 Request handler for global server.
 """
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Optional, List
@@ -110,7 +111,7 @@ def generate_random_requests(
     
     return requests
 
-async def async_request(request: Request) -> RequestOutput:
+async def async_request(request: Request, logger: logging.Logger) -> RequestOutput:
     """Send async request to OpenAI-compatible API.
     
     Args:
@@ -147,18 +148,18 @@ async def async_request(request: Request) -> RequestOutput:
             payload["ignore_eos"] = True
         
         headers = {"Content-Type": "application/json"}
+
+        first_chunk_received = False
         
         # Use existing output or create new one
         if request.output:
             output = request.output
+            first_chunk_received = True
         else:
             output = RequestOutput()
             output.prompt_len = request_input.prompt_len
         
         most_recent_timestamp = request.sended_at
-        
-        # For continued requests, we don't have a new TTFT
-        first_chunk_received = request.output is not None
         
         try:
             async with session.post(url=request_input.api_url, 
@@ -205,8 +206,10 @@ async def async_request(request: Request) -> RequestOutput:
                                     output.output_tokens = len(output.itl) + 1
                                     
                             # Check for usage stats
-                            if usage := data.get("usage"):
-                                output.output_tokens = usage.get("completion_tokens", output.output_tokens)
+                            # 여기서 이번 request 에서 얼마나 토큰이 생성되었는지 알 수 있음 (completion_tokens)
+                            # 일단 지금 필요하지 않으니 주석처리한다.
+                            # if usage := data.get("usage"):
+                            #     output.output_tokens = usage.get("completion_tokens", output.output_tokens)
                                 
                         except json.JSONDecodeError:
                             continue
@@ -224,5 +227,4 @@ async def async_request(request: Request) -> RequestOutput:
         except Exception as e:
             output.success = False
             output.error = str(e)
-            
     return output
