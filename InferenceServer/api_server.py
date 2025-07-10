@@ -1016,6 +1016,10 @@ if __name__ == "__main__":
     
     # v0 버전 사용
     os.environ["VLLM_USE_V1"] = "0"
+    # 이제 ray 는 GPU 를 전부 차지하지 않음
+    # 즉, 여러 개의 actor 를 하나의 GPU 에 넣을 수 있음.
+    # 이를 하는 이유는 Node Switching 을 위해서.
+    os.environ["VLLM_RAY_PER_WORKER_GPUS"] = "0.4"
     # 노드 매핑 인자 추가
     parser.add_argument(
         "--node-rank-mapping",
