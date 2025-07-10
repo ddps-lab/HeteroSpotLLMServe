@@ -97,7 +97,7 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
     for rank in range(total_ranks):
         ip = rank_to_ip[rank]
         placement_group_specs.append({
-            'GPU': 1,
+            'GPU': 0.4,
             f"node:{ip}": 0.001 # 특정 노드를 사용하겠다는 의미
         })
     
