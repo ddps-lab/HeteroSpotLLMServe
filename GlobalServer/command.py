@@ -11,12 +11,19 @@ PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
 def get_tensor_store_command(model_name: str, 
                             tensor_parallel_size: int,
                             local_rank: int, 
+                            pipeline_parallel_size: int,
+                            pipeline_parallel_rank: int,
                             start_layer_id: int,
                             end_layer_id: int,
                             status_port: Optional[int] = None,
                             dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
-                            aws_profile: Optional[str] = None) -> str:
+                            aws_profile: Optional[str] = None,
+                            block_size: int = 16,
+                            gpu_memory_utilization: float = 0.9,
+                            swap_space: float = 4.0,
+                            cache_dtype: str = "auto",
+                            max_model_len: int = 4096) -> str:
     """
     Generate command to start tensor store server.
     
@@ -30,6 +37,13 @@ def get_tensor_store_command(model_name: str,
         dtype: Data type for model weights
         s3_path: S3 path where model tensors are stored (e.g., 's3://bucket/path/to/models')
         aws_profile: AWS profile to use for S3 access
+        block_size: Block size for KV cache
+        gpu_memory_utilization: GPU memory utilization ratio
+        swap_space: Size of CPU swap space per GPU in GiB
+        cache_dtype: Data type for KV cache storage
+        pipeline_parallel_size: Pipeline parallel size for virtual engine allocation
+        pipeline_parallel_rank: Pipeline parallel rank
+        max_model_len: Maximum model sequence length
     
     Returns:
         Command string to execute
@@ -67,6 +81,13 @@ def get_tensor_store_command(model_name: str,
             f"--start-layer-id {start_layer_id} "
             f"--end-layer-id {end_layer_id} "
             f"--status-port {final_port} "
+            f"--pipeline-parallel-size {pipeline_parallel_size} "
+            f"--pipeline-parallel-rank {pipeline_parallel_rank} "
+            f"--block-size {block_size} "
+            f"--gpu-memory-utilization {gpu_memory_utilization} "
+            f"--swap-space {swap_space} "
+            f"--cache-dtype {cache_dtype} "
+            f"--max-model-len {max_model_len}"
         )
         if dtype is not None:
             cmd += f" --dtype {dtype}"
