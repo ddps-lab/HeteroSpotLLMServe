@@ -29,8 +29,8 @@ async def test_multi_pipeline():
     global_server = GlobalServer()
 
     # Configuration for two pipelines
-    node_ip_1 = "172.31.53.208"
-    node_ip_2 = "172.31.23.180"
+    node_ip_1 = "172.31.60.109"
+    node_ip_2 = "172.31.50.57"
     
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
     bucket_name = "hetero-spot-llm-serve-models"

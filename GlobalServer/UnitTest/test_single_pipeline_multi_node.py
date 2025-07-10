@@ -29,8 +29,8 @@ async def test_single_pipeline_multi_node():
     global_server = GlobalServer()
 
     # Configuration for single pipeline across two nodes
-    node_ip_1 = "172.31.53.208"
-    node_ip_2 = "172.31.23.180"
+    node_ip_1 = "172.31.60.109"
+    node_ip_2 = "172.31.50.57"
     
     # Pipeline Parallelism: 16 layers on each node (total 32 layers)
     node_layer_mapping = [
