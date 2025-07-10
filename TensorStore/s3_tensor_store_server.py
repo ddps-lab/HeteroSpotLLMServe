@@ -779,10 +779,11 @@ def main():
     logging.info(f"  - Total CPU swap size: {kv_cache_info['total_cpu_cache_size_gb']:.2f} GiB")
     
     # Start TensorManager server
-    manager = TensorManager(address=(MANAGER_HOST, MANAGER_PORT), authkey=MANAGER_AUTHKEY)
+    manager_port = MANAGER_PORT + LOCAL_RANK
+    manager = TensorManager(address=(MANAGER_HOST, manager_port), authkey=MANAGER_AUTHKEY)
     
     try:
-        logging.info(f"TensorManager server starting {MANAGER_HOST}:{MANAGER_PORT}...")
+        logging.info(f"TensorManager server starting {MANAGER_HOST}:{manager_port}...")
         server = manager.get_server()
         logging.info("Manager server running. Waiting for client connections...")
         logging.info("Press Ctrl+C to stop.")
