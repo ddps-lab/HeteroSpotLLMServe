@@ -374,7 +374,7 @@ def determine_num_available_blocks(config_dict: dict) -> tuple[int, int]:
     
     return num_gpu_blocks, num_cpu_blocks
 
-def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int, num_cpu_blocks: int) -> dict:
+def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
     """Allocate KV cache tensors for all virtual engines"""
     # Get model parameters
     num_attention_layers = END_LAYER_ID - START_LAYER_ID
@@ -384,6 +384,9 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int, num_cpu_blocks: in
     # Adjust for tensor parallelism
     if TENSOR_PARALLEL_SIZE > 1:
         num_kv_heads = num_kv_heads // TENSOR_PARALLEL_SIZE
+
+    # virtual engine 에 block 들이 나누어 들어간다.
+    num_gpu_blocks = num_gpu_blocks // PIPELINE_PARALLEL_SIZE
     
     # Get KV cache shape
     kv_cache_shape = get_kv_cache_shape(num_gpu_blocks, BLOCK_SIZE, num_kv_heads, head_size)
@@ -404,7 +407,6 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int, num_cpu_blocks: in
         metadata_key = f"kv_cache_metadata.ve_{ve}"
         metadata = {
             "num_gpu_blocks": num_gpu_blocks,
-            "num_cpu_blocks": num_cpu_blocks,
             "block_size": BLOCK_SIZE,
             "num_layers": num_attention_layers,
             "start_layer_id": START_LAYER_ID,
@@ -418,9 +420,7 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int, num_cpu_blocks: in
     cache_block_size = get_cache_block_size_bytes(config_dict)
     return {
         "num_gpu_blocks": num_gpu_blocks,
-        "num_cpu_blocks": num_cpu_blocks,
         "total_gpu_cache_size_gb": (num_gpu_blocks * cache_block_size) / (1024**3),
-        "total_cpu_cache_size_gb": (num_cpu_blocks * cache_block_size) / (1024**3)
     }
 
 def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, model_name: str,
@@ -579,6 +579,8 @@ def parse_args():
     # KV cache related arguments
     parser.add_argument("--block-size", type=int, default=16, choices=[8, 16, 32],
                         help="Token block size for KV cache (default: 16)")
+    parser.add_argument("--gpu-num-blocks", type=int, default=None,
+                        help="Number of GPU blocks for KV cache (default: None, calculated based on memory)")
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.9,
                         help="Fraction of GPU memory to use for KV cache (default: 0.9)")
     parser.add_argument("--swap-space", type=float, default=4.0,
@@ -680,10 +682,10 @@ def main():
         return
     
     try:
-        mp.set_start_method('fork', force=True)
-        logging.info("Set multiprocessing start method to 'fork'.")
+        mp.set_start_method('spawn', force=True)
+        logging.info("Set multiprocessing start method to 'spawn'.")
     except RuntimeError:
-        logging.warning("Could not set start method to 'fork'. Using default.")
+        logging.warning("Could not set start method to 'spawn'. Using default.")
     
     logging.info("Loading strategy: CPU -> GPU transfer (Individual downloads + local loading)")
     
@@ -747,7 +749,6 @@ def main():
     logging.info(f"Final DTYPE determined from tensors: {DTYPE}")
     
     # Fuse tensors
-    logging.info(f"Before fusing, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
     logging.info(f"[Tensor Fusion Phase] Starting fusion for layers {START_LAYER_ID} to {END_LAYER_ID}")
     
     for layer_idx in range(START_LAYER_ID, END_LAYER_ID):
@@ -773,10 +774,11 @@ def main():
     # Allocate KV cache after model loading
     logging.info("[KV Cache Allocation Phase Started]")
     num_gpu_blocks, num_cpu_blocks = determine_num_available_blocks(config_dict)
-    kv_cache_info = allocate_kv_cache(config_dict, num_gpu_blocks, num_cpu_blocks)
+    if args.gpu_num_blocks is not None:
+        num_gpu_blocks = args.gpu_num_blocks
+    kv_cache_info = allocate_kv_cache(config_dict, num_gpu_blocks)
     logging.info("[KV Cache Allocation Complete]")
     logging.info(f"  - Total GPU cache size: {kv_cache_info['total_gpu_cache_size_gb']:.2f} GiB")
-    logging.info(f"  - Total CPU swap size: {kv_cache_info['total_cpu_cache_size_gb']:.2f} GiB")
     
     # Start TensorManager server
     manager_port = MANAGER_PORT + LOCAL_RANK

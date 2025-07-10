@@ -157,11 +157,16 @@ class Pipeline:
         self.ideal_throughput: float = 0.0
         self.is_ready: bool = False  # Pipeline readiness status
 
+        self.api_server_host: str = None
+        self.api_server_port: int = None
+
     def initialize_pipeline(self, 
                             node_layer_mapping: List[Tuple[str, int]], 
                             config: Dict,
                             ideal_throughput: float):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
+
+        cluster_logger.info(f"Initializing pipeline with {node_layer_mapping}")
         
         # Extract required config parameters
         model_name = config["model_name"]
@@ -209,13 +214,15 @@ class Pipeline:
         
         # Start tensor stores on all VNodes
         tensor_store_base_port = config.get("tensor_store_base_port")
+        parallel_strategy = config["parallel_strategy"]
         for i, vnode in enumerate(self.vnodes):
             # Each VNode gets unique ports to avoid conflicts
             if tensor_store_base_port is not None:
                 tensor_store_port = tensor_store_base_port
             else:
                 tensor_store_port = DEFAULT_TENSOR_STORE_BASE_PORT # use global default in command.py
-            vnode.start_tensor_store(tensor_store_port, config)
+            cluster_logger.info(f"Starting tensor store on {vnode.node_ip} at port {tensor_store_port + i}")
+            vnode.start_tensor_store(tensor_store_port, config, len(parallel_strategy))
         
         # Generate node_rank_mapping based on vnodes
         self._generate_node_rank_mapping()
@@ -227,6 +234,9 @@ class Pipeline:
         
         # Wait for all services to be ready
         self._wait_for_services()
+
+        self.api_server_host = first_vnode.node_ip
+        self.api_server_port = first_vnode.api_server_port
         
         # Mark pipeline as ready
         self.is_ready = True
@@ -278,14 +288,6 @@ class Pipeline:
         cluster_logger.info(f"✓ All services ready! Tensor stores: {len(self.vnodes)}/{len(self.vnodes)}, API server: Ready")
         print(f"✓ All services ready! Tensor stores: {len(self.vnodes)}/{len(self.vnodes)}, API server: Ready")
     
-    def start_log_streaming(self):
-        """Start streaming logs from all VNodes."""
-        cluster_logger.info("Starting log streaming from all nodes...")
-        threads = []
-        for vnode in self.vnodes:
-            thread = vnode.stream_logs_continuously()
-            threads.append(thread)
-        return threads
 
     def stop_pipeline(self):
         """Stop all services in the pipeline."""
@@ -363,7 +365,8 @@ class Pipeline:
         
         # Start tensor store on the new node
         tensor_store_port = target_vnode.tensor_store_port
-        new_vnode.start_tensor_store(tensor_store_port, self.config)
+        parallel_strategy = self.config["parallel_strategy"]
+        new_vnode.start_tensor_store(tensor_store_port, self.config, len(parallel_strategy))
         
         # Check tensor store status
         cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
@@ -375,46 +378,50 @@ class Pipeline:
         
         cluster_logger.info(f"Tensor store ready on new node {new_node_ip}")
         
-        start_downtime = time.perf_counter()
-
         # Mark pipeline as not ready during switch
-        self.is_ready = False
         cluster_logger.info(f"Pipeline marked as not ready for node switch")
-
-        # Stop API server
-        cluster_logger.info(f"Stopping API server which contains old node {old_node_ip}")
-        self.vnodes[0].stop_api_server()
         
-        # Replace the VNode immediately (don't wait for API server stop)
+        # 이제 새로 참여한 vnode 를 먼저 올린다.
+        old_first_vnode = self.vnodes[0]
         self.vnodes[target_index] = new_vnode
+        new_first_vnode = self.vnodes[0]
         
         # Update node_rank_mapping
         self._generate_node_rank_mapping()
         
-        # Start API server on the first node (pipeline rank 0)
-        first_vnode = self.vnodes[0]
+        # Start API server on the new first node (pipeline rank 0)
         api_server_port = target_vnode.api_server_port if target_vnode.api_server_port else DEFAULT_API_SERVER_BASE_PORT
-        first_vnode.start_api_server(api_server_port, self.config, self.node_rank_mapping)
+        old_api_server_port = api_server_port
+        # 만약 api server 의 head node 가 동일하다면 다른 port 를 사용해야 한다.
+        if old_first_vnode.node_ip == new_first_vnode.node_ip:
+            api_server_port += 1  # Increment port to avoid conflict
+        new_first_vnode.start_api_server(api_server_port, self.config, self.node_rank_mapping)
         
         # Check API server status
-        cluster_logger.info(f"Checking API server status on node {first_vnode.node_ip}")
+        cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{api_server_port}")
         status_check_time = 0
-        while not first_vnode.check_api_server_status():
+        while not new_first_vnode.check_api_server_status():
             status_check_time += 1
             cluster_logger.info(f"Waiting for API server to be ready ({status_check_time})...")
             time.sleep(2)
-        
-        cluster_logger.info(f"API server ready on node {first_vnode.node_ip}")
 
-        end_downtime = time.perf_counter()
-        downtime = end_downtime - start_downtime
-        cluster_logger.info(f"Downtime: {downtime} seconds")
-        
-        # Mark pipeline as ready again
+        cluster_logger.info(f"API server ready on node {new_first_vnode.node_ip}")
+
+        start_downtime = time.time()
+        self.is_ready = False
+        self.api_server_host = new_first_vnode.node_ip
+        self.api_server_port = api_server_port
         self.is_ready = True
+        downtime_duration = time.time() - start_downtime
+        cluster_logger.info(f"Node Switch Completed. Downtime: {downtime_duration:.2f} seconds")
+        # 기존 pipeline api server 를 종료한다.
+        old_first_vnode.stop_api_server(old_api_server_port)
+        cluster_logger.info(f"Old API server stopped on node {old_first_vnode.node_ip}")
+
+        # Mark pipeline as ready again
         cluster_logger.info(f"Pipeline marked as ready after node switch")
         
-        # Stop tensor store on old node
+        # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
         target_vnode.stop_tensor_store()
         
@@ -468,10 +475,6 @@ class VNode:
         self.is_first_stage = (layer_start_id == 0)
         self.is_last_stage = (layer_end_id >= total_layers)
         
-        # Log streaming threads
-        self.tensor_store_log_thread = None
-        self.api_server_log_thread = None
-        
         cluster_logger.info(f"VNode created: {self}")
     
     def __repr__(self):
@@ -479,7 +482,7 @@ class VNode:
                 f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id}), "
                 f"TP={self.tensor_parallel_size})")
 
-    def start_tensor_store(self, tensor_store_port: int, config: Dict):
+    def start_tensor_store(self, tensor_store_port: int, config: Dict, pipeline_parallel_size: int):
         """Start tensor store server on this VNode."""
         self.tensor_store_port = tensor_store_port
         self.is_tensor_store_ready = False
@@ -494,33 +497,50 @@ class VNode:
         
         if model_source == "s3" and not s3_path:
             raise ValueError("s3_path must be provided when model_source is 's3'")
+
+        block_size = config.get("block_size", 16)
+        gpu_memory_utilization = config.get("gpu_memory_utilization", 0.9)
+        swap_space = config.get("swap_space", 4.0)  # Default to 4GB swap space
+        cache_dtype = config.get("cache_dtype", "auto")  # Default to auto-detect dtype
+        max_model_len = config.get("max_model_len", 4096)
         
         # Start tensor store processes for each GPU (for TP)
         for local_rank in range(self.num_gpu):
-            command = get_tensor_store_command(
-                model_name=model_name,
-                tensor_parallel_size=self.tensor_parallel_size,
-                local_rank=local_rank,
-                start_layer_id=self.layer_start_id,
-                end_layer_id=self.layer_end_id,
-                status_port=tensor_store_port,  # Base port, local_rank will be added in command
-                dtype=dtype,
-                s3_path=s3_path,
-                aws_profile=aws_profile
-            )
+            try:
+                command = get_tensor_store_command(
+                    model_name=model_name,
+                    tensor_parallel_size=self.tensor_parallel_size,
+                    local_rank=local_rank,
+                    pipeline_parallel_size=pipeline_parallel_size,
+                    pipeline_parallel_rank=self.pipeline_rank,
+                    start_layer_id=self.layer_start_id,
+                    end_layer_id=self.layer_end_id,
+                    status_port=tensor_store_port,  # Base port, local_rank will be added in command
+                    dtype=dtype,
+                    s3_path=s3_path,
+                    aws_profile=aws_profile,
+                    block_size=block_size,
+                    gpu_memory_utilization=gpu_memory_utilization,
+                    swap_space=swap_space,
+                    cache_dtype=cache_dtype,
+                    max_model_len=max_model_len
+                )
+                
+                # Prepare log files - save directly to local remote logs directory
+                log_filename = f"tensorstore_{self.node_ip}_{local_rank}.log"
+                local_log_path = os.path.join(self.remote_log_dir, log_filename)
+                
+                # Use SSH to start the process and stream logs directly to local file
+                # Add SSH options to avoid host key verification prompts
+                ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+                # Run command on remote and redirect output to local file
+                ssh_command = f"ssh {ssh_options} {self.node_ip} '{command}' > {local_log_path} 2>&1 &"
+                
+                # Debug: print the command
+                cluster_logger.info(f"Executing SSH command: {ssh_command}")
+            except Exception as e:
+                raise ValueError(f"Failed to prepare tensor store command for {self.node_ip}: {e}")
             
-            # Prepare log files - save directly to local remote logs directory
-            log_filename = f"tensorstore_{self.node_ip}_{local_rank}.log"
-            local_log_path = os.path.join(self.remote_log_dir, log_filename)
-            
-            # Use SSH to start the process and stream logs directly to local file
-            # Add SSH options to avoid host key verification prompts
-            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-            # Run command on remote and redirect output to local file
-            ssh_command = f"ssh {ssh_options} {self.node_ip} '{command}' > {local_log_path} 2>&1 &"
-            
-            # Debug: print the command
-            cluster_logger.info(f"Executing SSH command: {ssh_command}")
             
             try:
                 process = subprocess.Popen(
@@ -854,32 +874,21 @@ class VNode:
         
         self.is_tensor_store_ready = False
         cluster_logger.info(f"TensorStore shutdown completed on {self.node_ip}")
-        
-        # Start cleanup thread for tensor store log streaming
-        def cleanup_tensor_store_log():
-            time.sleep(5)
-            if self.tensor_store_log_thread and self.tensor_store_log_thread.is_alive():
-                cluster_logger.info(f"Stopping tensor store log streaming thread on {self.node_ip}")
-                self.tensor_store_log_thread = None
-        
-        cleanup_thread = threading.Thread(target=cleanup_tensor_store_log, daemon=True)
-        cleanup_thread.start()
 
-    def stop_api_server(self):
+    def stop_api_server(self, api_server_port: int = None):
         """Stop the API server on this VNode (only applicable for first node)."""
         if self.pipeline_rank != 0:
             cluster_logger.info(f"API server not running on {self.node_ip} (not first node)")
             return
-            
-        if not self.is_api_server_ready or self.api_server_port is None:
-            cluster_logger.info(f"API server not running on {self.node_ip}")
-            return
         
         cluster_logger.info(f"Stopping API server on {self.node_ip}...")
+
+        if api_server_port is None:
+            api_server_port = self.api_server_port
         
         try:
             # Send shutdown request via HTTP
-            url = f"http://{self.node_ip}:{self.api_server_port}/shutdown"
+            url = f"http://{self.node_ip}:{api_server_port}/shutdown"
             response = requests.post(url, timeout=10)
             
             if response.status_code == 200:
@@ -896,16 +905,6 @@ class VNode:
         
         self.is_api_server_ready = False
         cluster_logger.info(f"API server shutdown completed on {self.node_ip}")
-        
-        # Start cleanup thread for API server log streaming
-        def cleanup_api_server_log():
-            time.sleep(5)
-            if self.api_server_log_thread and self.api_server_log_thread.is_alive():
-                cluster_logger.info(f"Stopping API server log streaming thread on {self.node_ip}")
-                self.api_server_log_thread = None
-        
-        cleanup_thread = threading.Thread(target=cleanup_api_server_log, daemon=True)
-        cleanup_thread.start()
 
 
 

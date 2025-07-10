@@ -94,10 +94,14 @@ class GlobalServer:
     async def send_request(self, request: Request, pipeline_index: int) -> RequestOutput:
         """Send a request to a specific pipeline."""
         pipeline = self.cluster.pipelines[pipeline_index]
-        first_vnode = pipeline.vnodes[0]
-        
+        api_server_host = pipeline.api_server_host
+        api_server_port = pipeline.api_server_port
+
+        if api_server_host is None or api_server_port is None:
+            raise ValueError(f"Pipeline {pipeline_index} does not have a valid API server configured")
+
         # Set API URL for the request
-        request.input.api_url = f"http://{first_vnode.node_ip}:{first_vnode.api_server_port}/v1/completions"
+        request.input.api_url = f"http://{api_server_host}:{api_server_port}/v1/completions"
         
         # Mark when request was sent
         request.sended_at = time.time()
