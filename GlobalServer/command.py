@@ -15,15 +15,15 @@ def get_tensor_store_command(model_name: str,
                             pipeline_parallel_rank: int,
                             start_layer_id: int,
                             end_layer_id: int,
+                            block_size: int,
+                            gpu_memory_utilization: float,
+                            swap_space: float,
+                            cache_dtype: str,
+                            max_model_len: int,
                             status_port: Optional[int] = None,
                             dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
-                            aws_profile: Optional[str] = None,
-                            block_size: int = 16,
-                            gpu_memory_utilization: float = 0.9,
-                            swap_space: float = 4.0,
-                            cache_dtype: str = "auto",
-                            max_model_len: int = 4096) -> str:
+                            aws_profile: Optional[str] = None) -> str:
     """
     Generate command to start tensor store server.
     
@@ -66,6 +66,13 @@ def get_tensor_store_command(model_name: str,
             f"--start-layer-id {start_layer_id} "
             f"--end-layer-id {end_layer_id} "
             f"--status-port {final_port}"
+            f" --pipeline-parallel-size {pipeline_parallel_size} "
+            f"--pipeline-parallel-rank {pipeline_parallel_rank} "
+            f"--block-size {block_size} "
+            f"--gpu-memory-utilization {gpu_memory_utilization} "
+            f"--swap-space {swap_space} "
+            f"--cache-dtype {cache_dtype} "
+            f"--max-model-len {max_model_len}"
         )
         if aws_profile:
             cmd += f" --aws-profile {aws_profile}"
@@ -91,7 +98,6 @@ def get_tensor_store_command(model_name: str,
         )
         if dtype is not None:
             cmd += f" --dtype {dtype}"
-    
     return cmd
 
 
@@ -100,6 +106,7 @@ def get_api_server_command(model_name: str,
                           parallel_strategy: List[int],
                           host: str,
                           node_rank_mapping: str,
+                          num_gpu_blocks_override: Optional[int] = None,
                           port: Optional[int] = None,
                           dtype: Optional[str] = None,
                           max_model_len: Optional[int] = None,
@@ -165,5 +172,10 @@ def get_api_server_command(model_name: str,
     
     if max_num_seqs is not None:
         cmd_parts.append(f"--max-num-seqs={max_num_seqs}")
+
+    # For Testing Dummy Value
+    num_gpu_blocks_override = 2048
+    if num_gpu_blocks_override is not None:
+        cmd_parts.append(f"--num-gpu-blocks={num_gpu_blocks_override}")
     
     return " ".join(cmd_parts)

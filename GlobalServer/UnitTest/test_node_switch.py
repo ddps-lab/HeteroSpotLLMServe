@@ -38,10 +38,9 @@ async def test_node_switch():
     config = {
         "model_name": model_name,
         "total_num_layers": 32,
-        "pp_layer_partition": "32",
-        "parallel_strategy": [1],
+        "pp_layer_partition": "32",  # Pipeline partition: 16 layers per node
+        "parallel_strategy": [1],     # 1 GPU per node (no tensor parallelism)
         "max_model_len": 4096,
-        "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
         "max_num_seqs": 16,
         "model_source": "s3",
