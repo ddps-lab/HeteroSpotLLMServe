@@ -1,7 +1,6 @@
 # S3 Tensor Store Server - Downloads from S3 and serves tensors
 
 import argparse
-import glob
 import json
 from typing import List, Optional, Union
 import os
@@ -60,8 +59,17 @@ DIV_COLUMN_WISE_LIST = ["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj"]
 DIV_ROW_WISE_LIST = ["o_proj", "down_proj"]
 VOCAB_PADDING_SIZE = 64
 
-MODEL_LOAD_COMPLETE = False
+TENSOR_INITIALIZE_COMPLETE = False
 SHUTDOWN_EVENT = threading.Event()
+
+# KV cache related global variables
+BLOCK_SIZE = -1
+GPU_MEMORY_UTILIZATION = -1.0
+SWAP_SPACE_BYTES = -1
+CACHE_DTYPE = None  # Will be set based on model dtype
+PIPELINE_PARALLEL_SIZE = -1
+PIPELINE_PARALLEL_RANK = -1
+MAX_MODEL_LEN = -1
 
 def get_tensor_dict():
     return TENSOR_DICT
@@ -275,6 +283,146 @@ def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
         logging.error(f"Error processing tensor {tensor_name}: {e}")
         raise e
 
+def get_kv_cache_shape(num_blocks: int, block_size: int, num_kv_heads: int, head_size: int) -> tuple:
+    """Get KV cache shape for flash attention backend"""
+    # Shape: (2, num_blocks, block_size, num_kv_heads, head_size)
+    # 2 is for key and value caches
+    return (2, num_blocks, block_size, num_kv_heads, head_size)
+
+def get_cache_block_size_bytes(config_dict: dict) -> int:
+    """Calculate the size of a cache block in bytes"""
+    global BLOCK_SIZE, CACHE_DTYPE
+    
+    # Get model parameters from config
+    num_attention_layers = END_LAYER_ID - START_LAYER_ID
+    num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
+    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    
+    # Adjust num_kv_heads for tensor parallelism
+    if TENSOR_PARALLEL_SIZE > 1:
+        num_kv_heads = num_kv_heads // TENSOR_PARALLEL_SIZE
+    
+    # Calculate entries per block
+    key_cache_entry = num_kv_heads * head_size
+    value_cache_entry = key_cache_entry  # Same size for key and value
+    
+    # Total size for all layers
+    total = num_attention_layers * BLOCK_SIZE * (key_cache_entry + value_cache_entry)
+    
+    # Get dtype size
+    dtype_size = CACHE_DTYPE.itemsize if CACHE_DTYPE else 2  # Default to 2 bytes (float16)
+    
+    return dtype_size * total
+
+def get_model_forward_memory(config_dict: dict) -> int:
+    """Get the memory required for model forward pass"""
+    num_attention_layers = END_LAYER_ID - START_LAYER_ID
+    intermediate_size = config_dict["intermediate_size"]
+
+    # Intermediate Tensor Size 가 가장 큰 것은 FFN 에서이다.
+    # FFN Network 를 진행할 때 가장 큰 부분은 up&gate projection 이다.
+    global CACHE_DTYPE, MAX_MODEL_LEN
+    dtype_size = CACHE_DTYPE.itemsize if CACHE_DTYPE else 2  # Default to 2 bytes (float16)
+    max_model_len = MAX_MODEL_LEN
+    intermediate_total_dim = max_model_len * intermediate_size * 2 # 2 는 up&gate projection 이기 때문
+    intermediate_total_size = intermediate_total_dim * dtype_size
+    return intermediate_total_size
+
+def determine_num_available_blocks(config_dict: dict) -> tuple[int, int]:
+    """Profile memory and determine number of available KV cache blocks"""
+    global CACHE_DTYPE, DTYPE
+    
+    # Set cache dtype if auto
+    if CACHE_DTYPE is None:
+        CACHE_DTYPE = DTYPE
+    
+    # Profile memory after model loading
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    free_memory_after, total_memory = torch.cuda.mem_get_info(LOCAL_RANK)
+    using_memory = total_memory - free_memory_after
+    model_forward_memory = get_model_forward_memory(config_dict)
+    
+    # Calculate available memory for KV cache
+    available_kv_cache_memory = int(total_memory * GPU_MEMORY_UTILIZATION - using_memory - model_forward_memory)
+
+    assert available_kv_cache_memory > 0, f"kv cache memory 를 할당할 수 있는 공간이 없습니다." \
+        f"total_memory: {total_memory / (1024**3):.2f} GiB, " \
+        f"free_memory_after: {free_memory_after / (1024**3):.2f} GiB, " \
+        f"using_memory: {using_memory / (1024**3):.2f} GiB, " \
+        f"model_forward_memory: {model_forward_memory / (1024**3):.2f} GiB, " \
+        f"available_kv_cache_memory: {available_kv_cache_memory / (1024**3):.2f} GiB"
+    
+    # Calculate cache block size
+    cache_block_size = get_cache_block_size_bytes(config_dict)
+    
+    # Calculate number of blocks
+    num_gpu_blocks = max(0, available_kv_cache_memory // cache_block_size)
+    num_cpu_blocks = max(0, SWAP_SPACE_BYTES // cache_block_size)
+
+    assert num_gpu_blocks > 0, f"!!!num_gpu_blocks < 0!!!"
+    
+    logging.info(f"[Memory Profiling Complete]")
+    logging.info(f"  - Total GPU memory: {total_memory / (1024**3):.2f} GiB")
+    logging.info(f"  - Memory used by model weights: {using_memory / (1024**3):.2f} GiB")
+    logging.info(f"  - Memory reserved for forward pass: {model_forward_memory / (1024**3):.2f} GiB")
+    logging.info(f"  - Memory available for KV cache: {available_kv_cache_memory / (1024**3):.2f} GiB")
+    logging.info(f"[KV Cache Block Calculation]")
+    logging.info(f"  - Cache block size: {cache_block_size} bytes ({cache_block_size / 1024:.2f} KB)")
+    logging.info(f"  - Number of GPU blocks: {num_gpu_blocks}")
+    logging.info(f"  - Number of CPU blocks: {num_cpu_blocks}")
+    
+    return num_gpu_blocks, num_cpu_blocks
+
+def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int, num_cpu_blocks: int) -> dict:
+    """Allocate KV cache tensors for all virtual engines"""
+    # Get model parameters
+    num_attention_layers = END_LAYER_ID - START_LAYER_ID
+    num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
+    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    
+    # Adjust for tensor parallelism
+    if TENSOR_PARALLEL_SIZE > 1:
+        num_kv_heads = num_kv_heads // TENSOR_PARALLEL_SIZE
+    
+    # Get KV cache shape
+    kv_cache_shape = get_kv_cache_shape(num_gpu_blocks, BLOCK_SIZE, num_kv_heads, head_size)
+    
+    # Allocate KV cache for each virtual engine
+    for ve in range(PIPELINE_PARALLEL_SIZE):
+        # Allocate GPU cache for each layer
+        for layer_idx in range(num_attention_layers):
+            # Create KV cache tensor for this layer
+            layer_kv_cache = torch.zeros(kv_cache_shape, dtype=CACHE_DTYPE, device=DEVICE)
+            
+            # Store in TENSOR_DICT with appropriate key
+            cache_key = f"kv_cache.ve_{ve}.layer_{START_LAYER_ID + layer_idx}"
+            with TENSOR_DICT_LOCK:
+                TENSOR_DICT[cache_key] = layer_kv_cache
+        
+        # Store metadata
+        metadata_key = f"kv_cache_metadata.ve_{ve}"
+        metadata = {
+            "num_gpu_blocks": num_gpu_blocks,
+            "num_cpu_blocks": num_cpu_blocks,
+            "block_size": BLOCK_SIZE,
+            "num_layers": num_attention_layers,
+            "start_layer_id": START_LAYER_ID,
+            "end_layer_id": END_LAYER_ID,
+            "shape": kv_cache_shape
+        }
+        
+        with TENSOR_DICT_LOCK:
+            TENSOR_DICT[metadata_key] = metadata
+    
+    cache_block_size = get_cache_block_size_bytes(config_dict)
+    return {
+        "num_gpu_blocks": num_gpu_blocks,
+        "num_cpu_blocks": num_cpu_blocks,
+        "total_gpu_cache_size_gb": (num_gpu_blocks * cache_block_size) / (1024**3),
+        "total_cpu_cache_size_gb": (num_cpu_blocks * cache_block_size) / (1024**3)
+    }
+
 def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, model_name: str,
                                tensor_name: str):
     """Download a tensor from S3 and process it"""
@@ -384,11 +532,11 @@ def _status_server(host: str, port: int):
                         
                         if not data:
                             # Empty connection - legacy status check
-                            msg = TensorStoreResponse.READY.value if MODEL_LOAD_COMPLETE else TensorStoreResponse.NOT_READY.value
+                            msg = TensorStoreResponse.READY.value if TENSOR_INITIALIZE_COMPLETE else TensorStoreResponse.NOT_READY.value
                             conn.sendall(msg)
                         elif data == TensorStoreRequest.STATUS_CHECK.value:
                             # Explicit status check
-                            msg = TensorStoreResponse.READY.value if MODEL_LOAD_COMPLETE else TensorStoreResponse.NOT_READY.value
+                            msg = TensorStoreResponse.READY.value if TENSOR_INITIALIZE_COMPLETE else TensorStoreResponse.NOT_READY.value
                             conn.sendall(msg)
                         elif data == TensorStoreRequest.SHUTDOWN.value:
                             # Shutdown command
@@ -427,10 +575,29 @@ def parse_args():
                         help="Port for readiness TCP server")
     parser.add_argument("--aws-profile", type=str, default=None,
                         help="AWS profile to use for S3 access")
+    
+    # KV cache related arguments
+    parser.add_argument("--block-size", type=int, default=16, choices=[8, 16, 32],
+                        help="Token block size for KV cache (default: 16)")
+    parser.add_argument("--gpu-memory-utilization", type=float, default=0.9,
+                        help="Fraction of GPU memory to use for KV cache (default: 0.9)")
+    parser.add_argument("--swap-space", type=float, default=4.0,
+                        help="Size of CPU swap space per GPU in GiB (default: 4.0)")
+    parser.add_argument("--cache-dtype", type=str, default="auto",
+                        help="Data type for KV cache storage (default: auto, uses model dtype)")
+    parser.add_argument("--pipeline-parallel-size", type=int, default=1,
+                        help="Pipeline parallel size for virtual engine allocation")
+    parser.add_argument("--pipeline-parallel-rank", type=int, default=0,
+                        help="Pipeline parallel rank (default: 0)")
+    parser.add_argument("--max-model-len", type=int, default=None,
+                        help="Maximum model sequence length (default: from model config)")
+    
     return parser.parse_args()
 
 def set_global_variables(args: argparse.Namespace, config_dict: dict):
     global TENSOR_PARALLEL_SIZE, LOCAL_RANK, START_LAYER_ID, END_LAYER_ID, TOTAL_LAYER_NUM, DEVICE, TENSOR_PARALLEL_RANK
+    global BLOCK_SIZE, GPU_MEMORY_UTILIZATION, SWAP_SPACE_BYTES, PIPELINE_PARALLEL_SIZE, PIPELINE_PARALLEL_RANK, MAX_MODEL_LEN
+    
     TENSOR_PARALLEL_SIZE = args.tensor_parallel_size
     LOCAL_RANK = args.local_rank
     TENSOR_PARALLEL_RANK = args.local_rank
@@ -441,6 +608,19 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
     
     if END_LAYER_ID == -1:
         END_LAYER_ID = config_dict["num_hidden_layers"]
+    
+    # Set KV cache related globals
+    BLOCK_SIZE = args.block_size
+    GPU_MEMORY_UTILIZATION = args.gpu_memory_utilization
+    SWAP_SPACE_BYTES = int(args.swap_space * 1024 * 1024 * 1024)  # Convert GiB to bytes
+    PIPELINE_PARALLEL_SIZE = args.pipeline_parallel_size
+    PIPELINE_PARALLEL_RANK = args.pipeline_parallel_rank
+    
+    # Set max model length - use from args if provided, otherwise from config
+    if args.max_model_len is not None:
+        MAX_MODEL_LEN = args.max_model_len
+    else:
+        MAX_MODEL_LEN = config_dict.get("max_position_embeddings", 4096)  # Default to 4096 if not in config
 
 def main():
     args = parse_args()
@@ -568,27 +748,35 @@ def main():
     
     # Fuse tensors
     logging.info(f"Before fusing, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
-    logging.info(f"Start fusing tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
+    logging.info(f"[Tensor Fusion Phase] Starting fusion for layers {START_LAYER_ID} to {END_LAYER_ID}")
     
     for layer_idx in range(START_LAYER_ID, END_LAYER_ID):
         fuse_tensor(layer_idx)
     
-    logging.info(f"Finished fusing tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
-    logging.info("Emptying CUDA cache after fusing...")
+    logging.info(f"[Tensor Fusion Complete] Fused tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
+    logging.info("[Memory Cleanup] Emptying CUDA cache after fusion...")
     torch.cuda.empty_cache()
-    logging.info(f"After emptying cache, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
+    logging.debug(f"After emptying cache, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
     
     # Print final tensor list
     for tensor_name in TENSOR_DICT:
         logging.info(f"tensor_name: {tensor_name} / shape: {TENSOR_DICT[tensor_name].shape} / dtype: {TENSOR_DICT[tensor_name].dtype} / device: {TENSOR_DICT[tensor_name].device}")
     
     load_end = time.perf_counter()
-    logging.info(f"Model Loading time: {load_end - download_start} seconds")
+    logging.info(f"[Model Loading Complete] Total loading time: {load_end - download_start:.2f} seconds")
     
     if not TENSOR_DICT:
         raise ValueError("Tensor loading failed: TENSOR_DICT is empty")
     
     logging.info(f"Successfully loaded {len(TENSOR_DICT)} tensors")
+    
+    # Allocate KV cache after model loading
+    logging.info("[KV Cache Allocation Phase Started]")
+    num_gpu_blocks, num_cpu_blocks = determine_num_available_blocks(config_dict)
+    kv_cache_info = allocate_kv_cache(config_dict, num_gpu_blocks, num_cpu_blocks)
+    logging.info("[KV Cache Allocation Complete]")
+    logging.info(f"  - Total GPU cache size: {kv_cache_info['total_gpu_cache_size_gb']:.2f} GiB")
+    logging.info(f"  - Total CPU swap size: {kv_cache_info['total_cpu_cache_size_gb']:.2f} GiB")
     
     # Start TensorManager server
     manager = TensorManager(address=(MANAGER_HOST, MANAGER_PORT), authkey=MANAGER_AUTHKEY)
@@ -599,9 +787,9 @@ def main():
         logging.info("Manager server running. Waiting for client connections...")
         logging.info("Press Ctrl+C to stop.")
         
-        global MODEL_LOAD_COMPLETE
-        MODEL_LOAD_COMPLETE = True
-        logging.info("Model weight loading completed. Status server will now return 'READY'.")
+        global TENSOR_INITIALIZE_COMPLETE
+        TENSOR_INITIALIZE_COMPLETE = True
+        logging.info("[All Initialization Complete] Model weights loaded and KV cache allocated. Status server returning 'READY'.")
         
         # Start serve_forever in a separate thread so we can check shutdown flag
         server_thread = threading.Thread(target=server.serve_forever)
