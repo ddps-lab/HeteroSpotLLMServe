@@ -13,6 +13,7 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
+import io
 
 import torch
 from multiprocessing.managers import BaseManager, DictProxy
@@ -191,25 +192,85 @@ def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bo
     logging.info(f"Filtered to {len(required_tensors)} required tensors out of {len(all_tensor_names)} total")
     return required_tensors
 
-def download_tensor_from_s3(s3_client: boto3.client, bucket_name: str, s3_key: str, local_path: str):
-    """Download a single tensor file from S3 using boto3"""
+def log_required_tensors_summary(required_tensor_names: List[str]):
+    """Log required tensors in a formatted, readable way"""
+    logging.info("=" * 80)
+    logging.info(f"[Required Tensors Summary] Total: {len(required_tensor_names)} tensors")
+    logging.info("=" * 80)
+    
+    # Group tensors by type
+    embed_tensors = [t for t in required_tensor_names if "embed_tokens" in t]
+    norm_tensors = [t for t in required_tensor_names if "norm" in t and "layer" not in t]
+    lm_head_tensors = [t for t in required_tensor_names if "lm_head" in t]
+    layer_tensors = [t for t in required_tensor_names if "model.layers." in t]
+    
+    # Group layer tensors by layer number
+    layer_dict = {}
+    for tensor in layer_tensors:
+        if "model.layers." in tensor:
+            layer_num = int(tensor.split('.')[2])
+            if layer_num not in layer_dict:
+                layer_dict[layer_num] = []
+            layer_dict[layer_num].append(tensor)
+    
+    # Log embedding tensors
+    if embed_tensors:
+        logging.info(f"[Embedding Tensors] ({len(embed_tensors)} tensors)")
+        for tensor in sorted(embed_tensors):
+            logging.info(f"  - {tensor}")
+    
+    # Log layer tensors
+    if layer_dict:
+        logging.info(f"[Layer Tensors] ({len(layer_tensors)} tensors across {len(layer_dict)} layers)")
+        for layer_num in sorted(layer_dict.keys()):
+            logging.info(f"  Layer {layer_num}: {len(layer_dict[layer_num])} tensors")
+            for tensor in sorted(layer_dict[layer_num]):
+                tensor_type = tensor.split('.')[-2]
+                logging.info(f"    - {tensor_type}")
+    
+    # Log normalization tensors
+    if norm_tensors:
+        logging.info(f"[Normalization Tensors] ({len(norm_tensors)} tensors)")
+        for tensor in sorted(norm_tensors):
+            logging.info(f"  - {tensor}")
+    
+    # Log LM head tensors
+    if lm_head_tensors:
+        logging.info(f"[LM Head Tensors] ({len(lm_head_tensors)} tensors)")
+        for tensor in sorted(lm_head_tensors):
+            logging.info(f"  - {tensor}")
+    
+    # Log other tensors
+    other_tensors = [t for t in required_tensor_names 
+                     if t not in embed_tensors + norm_tensors + lm_head_tensors + layer_tensors]
+    if other_tensors:
+        logging.info(f"[Other Tensors] ({len(other_tensors)} tensors)")
+        for tensor in sorted(other_tensors):
+            logging.info(f"  - {tensor}")
+    
+    logging.info("=" * 80)
+
+def load_tensor_from_s3_direct(s3_client: boto3.client, bucket_name: str, s3_key: str) -> torch.Tensor:
+    """Load a tensor directly from S3 to CPU memory without saving to disk"""
     try:
-        # Create directory if needed
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        # Get object from S3
+        response = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
         
-        # Download using boto3
-        s3_client.download_file(bucket_name, s3_key, local_path)
+        # Read object body into memory
+        tensor_bytes = response['Body'].read()
+        content_length = response['ContentLength']
         
-        # Verify file was actually saved
-        if not os.path.exists(local_path):
-            raise RuntimeError(f"File was not saved to {local_path}")
+        logging.info(f"Loading {s3_key} from S3 ({content_length:,} bytes) directly to memory")
         
-        file_size = os.path.getsize(local_path)
-        if file_size == 0:
-            raise RuntimeError(f"Downloaded file is empty: {local_path}")
+        # Load tensor directly from bytes
+        buffer = io.BytesIO(tensor_bytes)
+        tensor = torch.load(buffer, map_location="cpu")
         
-        logging.info(f"Downloaded {s3_key} from S3 ({file_size} bytes)")
-        return True
+        # Clean up
+        buffer.close()
+        del tensor_bytes
+        
+        return tensor
         
     except ClientError as e:
         error_code = e.response['Error']['Code']
@@ -217,24 +278,21 @@ def download_tensor_from_s3(s3_client: boto3.client, bucket_name: str, s3_key: s
             logging.error(f"Tensor file not found in S3: {s3_key}")
             raise
         else:
-            logging.error(f"Failed to download {s3_key} from S3: {e}")
+            logging.error(f"Failed to load {s3_key} from S3: {e}")
             raise
     except Exception as e:
-        logging.error(f"Unexpected error downloading {s3_key}: {e}")
+        logging.error(f"Unexpected error loading {s3_key}: {e}")
         raise
 
-def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
-    """Load and process a tensor from file - use original dtype from file"""
+def process_tensor_from_s3(tensor_name: str, full_tensor: torch.Tensor):
+    """Process a tensor loaded from S3 - use original dtype from tensor"""
     global DTYPE
     
     try:
-        # Load tensor from file (always to CPU first)
-        full_tensor = torch.load(tensor_file_path, map_location="cpu")
-        
         # Set global DTYPE from first tensor if not set yet
         if DTYPE is None:
             DTYPE = full_tensor.dtype
-            logging.info(f"Set global DTYPE to {DTYPE} from tensor file")
+            logging.info(f"Set global DTYPE to {DTYPE} from tensor")
         
         # Process tensor based on type and slice as needed
         if tensor_name.split('.')[-2] == "embed_tokens":
@@ -266,16 +324,12 @@ def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
         with TENSOR_DICT_LOCK:
             TENSOR_DICT[tensor_name] = tensor
             
-        logging.info(f"Loaded {tensor_name} / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
+        logging.info(f"Processed {tensor_name} / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
         
         # Clean up CPU tensor
         del full_tensor
         del tensor
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        
-        # Remove local file after processing
-        os.remove(tensor_file_path)
-        logging.debug(f"Removed local file after processing: {tensor_file_path}")
         
         return True
         
@@ -423,45 +477,40 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
         "total_gpu_cache_size_gb": (num_gpu_blocks * cache_block_size) / (1024**3),
     }
 
-def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, model_name: str,
-                               tensor_name: str):
-    """Download a tensor from S3 and process it"""
-    # Prepare paths
+def load_and_process_tensor_from_s3(s3_client, bucket_name: str, base_s3_path: str, tensor_name: str):
+    """Load a tensor directly from S3 and process it"""
+    # Prepare S3 key
     if base_s3_path:
         s3_key = f"{base_s3_path}/{tensor_name}.bin"
     else:
         s3_key = f"{tensor_name}.bin"
-    local_path = f"models/{model_name}/{tensor_name}.bin"
     
-    # Download tensor
-    success = download_tensor_from_s3(s3_client, bucket_name, s3_key, local_path)
-    if not success:
-        return
+    # Load tensor directly from S3 to CPU memory
+    full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
     
     # Process tensor
-    process_tensor_from_file(tensor_name, local_path)
+    process_tensor_from_s3(tensor_name, full_tensor)
 
-def download_required_tensors_individually(s3_client, bucket_name: str, base_s3_path: str, model_name: str, 
-                                          required_tensor_names: List[str]):
-    """Download only required tensors individually from S3 using boto3"""
+def load_required_tensors_from_s3(s3_client, bucket_name: str, base_s3_path: str, required_tensor_names: List[str]):
+    """Load required tensors directly from S3 to memory"""
     if not required_tensor_names:
-        logging.warning("No tensors to download")
+        logging.warning("No tensors to load")
         return
     
-    logging.info(f"Downloading and processing {len(required_tensor_names)} required tensors individually")
+    logging.info(f"Loading and processing {len(required_tensor_names)} required tensors directly from S3")
     
-    # Use threading for parallel downloads and processing
+    # Use threading for parallel loading and processing
     max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))  
-    logging.info(f"Using {max_tensor_workers} workers for tensor downloads")
+    logging.info(f"Using {max_tensor_workers} workers for tensor loading")
     
     with ThreadPoolExecutor(max_workers=max_tensor_workers) as executor:
         futures = []
         
         for tensor_name in required_tensor_names:
-            # Submit download and processing task
+            # Submit loading and processing task
             future = executor.submit(
-                download_and_process_tensor,
-                s3_client, bucket_name, base_s3_path, model_name, tensor_name
+                load_and_process_tensor_from_s3,
+                s3_client, bucket_name, base_s3_path, tensor_name
             )
             futures.append(future)
         
@@ -470,7 +519,7 @@ def download_required_tensors_individually(s3_client, bucket_name: str, base_s3_
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"Error in tensor download/processing: {e}")
+                logging.error(f"Error in tensor loading/processing: {e}")
 
 # Function removed - tensors are now processed directly after download
 
@@ -623,6 +672,39 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
         MAX_MODEL_LEN = args.max_model_len
     else:
         MAX_MODEL_LEN = config_dict.get("max_position_embeddings", 4096)  # Default to 4096 if not in config
+    
+    # Log all global variables in a formatted way
+    logging.info("=" * 80)
+    logging.info("[Global Variables Initialization Summary]")
+    logging.info("=" * 80)
+    
+    logging.info("[Model Configuration]")
+    logging.info(f"  - Model Name: {args.model_name}")
+    logging.info(f"  - Total Layers: {TOTAL_LAYER_NUM}")
+    logging.info(f"  - Max Model Length: {MAX_MODEL_LEN}")
+    
+    logging.info("[Layer Assignment]")
+    logging.info(f"  - Start Layer ID: {START_LAYER_ID}")
+    logging.info(f"  - End Layer ID: {END_LAYER_ID}")
+    logging.info(f"  - Assigned Layers: {END_LAYER_ID - START_LAYER_ID} layers [{START_LAYER_ID}, {END_LAYER_ID})")
+    
+    logging.info("[Parallelism Configuration]")
+    logging.info(f"  - Tensor Parallel Size: {TENSOR_PARALLEL_SIZE}")
+    logging.info(f"  - Tensor Parallel Rank: {TENSOR_PARALLEL_RANK}")
+    logging.info(f"  - Pipeline Parallel Size: {PIPELINE_PARALLEL_SIZE}")
+    logging.info(f"  - Pipeline Parallel Rank: {PIPELINE_PARALLEL_RANK}")
+    
+    logging.info("[Device Configuration]")
+    logging.info(f"  - Local Rank: {LOCAL_RANK}")
+    logging.info(f"  - CUDA Device: {DEVICE}")
+    
+    logging.info("[KV Cache Configuration]")
+    logging.info(f"  - Block Size: {BLOCK_SIZE}")
+    logging.info(f"  - GPU Memory Utilization: {GPU_MEMORY_UTILIZATION * 100:.1f}%")
+    logging.info(f"  - Swap Space: {args.swap_space:.2f} GiB ({SWAP_SPACE_BYTES:,} bytes)")
+    logging.info(f"  - Cache Dtype: {args.cache_dtype}")
+    
+    logging.info("=" * 80)
 
 def main():
     args = parse_args()
@@ -687,7 +769,7 @@ def main():
     except RuntimeError:
         logging.warning("Could not set start method to 'spawn'. Using default.")
     
-    logging.info("Loading strategy: CPU -> GPU transfer (Individual downloads + local loading)")
+    logging.info("Loading strategy: Direct S3 -> CPU -> GPU transfer (No disk I/O)")
     
     # Step 1: List all tensor files from S3 using boto3
     logging.info("Step 1: Listing all tensor files from S3...")
@@ -697,10 +779,8 @@ def main():
         logging.error("No tensor files found in S3")
         return
     
-    # Step 2: Download config.json first to get model configuration
-    logging.info("Step 2: Downloading config.json to determine model configuration...")
-    config_local_path = f"models/{args.model_name}/config.json"
-    os.makedirs(os.path.dirname(config_local_path), exist_ok=True)
+    # Step 2: Load config.json from S3 to get model configuration
+    logging.info("Step 2: Loading config.json from S3...")
     
     try:
         if base_s3_path:
@@ -708,17 +788,19 @@ def main():
         else:
             config_s3_key = "config.json"
         
-        s3_client.download_file(bucket_name, config_s3_key, config_local_path)
+        # Load config directly from S3
+        response = s3_client.get_object(Bucket=bucket_name, Key=config_s3_key)
+        config_content = response['Body'].read()
+        config_dict = json.loads(config_content)
         
-        with open(config_local_path, "r") as f:
-            config_dict = json.load(f)
         tie_word_embeddings = config_dict["tie_word_embeddings"]
-        logging.info(f"model config: {config_dict}")
+        logging.info(f"Loaded model config from S3")
+        logging.debug(f"Config: {config_dict}")
     except ClientError as e:
-        logging.error(f"Failed to download config.json: {e}")
+        logging.error(f"Failed to load config.json from S3: {e}")
         return
     except Exception as e:
-        logging.error(f"Failed to download or parse config: {e}")
+        logging.error(f"Failed to parse config: {e}")
         return
     
     set_global_variables(args, config_dict)
@@ -731,16 +813,18 @@ def main():
         logging.error("No required tensors found after filtering")
         return
     
-    # Step 4: Download and process required tensors individually
-    logging.info("Step 4: Downloading and processing required tensors individually...")
-    download_start = time.perf_counter()
+    # Log the required tensors in a formatted way
+    log_required_tensors_summary(required_tensor_names)
+    
+    # Step 4: Load and process required tensors directly from S3
+    logging.info("Step 4: Loading and processing required tensors directly from S3...")
+    load_start = time.perf_counter()
     
     try:
-        download_required_tensors_individually(s3_client, bucket_name, base_s3_path, args.model_name, 
-                                             required_tensor_names)
+        load_required_tensors_from_s3(s3_client, bucket_name, base_s3_path, required_tensor_names)
         
-        download_end = time.perf_counter()
-        logging.info(f"Download and processing completed in {download_end - download_start:.2f} seconds")
+        load_end = time.perf_counter()
+        logging.info(f"Loading and processing completed in {load_end - load_start:.2f} seconds")
         
     except Exception as e:
         logging.error(f"Model Loading Error: {e}")
@@ -764,7 +848,7 @@ def main():
         logging.info(f"tensor_name: {tensor_name} / shape: {TENSOR_DICT[tensor_name].shape} / dtype: {TENSOR_DICT[tensor_name].dtype} / device: {TENSOR_DICT[tensor_name].device}")
     
     load_end = time.perf_counter()
-    logging.info(f"[Model Loading Complete] Total loading time: {load_end - download_start:.2f} seconds")
+    logging.info(f"[Model Loading Complete] Total loading time: {load_end - load_start:.2f} seconds")
     
     if not TENSOR_DICT:
         raise ValueError("Tensor loading failed: TENSOR_DICT is empty")
