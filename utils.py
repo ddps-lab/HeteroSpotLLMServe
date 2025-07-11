@@ -101,9 +101,9 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
             f"node:{ip}": 0.001 # 특정 노드를 사용하겠다는 의미
         })
     
-    # strategy 를 STRICT_SPREAD 로 설정하면 모든 랭크가 다 다른 노드에 분배되어야 함.
-    # 따라서 ray.get 에서 무한대기를 하는 상황이 발생한다. PACK 으로 변경하자.
-    placement_group = ray.util.placement_group(placement_group_specs, strategy="PACK")
+    # SPREAD 전략을 사용하여 리소스를 더 유연하게 분산
+    # SPREAD는 가능한 한 번들을 여러 노드에 분산시키지만, 필요시 같은 노드에도 배치 가능
+    placement_group = ray.util.placement_group(placement_group_specs, strategy="SPREAD")
     ray.get(placement_group.ready())
 
     # 생성된 번들(bundle)과 할당된 노드 IP 매핑
