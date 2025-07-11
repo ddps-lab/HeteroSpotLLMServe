@@ -28,8 +28,8 @@ async def test_node_switch():
     global_server = GlobalServer()
 
     head_node_ip = "172.31.60.109"
-    old_node_ip = "172.31.26.43"
-    new_node_ip = "172.31.50.57"
+    old_node_ip = "172.31.50.57"
+    new_node_ip = "172.31.26.43"
 
     node_layer_mapping = [
         (head_node_ip, 16),
@@ -40,7 +40,7 @@ async def test_node_switch():
     config = {
         "model_name": model_name,
         "total_num_layers": 32,
-        "pp_layer_partition": "16",  # Pipeline partition: 16 layers per node
+        "pp_layer_partition": "16,16",  # Pipeline partition: 16 layers per node
         "parallel_strategy": [1,1],     # 1 GPU per node (no tensor parallelism)
         "max_model_len": 4096,
         "max_num_batched_tokens": 4096,

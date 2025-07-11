@@ -154,8 +154,7 @@ class GlobalServer:
                         
                         # Get head node IP for logging
                         pipeline = self.cluster.pipelines[pipeline_index]
-                        head_node_ip = pipeline.vnodes[0].node_ip
-                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index} (head: {head_node_ip})")
+                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index} (head: {pipeline.api_server_host}:{pipeline.api_server_port})")
                         
                     except Exception as e:
                         logger.error(f"Error dispatching request: {e}")
