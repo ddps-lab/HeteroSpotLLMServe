@@ -353,7 +353,8 @@ class Pipeline:
             cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
             time.sleep(1)
         
-        # Create new VNode with same configuration but new IP and GPU count
+        # 새로운 노드를 관리할 VNode 객체를 생성한다.
+        # 새로운 노드는 이전 노드와 완전히 동일한 하드웨어 특성을 가져야만 한다 (현재로써의 Limitation)
         new_vnode = VNode(
             node_ip=new_node_ip,
             num_gpu=new_num_gpu,
@@ -363,12 +364,12 @@ class Pipeline:
             total_layers=target_vnode.total_layers
         )
         
-        # Start tensor store on the new node
+        # 새로운 노드에서 Tensor store 를 시작한다.
         tensor_store_port = target_vnode.tensor_store_port
         parallel_strategy = self.config["parallel_strategy"]
         new_vnode.start_tensor_store(tensor_store_port, self.config, len(parallel_strategy))
         
-        # Check tensor store status
+        # Tensor Store 가 준비될 때 까지 기다린다.
         cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
         status_check_time = 0
         while not new_vnode.check_tensor_store_status():
@@ -377,28 +378,32 @@ class Pipeline:
             time.sleep(2)
         
         cluster_logger.info(f"Tensor store ready on new node {new_node_ip}")
-        
-        # Mark pipeline as not ready during switch
-        cluster_logger.info(f"Pipeline marked as not ready for node switch")
+
+        # 기존의 api server host 와 api server port 를 저장한다.
+        old_api_server_host = self.api_server_host
+        old_api_server_port = self.api_server_port
+        old_first_vnode = self.vnodes[0]
         
         # 이제 새로 참여한 vnode 를 먼저 올린다.
-        old_first_vnode = self.vnodes[0]
         self.vnodes[target_index] = new_vnode
         new_first_vnode = self.vnodes[0]
-        
-        # Update node_rank_mapping
+        new_api_server_host = new_first_vnode.node_ip
+        new_api_server_port = old_api_server_port
+
+        # 만약 old_api_server_host 와 new_api_server_host 가 동일하다면
+        # head 노드가 동일하다는 의미이다. 이 경우 새로운 API server 포트를 사용해야 한다.
+        if old_api_server_host == new_api_server_host:
+            # Increment port to avoid conflict
+            new_api_server_port += 1
+
+        # Node Rank Mapping Dictionary 를 업데이트 한다.
         self._generate_node_rank_mapping()
+
+        # 새로운 api server 시작
+        new_first_vnode.start_api_server(new_api_server_port, self.config, self.node_rank_mapping)
         
-        # Start API server on the new first node (pipeline rank 0)
-        api_server_port = target_vnode.api_server_port if target_vnode.api_server_port else DEFAULT_API_SERVER_BASE_PORT
-        old_api_server_port = api_server_port
-        # 만약 api server 의 head node 가 동일하다면 다른 port 를 사용해야 한다.
-        if old_first_vnode.node_ip == new_first_vnode.node_ip:
-            api_server_port += 1  # Increment port to avoid conflict
-        new_first_vnode.start_api_server(api_server_port, self.config, self.node_rank_mapping)
-        
-        # Check API server status
-        cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{api_server_port}")
+        # 새로운 api server 가 준비될 때 까지 기다린다.
+        cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{new_api_server_port}")
         status_check_time = 0
         while not new_first_vnode.check_api_server_status():
             status_check_time += 1
@@ -407,19 +412,19 @@ class Pipeline:
 
         cluster_logger.info(f"API server ready on node {new_first_vnode.node_ip}")
 
+        # 새로운 pipeline 이 준비되었으므로, api server host 와 api server port 를 새로운 것으로 교체한다.
         start_downtime = time.time()
         self.is_ready = False
-        self.api_server_host = new_first_vnode.node_ip
-        self.api_server_port = api_server_port
+        self.api_server_host = new_api_server_host
+        self.api_server_port = new_api_server_port
         self.is_ready = True
-        downtime_duration = time.time() - start_downtime
+        end_downtime = time.time()
+        downtime_duration = end_downtime - start_downtime
         cluster_logger.info(f"Node Switch Completed. Downtime: {downtime_duration:.2f} seconds")
-        # 기존 pipeline api server 를 종료한다.
-        old_first_vnode.stop_api_server(old_api_server_port)
-        cluster_logger.info(f"Old API server stopped on node {old_first_vnode.node_ip}")
 
-        # Mark pipeline as ready again
-        cluster_logger.info(f"Pipeline marked as ready after node switch")
+        # 이제 기존의 api server 를 종료해야 한다.
+        cluster_logger.info(f"Stopping old API server on {old_first_vnode.node_ip}:{old_api_server_port}")
+        old_first_vnode.stop_api_server(old_api_server_port)
         
         # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
@@ -900,6 +905,9 @@ class VNode:
             else:
                 cluster_logger.error(f"Failed to stop API server: HTTP {response.status_code}")
                 
+        except requests.exceptions.ConnectionError as e:
+            # Connection refused is expected if the server is already stopped
+            cluster_logger.info(f"API server on {self.node_ip}:{api_server_port} appears to be already stopped (connection refused)")
         except Exception as e:
             cluster_logger.error(f"Failed to stop API server on {self.node_ip}: {e}")
         
