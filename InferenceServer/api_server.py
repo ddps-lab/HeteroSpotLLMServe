@@ -164,6 +164,12 @@ async def build_async_engine_client(
     else:
         logger.info("No node rank mapping provided. Automatically set via vLLM")
     
+    # Ray namespace index 설정
+    if hasattr(args, 'ray_namespace_idx'):
+        ray_namespace = f"namespace_{args.ray_namespace_idx}"
+        os.environ["VLLM_RAY_NAMESPACE"] = ray_namespace
+        logger.info(f"Ray namespace set to: {ray_namespace}")
+    
     # 파이프라인 병렬 레이어 파티션 정보를 확인합니다
     if hasattr(args, 'pp_layer_partition') and args.pp_layer_partition:
         try:
@@ -1019,7 +1025,8 @@ if __name__ == "__main__":
     # 이제 ray 는 GPU 를 전부 차지하지 않음
     # 즉, 여러 개의 actor 를 하나의 GPU 에 넣을 수 있음.
     # 이를 하는 이유는 Node Switching 을 위해서.
-    os.environ["VLLM_RAY_PER_WORKER_GPUS"] = "0.4"
+    # ray namespace 를 쪼개줄 수 있다면 필요 없어질 것 같다. 이후 확인되면 해당 내용을 제거한다.
+    # os.environ["VLLM_RAY_PER_WORKER_GPUS"] = "0.4"
     # 노드 매핑 인자 추가
     parser.add_argument(
         "--node-rank-mapping",
@@ -1038,6 +1045,13 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Pipeline parallel layer partition configuration as comma-separated integers. Example: '12,14,6'")
+    
+    # Ray namespace index 인자 추가
+    parser.add_argument(
+        "--ray-namespace-idx",
+        type=int,
+        default=0,
+        help="Ray namespace index for pipeline isolation. Example: 0, 1, 2...")
     
     args = parser.parse_args()
     validate_parsed_serve_args(args)

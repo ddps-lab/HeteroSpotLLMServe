@@ -74,8 +74,12 @@ def run_server_remote(hostname: str, username: str, command_to_execute: str, log
 def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[int]]):
     logger.info(f"Creating placement group and bundle indices for node rank mapping: {node_rank_mapping}")
 
+    # Get namespace from environment variable
+    ray_namespace = os.environ.get("VLLM_RAY_NAMESPACE", "namespace_0")
+    logger.info(f"Using Ray namespace: {ray_namespace}")
+    
     if not ray.is_initialized():
-        ray.init(address="auto")
+        ray.init(address="auto", namespace=ray_namespace)
 
     # 전체 rank 수 계산 및 rank-IP 매핑 생성
     total_ranks = 0
@@ -97,7 +101,7 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
     for rank in range(total_ranks):
         ip = rank_to_ip[rank]
         placement_group_specs.append({
-            'GPU': 0.4,
+            'GPU': 1.0,
             f"node:{ip}": 0.001 # 특정 노드를 사용하겠다는 의미
         })
     
