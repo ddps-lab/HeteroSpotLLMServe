@@ -7,6 +7,7 @@ DEFAULT_API_SERVER_BASE_PORT = 8001
 
 PYTHON = "/usr/bin/python"
 PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
+RAY = "/home/ubuntu/.local/bin/ray"
 
 def get_tensor_store_command(model_name: str, 
                             tensor_parallel_size: int,
@@ -185,3 +186,16 @@ def get_api_server_command(model_name: str,
         cmd_parts.append(f"--num-gpu-blocks={num_gpu_blocks_override}")
     
     return " ".join(cmd_parts)
+
+
+def get_ray_start_worker_command(head_address: str) -> str:
+    """
+    Generate command to start Ray worker node.
+    
+    Args:
+        head_address: Address of Ray head node (e.g., "192.168.1.100:6379")
+    
+    Returns:
+        Command string to execute
+    """
+    return f"{RAY} start --address={head_address} --disable-usage-stats"

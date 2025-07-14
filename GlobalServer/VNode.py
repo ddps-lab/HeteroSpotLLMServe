@@ -5,7 +5,7 @@ import subprocess
 import logging
 import time
 import os
-from command import get_tensor_store_command, get_api_server_command, DEFAULT_TENSOR_STORE_BASE_PORT, DEFAULT_API_SERVER_BASE_PORT
+from command import get_tensor_store_command, get_api_server_command, get_ray_start_worker_command, DEFAULT_TENSOR_STORE_BASE_PORT, DEFAULT_API_SERVER_BASE_PORT
 import json
 import sys
 import threading
@@ -188,27 +188,12 @@ class Pipeline:
         self.config = config
         self.ideal_throughput = ideal_throughput
         
-        # Start Ray cluster with automatic port selection
-        ray_port = self.get_alternate_ray_port()
-        self.start_ray_cluster(ray_port)
-        
+        # First, create VNode objects with placeholder GPU count
         start_layer_idx = 0
         for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
-            num_gpu = None
-            while True:
-                for node_info in ray.nodes():
-                    ray_node_ip = node_info.get("NodeManagerAddress")
-                    if ray_node_ip == node_ip:
-                        num_gpu = int(node_info.get("Resources").get("GPU", 0))
-                        break
-                if num_gpu is not None and num_gpu > 0:
-                    break
-                cluster_logger.info(f"Waiting for node {node_ip} to be entered into Ray cluster...")
-                time.sleep(1)
-
             vnode = VNode(
                 node_ip=node_ip, 
-                num_gpu=num_gpu, 
+                num_gpu=None,  # Placeholder, will be updated after Ray cluster is ready
                 pipeline_rank=pipeline_rank,
                 layer_start_id=start_layer_idx, 
                 layer_end_id=start_layer_idx + layer_partition,
@@ -216,6 +201,28 @@ class Pipeline:
             )
             start_layer_idx += layer_partition
             self.vnodes.append(vnode)
+        
+        # Now start Ray cluster with all vnodes
+        ray_port = self.get_alternate_ray_port()
+        self.start_ray_cluster(ray_port)
+        
+        # Update VNode GPU counts from Ray cluster information
+        for vnode in self.vnodes:
+            num_gpu = None
+            while True:
+                for node_info in ray.nodes():
+                    ray_node_ip = node_info.get("NodeManagerAddress")
+                    if ray_node_ip == vnode.node_ip:
+                        num_gpu = int(node_info.get("Resources").get("GPU", 0))
+                        break
+                if num_gpu is not None and num_gpu > 0:
+                    break
+                cluster_logger.info(f"Waiting for node {vnode.node_ip} to be entered into Ray cluster...")
+                time.sleep(1)
+            
+            # Update the vnode's GPU count
+            vnode.num_gpu = num_gpu
+            cluster_logger.info(f"Updated VNode {vnode.node_ip} with {num_gpu} GPUs")
         
         # Start tensor stores on all VNodes
         tensor_store_base_port = config.get("tensor_store_base_port")
@@ -306,8 +313,9 @@ class Pipeline:
             
             for node_ip in nodes_to_connect:
                 # Join the Ray cluster
-                join_cmd = f"ssh {ssh_options} {node_ip} 'ray start --address={self.ray_head_ip}:{self.ray_port} --disable-usage-stats'"
-                cluster_logger.info(f"Connecting {node_ip} to Ray cluster")
+                ray_command = get_ray_start_worker_command(f"{self.ray_head_ip}:{self.ray_port}")
+                join_cmd = f"ssh {ssh_options} {node_ip} '{ray_command}'"
+                cluster_logger.info(f"Connecting {node_ip} to Ray cluster with command: {join_cmd}")
                 
                 result = subprocess.run(join_cmd, shell=True, capture_output=True, text=True)
                 if result.returncode != 0:
@@ -363,7 +371,7 @@ class Pipeline:
             dots_str = "." * dots + " " * (3 - dots)
             
             # Log status to file only
-            status_msg = f"Waiting for services{dots_str} Tensor stores: {ready_ts}/{len(self.vnodes)}, API server: {api_status}"
+            status_msg = f"Waiting for services{dots_str} Tensor stores - {ready_ts}/{len(self.vnodes)}, API server{(self.api_server_host)}:{self.api_server_port} - {api_status}"
             cluster_logger.info(status_msg)
             
             if not (all(tensor_store_statuses) and api_server_ready):
@@ -573,7 +581,6 @@ class VNode:
         os.makedirs(self.remote_log_dir, exist_ok=True)
         
         # Parallelism settings
-        self.tensor_parallel_size = num_gpu  # TP size = number of GPUs on this node
         self.is_first_stage = (layer_start_id == 0)
         self.is_last_stage = (layer_end_id >= total_layers)
         
@@ -582,7 +589,7 @@ class VNode:
     def __repr__(self):
         return (f"VNode(ip={self.node_ip}, gpus={self.num_gpu}, "
                 f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id}), "
-                f"TP={self.tensor_parallel_size})")
+                f"TP={self.num_gpu})")
 
     def start_tensor_store(self, tensor_store_port: int, config: Dict, pipeline_parallel_size: int):
         """Start tensor store server on this VNode."""
@@ -611,7 +618,7 @@ class VNode:
             try:
                 command = get_tensor_store_command(
                     model_name=model_name,
-                    tensor_parallel_size=self.tensor_parallel_size,
+                    tensor_parallel_size=self.num_gpu,
                     local_rank=local_rank,
                     pipeline_parallel_size=pipeline_parallel_size,
                     pipeline_parallel_rank=self.pipeline_rank,
@@ -923,7 +930,7 @@ class VNode:
             "num_gpu": self.num_gpu,
             "pipeline_rank": self.pipeline_rank,
             "layers": f"[{self.layer_start_id}, {self.layer_end_id})",
-            "tensor_parallel_size": self.tensor_parallel_size,
+            "tensor_parallel_size": self.num_gpu,
             "is_first_stage": self.is_first_stage,
             "is_last_stage": self.is_last_stage,
             "tensor_store_ready": self.is_tensor_store_ready,
