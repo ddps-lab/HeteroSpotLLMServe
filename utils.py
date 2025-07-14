@@ -74,12 +74,8 @@ def run_server_remote(hostname: str, username: str, command_to_execute: str, log
 def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[int]]):
     logger.info(f"Creating placement group and bundle indices for node rank mapping: {node_rank_mapping}")
 
-    # Get namespace from environment variable
-    ray_namespace = os.environ.get("VLLM_RAY_NAMESPACE", "namespace_0")
-    logger.info(f"Using Ray namespace: {ray_namespace}")
-    
     if not ray.is_initialized():
-        ray.init(address="auto", namespace=ray_namespace)
+        ray.init(address="auto")
 
     # 전체 rank 수 계산 및 rank-IP 매핑 생성
     total_ranks = 0
@@ -101,13 +97,13 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
     for rank in range(total_ranks):
         ip = rank_to_ip[rank]
         placement_group_specs.append({
-            'GPU': 1.0,
+            'GPU': 0.4,
             f"node:{ip}": 0.001 # 특정 노드를 사용하겠다는 의미
         })
     
-    # SPREAD 전략을 사용하여 리소스를 더 유연하게 분산
-    # SPREAD는 가능한 한 번들을 여러 노드에 분산시키지만, 필요시 같은 노드에도 배치 가능
-    placement_group = ray.util.placement_group(placement_group_specs, strategy="SPREAD")
+    # strategy 를 STRICT_SPREAD 로 설정하면 모든 랭크가 다 다른 노드에 분배되어야 함.
+    # 따라서 ray.get 에서 무한대기를 하는 상황이 발생한다. PACK 으로 변경하자.
+    placement_group = ray.util.placement_group(placement_group_specs, strategy="PACK")
     ray.get(placement_group.ready())
 
     # 생성된 번들(bundle)과 할당된 노드 IP 매핑
