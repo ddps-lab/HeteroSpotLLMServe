@@ -106,13 +106,15 @@ def get_api_server_command(model_name: str,
                           parallel_strategy: List[int],
                           host: str,
                           node_rank_mapping: str,
+                          ray_address: str,
                           num_gpu_blocks_override: Optional[int] = None,
                           port: Optional[int] = None,
                           dtype: Optional[str] = None,
                           max_model_len: Optional[int] = None,
                           gpu_memory_utilization: Optional[float] = None,
                           max_num_batched_tokens: Optional[int] = None,
-                          max_num_seqs: Optional[int] = None) -> str:
+                          max_num_seqs: Optional[int] = None,
+                          enforce_eager: bool = True) -> str:
     """
     Generate command to start API server based on launch_server_example.sh.
     
@@ -150,7 +152,8 @@ def get_api_server_command(model_name: str,
         f"--host={host}",
         f"--port={port}",
         f'--pp-layer-partition="{pp_layer_partition}"',
-        f"--parallel-strategy {parallel_strategy_str}"
+        f"--parallel-strategy {parallel_strategy_str}",
+        f"--ray-address={ray_address}",
     ]
     
     if dtype is not None:
@@ -172,6 +175,9 @@ def get_api_server_command(model_name: str,
     
     if max_num_seqs is not None:
         cmd_parts.append(f"--max-num-seqs={max_num_seqs}")
+
+    if enforce_eager:
+        cmd_parts.append("--enforce-eager")
 
     # For Testing Dummy Value
     num_gpu_blocks_override = 2048

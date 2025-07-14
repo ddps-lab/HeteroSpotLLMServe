@@ -71,11 +71,12 @@ def run_server_remote(hostname: str, username: str, command_to_execute: str, log
         logger.error(f"[{hostname}] 예기치 않은 오류 발생: {e}")
         return False, None
 
-def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[int]]):
+def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[int]], ray_address: str):
     logger.info(f"Creating placement group and bundle indices for node rank mapping: {node_rank_mapping}")
 
     if not ray.is_initialized():
-        ray.init(address="auto")
+        logger.info(f"Initialize Ray with address: {ray_address} at create_placement_group_and_bundle_indices")
+        ray.init(address=ray_address)
 
     # 전체 rank 수 계산 및 rank-IP 매핑 생성
     total_ranks = 0
