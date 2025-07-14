@@ -44,8 +44,6 @@ cluster_logger.propagate = False
 
 class Cluster:
     def __init__(self):
-        if not ray.is_initialized():
-            ray.init(address="auto")
         self.pipelines: List[Pipeline] = []
         self.ideal_throughput: float = 0.0
         
@@ -145,7 +143,7 @@ class Cluster:
         
         # Delegate to the pipeline's switch_node method
         target_pipeline.switch_node(old_node_ip, new_node_ip)
-        
+
         cluster_logger.info(f"Node switch completed successfully: {old_node_ip} -> {new_node_ip}")
 
 class Pipeline:
@@ -292,6 +290,8 @@ class Pipeline:
         # Initialize or connect to Ray cluster
         ray_address = f"{self.ray_head_ip}:{ray_port}"
         try:
+            if ray.is_initialized():
+                ray.shutdown()
             ray.init(address=ray_address, ignore_reinit_error=True)
             cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
         except Exception as e:
@@ -419,6 +419,7 @@ class Pipeline:
             new_node_ip: IP address of the new node
         """
         cluster_logger.info(f"Switching node in pipeline: {old_node_ip} -> {new_node_ip}")
+        switch_e2e_start = time.time()
         
         # Find the target VNode
         target_vnode = None
@@ -433,7 +434,34 @@ class Pipeline:
         if not target_vnode:
             raise ValueError(f"No VNode found with IP {old_node_ip} in this pipeline")
         
-        # Get GPU count for the new node
+        # 1. 기존 Ray port 저장
+        old_ray_port = self.ray_port
+        new_ray_port = self.get_alternate_ray_port()
+        cluster_logger.info(f"Switching from Ray port {old_ray_port} to {new_ray_port}")
+        
+        # 2. 새로운 노드를 관리할 VNode 객체를 생성한다 (placeholder GPU count)
+        new_vnode = VNode(
+            node_ip=new_node_ip,
+            num_gpu=None,  # Placeholder, will be updated after Ray cluster is ready
+            pipeline_rank=target_vnode.pipeline_rank,
+            layer_start_id=target_vnode.layer_start_id,
+            layer_end_id=target_vnode.layer_end_id,
+            total_layers=target_vnode.total_layers
+        )
+        
+        # 기존의 api server 정보를 저장한다.
+        old_api_server_host = self.api_server_host
+        old_api_server_port = self.api_server_port
+        old_first_vnode = self.vnodes[0]
+        
+        # 3. Pipeline 객체에 새로운 노드를 참여시킨다.
+        self.vnodes[target_index] = new_vnode
+        
+        # 4. 새로운 Ray cluster를 시작한다.
+        cluster_logger.info(f"Starting new Ray cluster on port {new_ray_port}")
+        self.start_ray_cluster(new_ray_port)
+        
+        # 5. Get GPU count for new node from Ray cluster
         new_num_gpu = None
         while True:
             for node_info in ray.nodes():
@@ -446,23 +474,11 @@ class Pipeline:
             cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
             time.sleep(1)
         
-        # 1. 기존 Ray port 저장
-        old_ray_port = self.ray_port
-        new_ray_port = self.get_alternate_ray_port()
-        cluster_logger.info(f"Switching from Ray port {old_ray_port} to {new_ray_port}")
+        # Update the new vnode's GPU count
+        new_vnode.num_gpu = new_num_gpu
+        cluster_logger.info(f"Updated new VNode {new_node_ip} with {new_num_gpu} GPUs")
         
-        # 2. 새로운 노드를 관리할 VNode 객체를 생성한다.
-        # 새로운 노드는 이전 노드와 완전히 동일한 하드웨어 특성을 가져야만 한다 (현재로써의 Limitation)
-        new_vnode = VNode(
-            node_ip=new_node_ip,
-            num_gpu=new_num_gpu,
-            pipeline_rank=target_vnode.pipeline_rank,
-            layer_start_id=target_vnode.layer_start_id,
-            layer_end_id=target_vnode.layer_end_id,
-            total_layers=target_vnode.total_layers
-        )
-        
-        # 새로운 노드에서 Tensor store 를 시작한다.
+        # 6. 새로운 노드에서 Tensor store 를 시작한다.
         tensor_store_port = target_vnode.tensor_store_port
         parallel_strategy = self.config["parallel_strategy"]
         new_vnode.start_tensor_store(tensor_store_port, self.config, len(parallel_strategy))
@@ -476,18 +492,6 @@ class Pipeline:
             time.sleep(2)
         
         cluster_logger.info(f"Tensor store ready on new node {new_node_ip}")
-
-        # 기존의 api server 정보를 저장한다.
-        old_api_server_host = self.api_server_host
-        old_api_server_port = self.api_server_port
-        old_first_vnode = self.vnodes[0]
-        
-        # 3. Pipeline 객체에 새로운 노드를 참여시킨다.
-        self.vnodes[target_index] = new_vnode
-        
-        # 새로운 Ray cluster를 시작한다.
-        cluster_logger.info(f"Starting new Ray cluster on port {new_ray_port}")
-        self.start_ray_cluster(new_ray_port)
         
         # Node Rank Mapping Dictionary 를 업데이트 한다.
         self._generate_node_rank_mapping()
@@ -527,8 +531,10 @@ class Pipeline:
         self.api_server_port = new_api_server_port
         self.is_ready = True
         end_downtime = time.time()
+        switch_e2e_end = time.time()
+        switch_e2e_latency = switch_e2e_end - switch_e2e_start
         downtime_duration = end_downtime - start_downtime
-        cluster_logger.info(f"Node Switch Completed. Downtime: {downtime_duration:.2f} seconds")
+        cluster_logger.info(f"Node Switch Completed. End-to-End Latency: {switch_e2e_latency:.2f} / Downtime: {downtime_duration:.2f} seconds")
 
         
         # Stop tensor store on old node (target_vnode == old_vnode)
