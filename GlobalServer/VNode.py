@@ -156,6 +156,10 @@ class Pipeline:
         self.node_rank_mapping: Dict[str, List[int]] = {}
         self.ideal_throughput: float = 0.0
         self.is_ready: bool = False  # Pipeline readiness status
+        
+        # Ray cluster management for this pipeline
+        self.ray_port = None  # Ray port for this pipeline's cluster
+        self.ray_head_ip = None  # IP of the Ray head node (global server node)
 
         self.api_server_host: str = None
         self.api_server_port: int = None
@@ -178,14 +182,15 @@ class Pipeline:
             f"Total assigned layers ({total_assigned_layers}) does not match "
             f"model total layers ({total_num_layers})"
         )
-
-        if not ray.is_initialized():
-            ray.init(address="auto")
         
         self.model_name = model_name
         self.total_layers = total_num_layers
         self.config = config
         self.ideal_throughput = ideal_throughput
+        
+        # Start Ray cluster with automatic port selection
+        ray_port = self.get_alternate_ray_port()
+        self.start_ray_cluster(ray_port)
         
         start_layer_idx = 0
         for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
@@ -230,7 +235,8 @@ class Pipeline:
         # Start API server only on the first node (pipeline rank 0)
         first_vnode = self.vnodes[0]
         api_server_base_port = config.get("api_server_base_port", DEFAULT_API_SERVER_BASE_PORT)
-        first_vnode.start_api_server(api_server_base_port, config, self.node_rank_mapping)
+        ray_address = f"{self.ray_head_ip}:{self.ray_port}"
+        first_vnode.start_api_server(api_server_base_port, config, self.node_rank_mapping, ray_address)
         
         # Wait for all services to be ready
         self._wait_for_services()
@@ -253,6 +259,85 @@ class Pipeline:
             current_rank += vnode.num_gpu
         
         cluster_logger.info(f"Generated node_rank_mapping: {self.node_rank_mapping}")
+    
+    def get_alternate_ray_port(self):
+        """Get the alternate Ray port (6379 or 6380) for this pipeline."""
+        # If current port is 6379, return 6380, and vice versa
+        if self.ray_port == 6379:
+            return 6380
+        else:
+            return 6379
+    
+    def start_ray_cluster(self, ray_port: int):
+        """Start Ray cluster and ensure all vnodes are connected.
+        
+        Args:
+            ray_port: Port for the Ray cluster (should be 6379 or 6380)
+        """
+        if ray_port not in [6379, 6380]:
+            raise ValueError(f"Ray port must be 6379 or 6380, got {ray_port}")
+            
+        self.ray_port = ray_port
+        self.ray_head_ip = socket.gethostbyname(socket.gethostname())
+        
+        cluster_logger.info(f"Starting Ray cluster on port {ray_port}")
+        
+        # Initialize or connect to Ray cluster
+        ray_address = f"{self.ray_head_ip}:{ray_port}"
+        try:
+            ray.init(address=ray_address, ignore_reinit_error=True)
+            cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
+        except Exception as e:
+            cluster_logger.error(f"Failed to connect to Ray cluster: {e}")
+            raise
+        
+        # Get currently connected nodes
+        ray_nodes = ray.nodes()
+        connected_ips = {node.get("NodeManagerAddress") for node in ray_nodes if node.get("Alive")}
+        cluster_logger.info(f"Currently connected nodes: {connected_ips}")
+        
+        # Find vnodes that need to be connected
+        vnode_ips = {vnode.node_ip for vnode in self.vnodes}
+        nodes_to_connect = vnode_ips - connected_ips
+        
+        if nodes_to_connect:
+            cluster_logger.info(f"Need to connect nodes: {nodes_to_connect}")
+            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+            
+            for node_ip in nodes_to_connect:
+                # Join the Ray cluster
+                join_cmd = f"ssh {ssh_options} {node_ip} 'ray start --address={self.ray_head_ip}:{self.ray_port} --disable-usage-stats'"
+                cluster_logger.info(f"Connecting {node_ip} to Ray cluster")
+                
+                result = subprocess.run(join_cmd, shell=True, capture_output=True, text=True)
+                if result.returncode != 0:
+                    cluster_logger.error(f"Failed to connect {node_ip}: {result.stderr}")
+                    raise RuntimeError(f"Failed to connect {node_ip} to Ray cluster")
+            
+            # Wait for all nodes to be connected with retry logic
+            max_attempts = 30  # 30 attempts with 1 second interval = 30 seconds timeout
+            attempt = 0
+            
+            while attempt < max_attempts:
+                ray_nodes = ray.nodes()
+                connected_ips = {node.get("NodeManagerAddress") for node in ray_nodes if node.get("Alive")}
+                
+                if vnode_ips.issubset(connected_ips):
+                    cluster_logger.info(f"All vnodes successfully connected to Ray cluster")
+                    break
+                
+                missing = vnode_ips - connected_ips
+                attempt += 1
+                cluster_logger.info(f"Waiting for nodes to connect (attempt {attempt}/{max_attempts}). Missing: {missing}")
+                time.sleep(1)
+            
+            # Final check
+            if not vnode_ips.issubset(connected_ips):
+                missing = vnode_ips - connected_ips
+                cluster_logger.error(f"Failed to connect all nodes after {max_attempts} attempts. Missing: {missing}")
+                raise RuntimeError(f"Failed to connect nodes: {missing}")
+        
+        cluster_logger.info(f"All vnodes connected to Ray cluster on port {ray_port}")
     
     def _wait_for_services(self):
         """Wait for all tensor stores and API server to be ready."""
@@ -353,7 +438,12 @@ class Pipeline:
             cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
             time.sleep(1)
         
-        # 새로운 노드를 관리할 VNode 객체를 생성한다.
+        # 1. 기존 Ray port 저장
+        old_ray_port = self.ray_port
+        new_ray_port = self.get_alternate_ray_port()
+        cluster_logger.info(f"Switching from Ray port {old_ray_port} to {new_ray_port}")
+        
+        # 2. 새로운 노드를 관리할 VNode 객체를 생성한다.
         # 새로운 노드는 이전 노드와 완전히 동일한 하드웨어 특성을 가져야만 한다 (현재로써의 Limitation)
         new_vnode = VNode(
             node_ip=new_node_ip,
@@ -379,13 +469,22 @@ class Pipeline:
         
         cluster_logger.info(f"Tensor store ready on new node {new_node_ip}")
 
-        # 기존의 api server host 와 api server port 를 저장한다.
+        # 기존의 api server 정보를 저장한다.
         old_api_server_host = self.api_server_host
         old_api_server_port = self.api_server_port
         old_first_vnode = self.vnodes[0]
         
-        # 이제 새로 참여한 vnode 를 먼저 올린다.
+        # 3. Pipeline 객체에 새로운 노드를 참여시킨다.
         self.vnodes[target_index] = new_vnode
+        
+        # 새로운 Ray cluster를 시작한다.
+        cluster_logger.info(f"Starting new Ray cluster on port {new_ray_port}")
+        self.start_ray_cluster(new_ray_port)
+        
+        # Node Rank Mapping Dictionary 를 업데이트 한다.
+        self._generate_node_rank_mapping()
+
+        # 4. 새로운 API server 동작
         new_first_vnode = self.vnodes[0]
         new_api_server_host = new_first_vnode.node_ip
         new_api_server_port = old_api_server_port
@@ -396,11 +495,9 @@ class Pipeline:
             # Increment port to avoid conflict
             new_api_server_port += 1
 
-        # Node Rank Mapping Dictionary 를 업데이트 한다.
-        self._generate_node_rank_mapping()
-
         # 새로운 api server 시작
-        new_first_vnode.start_api_server(new_api_server_port, self.config, self.node_rank_mapping)
+        new_ray_address = f"{self.ray_head_ip}:{new_ray_port}"
+        new_first_vnode.start_api_server(new_api_server_port, self.config, self.node_rank_mapping, new_ray_address)
         
         # 새로운 api server 가 준비될 때 까지 기다린다.
         cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{new_api_server_port}")
@@ -412,9 +509,12 @@ class Pipeline:
 
         cluster_logger.info(f"API server ready on node {new_first_vnode.node_ip}")
 
-        # 새로운 pipeline 이 준비되었으므로, api server host 와 api server port 를 새로운 것으로 교체한다.
+        # 5. Pipeline 전환
         start_downtime = time.time()
         self.is_ready = False
+        # 이제 기존의 api server 를 종료해야 한다.
+        cluster_logger.info(f"Stopping old API server on {old_first_vnode.node_ip}:{old_api_server_port}")
+        old_first_vnode.stop_api_server(old_api_server_port)
         self.api_server_host = new_api_server_host
         self.api_server_port = new_api_server_port
         self.is_ready = True
@@ -422,9 +522,6 @@ class Pipeline:
         downtime_duration = end_downtime - start_downtime
         cluster_logger.info(f"Node Switch Completed. Downtime: {downtime_duration:.2f} seconds")
 
-        # 이제 기존의 api server 를 종료해야 한다.
-        cluster_logger.info(f"Stopping old API server on {old_first_vnode.node_ip}:{old_api_server_port}")
-        old_first_vnode.stop_api_server(old_api_server_port)
         
         # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
@@ -572,7 +669,7 @@ class VNode:
         
         # Log streaming is no longer needed since logs are directly saved locally
     
-    def start_api_server(self, api_server_port: int, config: Dict, node_rank_mapping: Dict[str, List[int]]):
+    def start_api_server(self, api_server_port: int, config: Dict, node_rank_mapping: Dict[str, List[int]], ray_address: str):
         """Start API server on this VNode (should only be called for pipeline rank 0)."""
         if self.pipeline_rank != 0:
             cluster_logger.warning(f"start_api_server called on non-first node (rank {self.pipeline_rank}). Skipping.")
@@ -590,6 +687,7 @@ class VNode:
             dtype=config.get("dtype"),
             max_model_len=config.get("max_model_len"),
             node_rank_mapping=json.dumps(node_rank_mapping),
+            ray_address=ray_address,
             gpu_memory_utilization=config.get("gpu_memory_utilization"),
             max_num_batched_tokens=config.get("max_num_batched_tokens"),
             max_num_seqs=config.get("max_num_seqs")
@@ -894,7 +992,7 @@ class VNode:
         try:
             # Send shutdown request via HTTP
             url = f"http://{self.node_ip}:{api_server_port}/shutdown"
-            response = requests.post(url, timeout=10)
+            response = requests.post(url, timeout=3)
             
             if response.status_code == 200:
                 response_data = response.json()
