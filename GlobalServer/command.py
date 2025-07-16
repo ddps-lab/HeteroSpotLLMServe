@@ -199,3 +199,16 @@ def get_ray_start_worker_command(head_address: str) -> str:
         Command string to execute
     """
     return f"{RAY} start --address={head_address} --disable-usage-stats"
+
+
+def get_ray_stop_command() -> str:
+    """
+    Generate command to stop Ray on a node.
+    
+    This command forcefully stops all Ray processes on the node,
+    which includes workers, actors, and any other Ray components.
+    
+    Returns:
+        Command string to execute via SSH
+    """
+    return f"{RAY} stop --force"
