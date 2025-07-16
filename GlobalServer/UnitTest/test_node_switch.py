@@ -27,19 +27,21 @@ async def test_node_switch():
     
     global_server = GlobalServer()
 
-    old_node_ip = "172.31.60.109"
-    new_node_ip = "172.31.50.57"
+    constant_node_ip = "172.31.15.12"
+    old_node_ip = "172.31.26.156"
+    new_node_ip = "172.31.11.181"
 
     node_layer_mapping = [
-        (old_node_ip, 32)
+        (constant_node_ip, 8),
+        (old_node_ip, 24),
     ]
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
     bucket_name = "hetero-spot-llm-serve-models"
     config = {
         "model_name": model_name,
         "total_num_layers": 32,
-        "pp_layer_partition": "32",  # Pipeline partition: 16 layers per node
-        "parallel_strategy": [1],     # 1 GPU per node (no tensor parallelism)
+        "pp_layer_partition": "8,24",  # Pipeline partition: 8 layers for old node, 24 for constant node
+        "parallel_strategy": [1,4],     # 1 GPU per node (no tensor parallelism)
         "max_model_len": 4096,
         "max_num_batched_tokens": 4096,
         "max_num_seqs": 16,

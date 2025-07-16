@@ -5,7 +5,7 @@ import subprocess
 import logging
 import time
 import os
-from command import get_tensor_store_command, get_api_server_command, get_ray_start_worker_command, DEFAULT_TENSOR_STORE_BASE_PORT, DEFAULT_API_SERVER_BASE_PORT
+from command import get_tensor_store_command, get_api_server_command, get_ray_start_worker_command, get_ray_stop_command, DEFAULT_TENSOR_STORE_BASE_PORT, DEFAULT_API_SERVER_BASE_PORT
 import json
 import sys
 import threading
@@ -242,6 +242,8 @@ class Pipeline:
         api_server_base_port = config.get("api_server_base_port", DEFAULT_API_SERVER_BASE_PORT)
         ray_address = f"{self.ray_head_ip}:{self.ray_port}"
         first_vnode.start_api_server(api_server_base_port, config, self.node_rank_mapping, ray_address)
+        self.api_server_host = first_vnode.node_ip
+        self.api_server_port = first_vnode.api_server_port
         
         # Wait for all services to be ready
         self._wait_for_services()
@@ -291,7 +293,7 @@ class Pipeline:
         ray_address = f"{self.ray_head_ip}:{ray_port}"
         try:
             if ray.is_initialized():
-                ray.shutdown()
+                ray.shutdown()#_exiting_interpreter=True)
             ray.init(address=ray_address, ignore_reinit_error=True)
             cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
         except Exception as e:
@@ -371,7 +373,7 @@ class Pipeline:
             dots_str = "." * dots + " " * (3 - dots)
             
             # Log status to file only
-            status_msg = f"Waiting for services{dots_str} Tensor stores - {ready_ts}/{len(self.vnodes)}, API server{(self.api_server_host)}:{self.api_server_port} - {api_status}"
+            status_msg = f"Waiting for services{dots_str} Tensor stores - {ready_ts}/{len(self.vnodes)}, API server {(self.api_server_host)}:{self.api_server_port} - {api_status}"
             cluster_logger.info(status_msg)
             
             if not (all(tensor_store_statuses) and api_server_ready):
@@ -488,7 +490,7 @@ class Pipeline:
         status_check_time = 0
         while not new_vnode.check_tensor_store_status():
             status_check_time += 1
-            cluster_logger.info(f"Waiting for tensor store to be ready on new node ({status_check_time})...")
+            cluster_logger.info(f"Waiting for tensor store to be ready on new node {new_node_ip} ({status_check_time})...")
             time.sleep(2)
         
         cluster_logger.info(f"Tensor store ready on new node {new_node_ip}")
@@ -516,7 +518,7 @@ class Pipeline:
         status_check_time = 0
         while not new_first_vnode.check_api_server_status():
             status_check_time += 1
-            cluster_logger.info(f"Waiting for API server to be ready ({status_check_time})...")
+            cluster_logger.info(f"Waiting for API server {new_api_server_host}:{new_api_server_port} to be ready ({status_check_time})...")
             time.sleep(2)
 
         cluster_logger.info(f"API server ready on node {new_first_vnode.node_ip}")
@@ -536,6 +538,27 @@ class Pipeline:
         downtime_duration = end_downtime - start_downtime
         cluster_logger.info(f"Node Switch Completed. End-to-End Latency: {switch_e2e_latency:.2f} / Downtime: {downtime_duration:.2f} seconds")
 
+        # Clean up Ray workers on the target node being switched
+        cluster_logger.info(f"Cleaning up Ray workers on target node {target_vnode.node_ip}")
+        ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -o LogLevel=ERROR"
+        cleanup_cmd = get_ray_stop_command()
+        ssh_cmd = f"ssh {ssh_options} {target_vnode.node_ip} '{cleanup_cmd}'"
+        
+        try:
+            result = subprocess.run(ssh_cmd, shell=True, capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                cluster_logger.info(f"Successfully cleaned up Ray workers on {target_vnode.node_ip}")
+            else:
+                # Filter out harmless SSH messages
+                stderr_filtered = result.stderr.strip()
+                if stderr_filtered and not stderr_filtered.startswith("Warning: Permanently added"):
+                    cluster_logger.warning(f"Ray worker cleanup command failed on {target_vnode.node_ip}: {stderr_filtered}")
+                else:
+                    cluster_logger.info(f"Ray worker cleanup completed on {target_vnode.node_ip} (with SSH host key warning)")
+        except subprocess.TimeoutExpired:
+            cluster_logger.warning(f"Ray worker cleanup timed out on {target_vnode.node_ip} (node may be unreachable)")
+        except Exception as e:
+            cluster_logger.warning(f"Error cleaning up Ray workers on {target_vnode.node_ip}: {e}")
         
         # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
@@ -642,7 +665,11 @@ class VNode:
                 )
                 
                 # Prepare log files - save directly to local remote logs directory
-                log_filename = f"tensorstore_{self.node_ip}_{local_rank}.log"
+                log_file_index = 0
+                log_filename = f"tensorstore_{self.node_ip}_{local_rank}_{log_file_index}.log"
+                while os.path.exists(os.path.join(self.remote_log_dir, log_filename)):
+                    log_file_index += 1
+                    log_filename = f"tensorstore_{self.node_ip}_{local_rank}_{log_file_index}.log"
                 local_log_path = os.path.join(self.remote_log_dir, log_filename)
                 
                 # Use SSH to start the process and stream logs directly to local file
@@ -707,7 +734,11 @@ class VNode:
         )
         
         # Prepare log file - save directly to local remote logs directory
-        log_filename = f"apiserver_{self.node_ip}.log"
+        log_file_index = 0
+        log_filename = f"apiserver_{self.node_ip}_{log_file_index}.log"
+        while os.path.exists(os.path.join(self.remote_log_dir, log_filename)):
+            log_file_index += 1
+            log_filename = f"apiserver_{self.node_ip}_{log_file_index}.log"
         local_log_path = os.path.join(self.remote_log_dir, log_filename)
         
         # Use SSH to start the API server and stream logs directly to local file
