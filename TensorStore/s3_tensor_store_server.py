@@ -400,12 +400,12 @@ def determine_num_available_blocks(config_dict: dict) -> tuple[int, int]:
     # Calculate available memory for KV cache
     available_kv_cache_memory = int(total_memory * GPU_MEMORY_UTILIZATION - using_memory - model_forward_memory)
 
-    assert available_kv_cache_memory > 0, f"kv cache memory 를 할당할 수 있는 공간이 없습니다." \
-        f"total_memory: {total_memory / (1024**3):.2f} GiB, " \
-        f"free_memory_after: {free_memory_after / (1024**3):.2f} GiB, " \
-        f"using_memory: {using_memory / (1024**3):.2f} GiB, " \
-        f"model_forward_memory: {model_forward_memory / (1024**3):.2f} GiB, " \
-        f"available_kv_cache_memory: {available_kv_cache_memory / (1024**3):.2f} GiB"
+    assert available_kv_cache_memory > 0, f"Insufficient memory to allocate space for KV cache." \
+        f" Total memory: {total_memory / (1024**3):.2f} GiB, " \
+        f"Free memory after model loading: {free_memory_after / (1024**3):.2f} GiB, " \
+        f"Memory used by the model: {using_memory / (1024**3):.2f} GiB, " \
+        f"Memory reserved for forward pass: {model_forward_memory / (1024**3):.2f} GiB, " \
+        f"Available KV cache memory: {available_kv_cache_memory / (1024**3):.2f} GiB"
     
     # Calculate cache block size
     cache_block_size = get_cache_block_size_bytes(config_dict)
