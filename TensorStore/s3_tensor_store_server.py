@@ -1,7 +1,6 @@
 # S3 Tensor Store Server - Downloads from S3 and serves tensors
 
 import argparse
-import glob
 import json
 from typing import List, Optional, Union
 import os
@@ -14,6 +13,7 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
+import io
 
 import torch
 from multiprocessing.managers import BaseManager, DictProxy
@@ -60,8 +60,17 @@ DIV_COLUMN_WISE_LIST = ["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj"]
 DIV_ROW_WISE_LIST = ["o_proj", "down_proj"]
 VOCAB_PADDING_SIZE = 64
 
-MODEL_LOAD_COMPLETE = False
+TENSOR_INITIALIZE_COMPLETE = False
 SHUTDOWN_EVENT = threading.Event()
+
+# KV cache related global variables
+BLOCK_SIZE = -1
+GPU_MEMORY_UTILIZATION = -1.0
+SWAP_SPACE_BYTES = -1
+CACHE_DTYPE = None  # Will be set based on model dtype
+PIPELINE_PARALLEL_SIZE = -1
+PIPELINE_PARALLEL_RANK = -1
+MAX_MODEL_LEN = -1
 
 def get_tensor_dict():
     return TENSOR_DICT
@@ -183,25 +192,85 @@ def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bo
     logging.info(f"Filtered to {len(required_tensors)} required tensors out of {len(all_tensor_names)} total")
     return required_tensors
 
-def download_tensor_from_s3(s3_client: boto3.client, bucket_name: str, s3_key: str, local_path: str):
-    """Download a single tensor file from S3 using boto3"""
+def log_required_tensors_summary(required_tensor_names: List[str]):
+    """Log required tensors in a formatted, readable way"""
+    logging.info("=" * 80)
+    logging.info(f"[Required Tensors Summary] Total: {len(required_tensor_names)} tensors")
+    logging.info("=" * 80)
+    
+    # Group tensors by type
+    embed_tensors = [t for t in required_tensor_names if "embed_tokens" in t]
+    norm_tensors = [t for t in required_tensor_names if "norm" in t and "layer" not in t]
+    lm_head_tensors = [t for t in required_tensor_names if "lm_head" in t]
+    layer_tensors = [t for t in required_tensor_names if "model.layers." in t]
+    
+    # Group layer tensors by layer number
+    layer_dict = {}
+    for tensor in layer_tensors:
+        if "model.layers." in tensor:
+            layer_num = int(tensor.split('.')[2])
+            if layer_num not in layer_dict:
+                layer_dict[layer_num] = []
+            layer_dict[layer_num].append(tensor)
+    
+    # Log embedding tensors
+    if embed_tensors:
+        logging.info(f"[Embedding Tensors] ({len(embed_tensors)} tensors)")
+        for tensor in sorted(embed_tensors):
+            logging.info(f"  - {tensor}")
+    
+    # Log layer tensors
+    if layer_dict:
+        logging.info(f"[Layer Tensors] ({len(layer_tensors)} tensors across {len(layer_dict)} layers)")
+        for layer_num in sorted(layer_dict.keys()):
+            logging.info(f"  Layer {layer_num}: {len(layer_dict[layer_num])} tensors")
+            for tensor in sorted(layer_dict[layer_num]):
+                tensor_type = tensor.split('.')[-2]
+                logging.info(f"    - {tensor_type}")
+    
+    # Log normalization tensors
+    if norm_tensors:
+        logging.info(f"[Normalization Tensors] ({len(norm_tensors)} tensors)")
+        for tensor in sorted(norm_tensors):
+            logging.info(f"  - {tensor}")
+    
+    # Log LM head tensors
+    if lm_head_tensors:
+        logging.info(f"[LM Head Tensors] ({len(lm_head_tensors)} tensors)")
+        for tensor in sorted(lm_head_tensors):
+            logging.info(f"  - {tensor}")
+    
+    # Log other tensors
+    other_tensors = [t for t in required_tensor_names 
+                     if t not in embed_tensors + norm_tensors + lm_head_tensors + layer_tensors]
+    if other_tensors:
+        logging.info(f"[Other Tensors] ({len(other_tensors)} tensors)")
+        for tensor in sorted(other_tensors):
+            logging.info(f"  - {tensor}")
+    
+    logging.info("=" * 80)
+
+def load_tensor_from_s3_direct(s3_client: boto3.client, bucket_name: str, s3_key: str) -> torch.Tensor:
+    """Load a tensor directly from S3 to CPU memory without saving to disk"""
     try:
-        # Create directory if needed
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        # Get object from S3
+        response = s3_client.get_object(Bucket=bucket_name, Key=s3_key)
         
-        # Download using boto3
-        s3_client.download_file(bucket_name, s3_key, local_path)
+        # Read object body into memory
+        tensor_bytes = response['Body'].read()
+        content_length = response['ContentLength']
         
-        # Verify file was actually saved
-        if not os.path.exists(local_path):
-            raise RuntimeError(f"File was not saved to {local_path}")
+        logging.info(f"Loading {s3_key} from S3 ({content_length:,} bytes) directly to memory")
         
-        file_size = os.path.getsize(local_path)
-        if file_size == 0:
-            raise RuntimeError(f"Downloaded file is empty: {local_path}")
+        # Load tensor directly from bytes
+        buffer = io.BytesIO(tensor_bytes)
+        tensor = torch.load(buffer, map_location="cpu")
         
-        logging.info(f"Downloaded {s3_key} from S3 ({file_size} bytes)")
-        return True
+        # Clean up
+        buffer.close()
+        del tensor_bytes
+        
+        return tensor
         
     except ClientError as e:
         error_code = e.response['Error']['Code']
@@ -209,24 +278,21 @@ def download_tensor_from_s3(s3_client: boto3.client, bucket_name: str, s3_key: s
             logging.error(f"Tensor file not found in S3: {s3_key}")
             raise
         else:
-            logging.error(f"Failed to download {s3_key} from S3: {e}")
+            logging.error(f"Failed to load {s3_key} from S3: {e}")
             raise
     except Exception as e:
-        logging.error(f"Unexpected error downloading {s3_key}: {e}")
+        logging.error(f"Unexpected error loading {s3_key}: {e}")
         raise
 
-def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
-    """Load and process a tensor from file - use original dtype from file"""
+def process_tensor_from_s3(tensor_name: str, full_tensor: torch.Tensor):
+    """Process a tensor loaded from S3 - use original dtype from tensor"""
     global DTYPE
     
     try:
-        # Load tensor from file (always to CPU first)
-        full_tensor = torch.load(tensor_file_path, map_location="cpu")
-        
         # Set global DTYPE from first tensor if not set yet
         if DTYPE is None:
             DTYPE = full_tensor.dtype
-            logging.info(f"Set global DTYPE to {DTYPE} from tensor file")
+            logging.info(f"Set global DTYPE to {DTYPE} from tensor")
         
         # Process tensor based on type and slice as needed
         if tensor_name.split('.')[-2] == "embed_tokens":
@@ -258,16 +324,12 @@ def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
         with TENSOR_DICT_LOCK:
             TENSOR_DICT[tensor_name] = tensor
             
-        logging.info(f"Loaded {tensor_name} / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
+        logging.info(f"Processed {tensor_name} / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
         
         # Clean up CPU tensor
         del full_tensor
         del tensor
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        
-        # Remove local file after processing
-        os.remove(tensor_file_path)
-        logging.debug(f"Removed local file after processing: {tensor_file_path}")
         
         return True
         
@@ -275,45 +337,180 @@ def process_tensor_from_file(tensor_name: str, tensor_file_path: str):
         logging.error(f"Error processing tensor {tensor_name}: {e}")
         raise e
 
-def download_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, model_name: str,
-                               tensor_name: str):
-    """Download a tensor from S3 and process it"""
-    # Prepare paths
+def get_kv_cache_shape(num_blocks: int, block_size: int, num_kv_heads: int, head_size: int) -> tuple:
+    """Get KV cache shape for flash attention backend"""
+    # Shape: (2, num_blocks, block_size, num_kv_heads, head_size)
+    # 2 is for key and value caches
+    return (2, num_blocks, block_size, num_kv_heads, head_size)
+
+def get_cache_block_size_bytes(config_dict: dict) -> int:
+    """Calculate the size of a cache block in bytes"""
+    global BLOCK_SIZE, CACHE_DTYPE
+    
+    # Get model parameters from config
+    num_attention_layers = END_LAYER_ID - START_LAYER_ID
+    num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
+    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    
+    # Adjust num_kv_heads for tensor parallelism
+    if TENSOR_PARALLEL_SIZE > 1:
+        num_kv_heads = num_kv_heads // TENSOR_PARALLEL_SIZE
+    
+    # Calculate entries per block
+    key_cache_entry = num_kv_heads * head_size
+    value_cache_entry = key_cache_entry  # Same size for key and value
+    
+    # Total size for all layers
+    total = num_attention_layers * BLOCK_SIZE * (key_cache_entry + value_cache_entry)
+    
+    # Get dtype size
+    dtype_size = CACHE_DTYPE.itemsize if CACHE_DTYPE else 2  # Default to 2 bytes (float16)
+    
+    return dtype_size * total
+
+def get_model_forward_memory(config_dict: dict) -> int:
+    """Get the memory required for model forward pass"""
+    num_attention_layers = END_LAYER_ID - START_LAYER_ID
+    intermediate_size = config_dict["intermediate_size"]
+
+    # Intermediate Tensor Size 가 가장 큰 것은 FFN 에서이다.
+    # FFN Network 를 진행할 때 가장 큰 부분은 up&gate projection 이다.
+    global CACHE_DTYPE, MAX_MODEL_LEN
+    dtype_size = CACHE_DTYPE.itemsize if CACHE_DTYPE else 2  # Default to 2 bytes (float16)
+    max_model_len = MAX_MODEL_LEN
+    intermediate_total_dim = max_model_len * intermediate_size * 2 # 2 는 up&gate projection 이기 때문
+    intermediate_total_size = intermediate_total_dim * dtype_size
+    return intermediate_total_size
+
+def determine_num_available_blocks(config_dict: dict) -> tuple[int, int]:
+    """Profile memory and determine number of available KV cache blocks"""
+    global CACHE_DTYPE, DTYPE
+    
+    # Set cache dtype if auto
+    if CACHE_DTYPE is None:
+        CACHE_DTYPE = DTYPE
+    
+    # Profile memory after model loading
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+    free_memory_after, total_memory = torch.cuda.mem_get_info(LOCAL_RANK)
+    using_memory = total_memory - free_memory_after
+    model_forward_memory = get_model_forward_memory(config_dict)
+    
+    # Calculate available memory for KV cache
+    available_kv_cache_memory = int(total_memory * GPU_MEMORY_UTILIZATION - using_memory - model_forward_memory)
+
+    assert available_kv_cache_memory > 0, f"Insufficient memory to allocate space for KV cache." \
+        f" Total memory: {total_memory / (1024**3):.2f} GiB, " \
+        f"Free memory after model loading: {free_memory_after / (1024**3):.2f} GiB, " \
+        f"Memory used by the model: {using_memory / (1024**3):.2f} GiB, " \
+        f"Memory reserved for forward pass: {model_forward_memory / (1024**3):.2f} GiB, " \
+        f"Available KV cache memory: {available_kv_cache_memory / (1024**3):.2f} GiB"
+    
+    # Calculate cache block size
+    cache_block_size = get_cache_block_size_bytes(config_dict)
+    
+    # Calculate number of blocks
+    num_gpu_blocks = max(0, available_kv_cache_memory // cache_block_size)
+    num_cpu_blocks = max(0, SWAP_SPACE_BYTES // cache_block_size)
+
+    assert num_gpu_blocks > 0, f"!!!num_gpu_blocks < 0!!!"
+    
+    logging.info(f"[Memory Profiling Complete]")
+    logging.info(f"  - Total GPU memory: {total_memory / (1024**3):.2f} GiB")
+    logging.info(f"  - Memory used by model weights: {using_memory / (1024**3):.2f} GiB")
+    logging.info(f"  - Memory reserved for forward pass: {model_forward_memory / (1024**3):.2f} GiB")
+    logging.info(f"  - Memory available for KV cache: {available_kv_cache_memory / (1024**3):.2f} GiB")
+    logging.info(f"[KV Cache Block Calculation]")
+    logging.info(f"  - Cache block size: {cache_block_size} bytes ({cache_block_size / 1024:.2f} KB)")
+    logging.info(f"  - Number of GPU blocks: {num_gpu_blocks}")
+    logging.info(f"  - Number of CPU blocks: {num_cpu_blocks}")
+    
+    return num_gpu_blocks, num_cpu_blocks
+
+def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
+    """Allocate KV cache tensors for all virtual engines"""
+    # Get model parameters
+    num_attention_layers = END_LAYER_ID - START_LAYER_ID
+    num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
+    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    
+    # Adjust for tensor parallelism
+    if TENSOR_PARALLEL_SIZE > 1:
+        num_kv_heads = num_kv_heads // TENSOR_PARALLEL_SIZE
+
+    # virtual engine 에 block 들이 나누어 들어간다.
+    num_gpu_blocks = num_gpu_blocks // PIPELINE_PARALLEL_SIZE
+    
+    # Get KV cache shape
+    kv_cache_shape = get_kv_cache_shape(num_gpu_blocks, BLOCK_SIZE, num_kv_heads, head_size)
+    
+    # Allocate KV cache for each virtual engine
+    for ve in range(PIPELINE_PARALLEL_SIZE):
+        # Allocate GPU cache for each layer
+        for layer_idx in range(num_attention_layers):
+            # Create KV cache tensor for this layer
+            layer_kv_cache = torch.zeros(kv_cache_shape, dtype=CACHE_DTYPE, device=DEVICE)
+            
+            # Store in TENSOR_DICT with appropriate key
+            cache_key = f"kv_cache.ve_{ve}.layer_{START_LAYER_ID + layer_idx}"
+            with TENSOR_DICT_LOCK:
+                TENSOR_DICT[cache_key] = layer_kv_cache
+        
+        # Store metadata
+        metadata_key = f"kv_cache_metadata.ve_{ve}"
+        metadata = {
+            "num_gpu_blocks": num_gpu_blocks,
+            "block_size": BLOCK_SIZE,
+            "num_layers": num_attention_layers,
+            "start_layer_id": START_LAYER_ID,
+            "end_layer_id": END_LAYER_ID,
+            "shape": kv_cache_shape
+        }
+        
+        with TENSOR_DICT_LOCK:
+            TENSOR_DICT[metadata_key] = metadata
+    
+    cache_block_size = get_cache_block_size_bytes(config_dict)
+    return {
+        "num_gpu_blocks": num_gpu_blocks,
+        "total_gpu_cache_size_gb": (num_gpu_blocks * cache_block_size) / (1024**3),
+    }
+
+def load_and_process_tensor_from_s3(s3_client, bucket_name: str, base_s3_path: str, tensor_name: str):
+    """Load a tensor directly from S3 and process it"""
+    # Prepare S3 key
     if base_s3_path:
         s3_key = f"{base_s3_path}/{tensor_name}.bin"
     else:
         s3_key = f"{tensor_name}.bin"
-    local_path = f"models/{model_name}/{tensor_name}.bin"
     
-    # Download tensor
-    success = download_tensor_from_s3(s3_client, bucket_name, s3_key, local_path)
-    if not success:
-        return
+    # Load tensor directly from S3 to CPU memory
+    full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
     
     # Process tensor
-    process_tensor_from_file(tensor_name, local_path)
+    process_tensor_from_s3(tensor_name, full_tensor)
 
-def download_required_tensors_individually(s3_client, bucket_name: str, base_s3_path: str, model_name: str, 
-                                          required_tensor_names: List[str]):
-    """Download only required tensors individually from S3 using boto3"""
+def load_required_tensors_from_s3(s3_client, bucket_name: str, base_s3_path: str, required_tensor_names: List[str]):
+    """Load required tensors directly from S3 to memory"""
     if not required_tensor_names:
-        logging.warning("No tensors to download")
+        logging.warning("No tensors to load")
         return
     
-    logging.info(f"Downloading and processing {len(required_tensor_names)} required tensors individually")
+    logging.info(f"Loading and processing {len(required_tensor_names)} required tensors directly from S3")
     
-    # Use threading for parallel downloads and processing
+    # Use threading for parallel loading and processing
     max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))  
-    logging.info(f"Using {max_tensor_workers} workers for tensor downloads")
+    logging.info(f"Using {max_tensor_workers} workers for tensor loading")
     
     with ThreadPoolExecutor(max_workers=max_tensor_workers) as executor:
         futures = []
         
         for tensor_name in required_tensor_names:
-            # Submit download and processing task
+            # Submit loading and processing task
             future = executor.submit(
-                download_and_process_tensor,
-                s3_client, bucket_name, base_s3_path, model_name, tensor_name
+                load_and_process_tensor_from_s3,
+                s3_client, bucket_name, base_s3_path, tensor_name
             )
             futures.append(future)
         
@@ -322,7 +519,7 @@ def download_required_tensors_individually(s3_client, bucket_name: str, base_s3_
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"Error in tensor download/processing: {e}")
+                logging.error(f"Error in tensor loading/processing: {e}")
 
 # Function removed - tensors are now processed directly after download
 
@@ -384,11 +581,11 @@ def _status_server(host: str, port: int):
                         
                         if not data:
                             # Empty connection - legacy status check
-                            msg = TensorStoreResponse.READY.value if MODEL_LOAD_COMPLETE else TensorStoreResponse.NOT_READY.value
+                            msg = TensorStoreResponse.READY.value if TENSOR_INITIALIZE_COMPLETE else TensorStoreResponse.NOT_READY.value
                             conn.sendall(msg)
                         elif data == TensorStoreRequest.STATUS_CHECK.value:
                             # Explicit status check
-                            msg = TensorStoreResponse.READY.value if MODEL_LOAD_COMPLETE else TensorStoreResponse.NOT_READY.value
+                            msg = TensorStoreResponse.READY.value if TENSOR_INITIALIZE_COMPLETE else TensorStoreResponse.NOT_READY.value
                             conn.sendall(msg)
                         elif data == TensorStoreRequest.SHUTDOWN.value:
                             # Shutdown command
@@ -427,10 +624,31 @@ def parse_args():
                         help="Port for readiness TCP server")
     parser.add_argument("--aws-profile", type=str, default=None,
                         help="AWS profile to use for S3 access")
+    
+    # KV cache related arguments
+    parser.add_argument("--block-size", type=int, default=16, choices=[8, 16, 32],
+                        help="Token block size for KV cache (default: 16)")
+    parser.add_argument("--gpu-num-blocks", type=int, default=None,
+                        help="Number of GPU blocks for KV cache (default: None, calculated based on memory)")
+    parser.add_argument("--gpu-memory-utilization", type=float, default=0.9,
+                        help="Fraction of GPU memory to use for KV cache (default: 0.9)")
+    parser.add_argument("--swap-space", type=float, default=4.0,
+                        help="Size of CPU swap space per GPU in GiB (default: 4.0)")
+    parser.add_argument("--cache-dtype", type=str, default="auto",
+                        help="Data type for KV cache storage (default: auto, uses model dtype)")
+    parser.add_argument("--pipeline-parallel-size", type=int, default=1,
+                        help="Pipeline parallel size for virtual engine allocation")
+    parser.add_argument("--pipeline-parallel-rank", type=int, default=0,
+                        help="Pipeline parallel rank (default: 0)")
+    parser.add_argument("--max-model-len", type=int, default=None,
+                        help="Maximum model sequence length (default: from model config)")
+    
     return parser.parse_args()
 
 def set_global_variables(args: argparse.Namespace, config_dict: dict):
     global TENSOR_PARALLEL_SIZE, LOCAL_RANK, START_LAYER_ID, END_LAYER_ID, TOTAL_LAYER_NUM, DEVICE, TENSOR_PARALLEL_RANK
+    global BLOCK_SIZE, GPU_MEMORY_UTILIZATION, SWAP_SPACE_BYTES, PIPELINE_PARALLEL_SIZE, PIPELINE_PARALLEL_RANK, MAX_MODEL_LEN
+    
     TENSOR_PARALLEL_SIZE = args.tensor_parallel_size
     LOCAL_RANK = args.local_rank
     TENSOR_PARALLEL_RANK = args.local_rank
@@ -441,6 +659,52 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
     
     if END_LAYER_ID == -1:
         END_LAYER_ID = config_dict["num_hidden_layers"]
+    
+    # Set KV cache related globals
+    BLOCK_SIZE = args.block_size
+    GPU_MEMORY_UTILIZATION = args.gpu_memory_utilization
+    SWAP_SPACE_BYTES = int(args.swap_space * 1024 * 1024 * 1024)  # Convert GiB to bytes
+    PIPELINE_PARALLEL_SIZE = args.pipeline_parallel_size
+    PIPELINE_PARALLEL_RANK = args.pipeline_parallel_rank
+    
+    # Set max model length - use from args if provided, otherwise from config
+    if args.max_model_len is not None:
+        MAX_MODEL_LEN = args.max_model_len
+    else:
+        MAX_MODEL_LEN = config_dict.get("max_position_embeddings", 4096)  # Default to 4096 if not in config
+    
+    # Log all global variables in a formatted way
+    logging.info("=" * 80)
+    logging.info("[Global Variables Initialization Summary]")
+    logging.info("=" * 80)
+    
+    logging.info("[Model Configuration]")
+    logging.info(f"  - Model Name: {args.model_name}")
+    logging.info(f"  - Total Layers: {TOTAL_LAYER_NUM}")
+    logging.info(f"  - Max Model Length: {MAX_MODEL_LEN}")
+    
+    logging.info("[Layer Assignment]")
+    logging.info(f"  - Start Layer ID: {START_LAYER_ID}")
+    logging.info(f"  - End Layer ID: {END_LAYER_ID}")
+    logging.info(f"  - Assigned Layers: {END_LAYER_ID - START_LAYER_ID} layers [{START_LAYER_ID}, {END_LAYER_ID})")
+    
+    logging.info("[Parallelism Configuration]")
+    logging.info(f"  - Tensor Parallel Size: {TENSOR_PARALLEL_SIZE}")
+    logging.info(f"  - Tensor Parallel Rank: {TENSOR_PARALLEL_RANK}")
+    logging.info(f"  - Pipeline Parallel Size: {PIPELINE_PARALLEL_SIZE}")
+    logging.info(f"  - Pipeline Parallel Rank: {PIPELINE_PARALLEL_RANK}")
+    
+    logging.info("[Device Configuration]")
+    logging.info(f"  - Local Rank: {LOCAL_RANK}")
+    logging.info(f"  - CUDA Device: {DEVICE}")
+    
+    logging.info("[KV Cache Configuration]")
+    logging.info(f"  - Block Size: {BLOCK_SIZE}")
+    logging.info(f"  - GPU Memory Utilization: {GPU_MEMORY_UTILIZATION * 100:.1f}%")
+    logging.info(f"  - Swap Space: {args.swap_space:.2f} GiB ({SWAP_SPACE_BYTES:,} bytes)")
+    logging.info(f"  - Cache Dtype: {args.cache_dtype}")
+    
+    logging.info("=" * 80)
 
 def main():
     args = parse_args()
@@ -500,12 +764,12 @@ def main():
         return
     
     try:
-        mp.set_start_method('fork', force=True)
-        logging.info("Set multiprocessing start method to 'fork'.")
+        mp.set_start_method('spawn', force=True)
+        logging.info("Set multiprocessing start method to 'spawn'.")
     except RuntimeError:
-        logging.warning("Could not set start method to 'fork'. Using default.")
+        logging.warning("Could not set start method to 'spawn'. Using default.")
     
-    logging.info("Loading strategy: CPU -> GPU transfer (Individual downloads + local loading)")
+    logging.info("Loading strategy: Direct S3 -> CPU -> GPU transfer (No disk I/O)")
     
     # Step 1: List all tensor files from S3 using boto3
     logging.info("Step 1: Listing all tensor files from S3...")
@@ -515,10 +779,8 @@ def main():
         logging.error("No tensor files found in S3")
         return
     
-    # Step 2: Download config.json first to get model configuration
-    logging.info("Step 2: Downloading config.json to determine model configuration...")
-    config_local_path = f"models/{args.model_name}/config.json"
-    os.makedirs(os.path.dirname(config_local_path), exist_ok=True)
+    # Step 2: Load config.json from S3 to get model configuration
+    logging.info("Step 2: Loading config.json from S3...")
     
     try:
         if base_s3_path:
@@ -526,17 +788,19 @@ def main():
         else:
             config_s3_key = "config.json"
         
-        s3_client.download_file(bucket_name, config_s3_key, config_local_path)
+        # Load config directly from S3
+        response = s3_client.get_object(Bucket=bucket_name, Key=config_s3_key)
+        config_content = response['Body'].read()
+        config_dict = json.loads(config_content)
         
-        with open(config_local_path, "r") as f:
-            config_dict = json.load(f)
         tie_word_embeddings = config_dict["tie_word_embeddings"]
-        logging.info(f"model config: {config_dict}")
+        logging.info(f"Loaded model config from S3")
+        logging.debug(f"Config: {config_dict}")
     except ClientError as e:
-        logging.error(f"Failed to download config.json: {e}")
+        logging.error(f"Failed to load config.json from S3: {e}")
         return
     except Exception as e:
-        logging.error(f"Failed to download or parse config: {e}")
+        logging.error(f"Failed to parse config: {e}")
         return
     
     set_global_variables(args, config_dict)
@@ -549,16 +813,18 @@ def main():
         logging.error("No required tensors found after filtering")
         return
     
-    # Step 4: Download and process required tensors individually
-    logging.info("Step 4: Downloading and processing required tensors individually...")
-    download_start = time.perf_counter()
+    # Log the required tensors in a formatted way
+    log_required_tensors_summary(required_tensor_names)
+    
+    # Step 4: Load and process required tensors directly from S3
+    logging.info("Step 4: Loading and processing required tensors directly from S3...")
+    load_start = time.perf_counter()
     
     try:
-        download_required_tensors_individually(s3_client, bucket_name, base_s3_path, args.model_name, 
-                                             required_tensor_names)
+        load_required_tensors_from_s3(s3_client, bucket_name, base_s3_path, required_tensor_names)
         
-        download_end = time.perf_counter()
-        logging.info(f"Download and processing completed in {download_end - download_start:.2f} seconds")
+        load_end = time.perf_counter()
+        logging.info(f"Loading and processing completed in {load_end - load_start:.2f} seconds")
         
     except Exception as e:
         logging.error(f"Model Loading Error: {e}")
@@ -567,41 +833,50 @@ def main():
     logging.info(f"Final DTYPE determined from tensors: {DTYPE}")
     
     # Fuse tensors
-    logging.info(f"Before fusing, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
-    logging.info(f"Start fusing tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
+    logging.info(f"[Tensor Fusion Phase] Starting fusion for layers {START_LAYER_ID} to {END_LAYER_ID}")
     
     for layer_idx in range(START_LAYER_ID, END_LAYER_ID):
         fuse_tensor(layer_idx)
     
-    logging.info(f"Finished fusing tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
-    logging.info("Emptying CUDA cache after fusing...")
+    logging.info(f"[Tensor Fusion Complete] Fused tensors for layers {START_LAYER_ID} to {END_LAYER_ID}")
+    logging.info("[Memory Cleanup] Emptying CUDA cache after fusion...")
     torch.cuda.empty_cache()
-    logging.info(f"After emptying cache, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
+    logging.debug(f"After emptying cache, memory usage: {torch.cuda.memory_summary(device=DEVICE)}")
     
     # Print final tensor list
     for tensor_name in TENSOR_DICT:
         logging.info(f"tensor_name: {tensor_name} / shape: {TENSOR_DICT[tensor_name].shape} / dtype: {TENSOR_DICT[tensor_name].dtype} / device: {TENSOR_DICT[tensor_name].device}")
     
     load_end = time.perf_counter()
-    logging.info(f"Model Loading time: {load_end - download_start} seconds")
+    logging.info(f"[Model Loading Complete] Total loading time: {load_end - load_start:.2f} seconds")
     
     if not TENSOR_DICT:
         raise ValueError("Tensor loading failed: TENSOR_DICT is empty")
     
     logging.info(f"Successfully loaded {len(TENSOR_DICT)} tensors")
     
+    # Allocate KV cache after model loading
+    logging.info("[KV Cache Allocation Phase Started]")
+    num_gpu_blocks, num_cpu_blocks = determine_num_available_blocks(config_dict)
+    if args.gpu_num_blocks is not None:
+        num_gpu_blocks = args.gpu_num_blocks
+    kv_cache_info = allocate_kv_cache(config_dict, num_gpu_blocks)
+    logging.info("[KV Cache Allocation Complete]")
+    logging.info(f"  - Total GPU cache size: {kv_cache_info['total_gpu_cache_size_gb']:.2f} GiB")
+    
     # Start TensorManager server
-    manager = TensorManager(address=(MANAGER_HOST, MANAGER_PORT), authkey=MANAGER_AUTHKEY)
+    manager_port = MANAGER_PORT + LOCAL_RANK
+    manager = TensorManager(address=(MANAGER_HOST, manager_port), authkey=MANAGER_AUTHKEY)
     
     try:
-        logging.info(f"TensorManager server starting {MANAGER_HOST}:{MANAGER_PORT}...")
+        logging.info(f"TensorManager server starting {MANAGER_HOST}:{manager_port}...")
         server = manager.get_server()
         logging.info("Manager server running. Waiting for client connections...")
         logging.info("Press Ctrl+C to stop.")
         
-        global MODEL_LOAD_COMPLETE
-        MODEL_LOAD_COMPLETE = True
-        logging.info("Model weight loading completed. Status server will now return 'READY'.")
+        global TENSOR_INITIALIZE_COMPLETE
+        TENSOR_INITIALIZE_COMPLETE = True
+        logging.info("[All Initialization Complete] Model weights loaded and KV cache allocated. Status server returning 'READY'.")
         
         # Start serve_forever in a separate thread so we can check shutdown flag
         server_thread = threading.Thread(target=server.serve_forever)
