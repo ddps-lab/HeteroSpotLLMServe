@@ -293,7 +293,7 @@ class Pipeline:
         ray_address = f"{self.ray_head_ip}:{ray_port}"
         try:
             if ray.is_initialized():
-                ray.shutdown()#_exiting_interpreter=True)
+                ray.shutdown()
             ray.init(address=ray_address, ignore_reinit_error=True)
             cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
         except Exception as e:
