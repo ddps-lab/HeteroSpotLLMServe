@@ -176,13 +176,14 @@ async def build_async_engine_client(
             raise
 
     async with build_async_engine_client_from_engine_args(
-            engine_args, args.disable_frontend_multiprocessing, node_rank_mapping) as engine:
+            engine_args, args.ray_address, args.disable_frontend_multiprocessing, node_rank_mapping) as engine:
         yield engine
 
 
 @asynccontextmanager
 async def build_async_engine_client_from_engine_args(
     engine_args: AsyncEngineArgs,
+    ray_address: str,
     disable_frontend_multiprocessing: bool = False,
     node_rank_mapping: Optional[Dict[str, List[int]]] = None,
 ) -> AsyncIterator[EngineClient]:
@@ -197,11 +198,12 @@ async def build_async_engine_client_from_engine_args(
     # Create the EngineConfig (determines if we can use V1).
     usage_context = UsageContext.OPENAI_API_SERVER
     vllm_config = engine_args.create_engine_config(usage_context=usage_context)
+    vllm_config.parallel_config.ray_address = ray_address
     
     # Ray를 통한 노드 배치 그룹을 설정합니다 (노드 매핑이 제공된 경우)
     if node_rank_mapping is not None:
         try:
-            placement_group = create_placement_group_and_bundle_indices(node_rank_mapping)
+            placement_group = create_placement_group_and_bundle_indices(node_rank_mapping, ray_address)
             vllm_config.parallel_config.placement_group = placement_group
         except ImportError:
             logger.error("Ray is not installed. Cannot set up placement group.")
@@ -1034,6 +1036,13 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Pipeline parallel layer partition configuration as comma-separated integers. Example: '12,14,6'")
+    
+    # Ray 클러스터 주소 인자 추가 (필수)
+    parser.add_argument(
+        "--ray-address",
+        type=str,
+        required=True,
+        help="Ray cluster address to connect to. Example: '192.168.1.100:6379'")
     
     args = parser.parse_args()
     validate_parsed_serve_args(args)

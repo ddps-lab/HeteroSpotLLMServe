@@ -94,15 +94,19 @@ class GlobalServer:
     async def send_request(self, request: Request, pipeline_index: int) -> RequestOutput:
         """Send a request to a specific pipeline."""
         pipeline = self.cluster.pipelines[pipeline_index]
-        first_vnode = pipeline.vnodes[0]
-        
+        api_server_host = pipeline.api_server_host
+        api_server_port = pipeline.api_server_port
+
+        if api_server_host is None or api_server_port is None:
+            raise ValueError(f"Pipeline {pipeline_index} does not have a valid API server configured")
+
         # Set API URL for the request
-        request.input.api_url = f"http://{first_vnode.node_ip}:{first_vnode.api_server_port}/v1/completions"
+        request.input.api_url = f"http://{api_server_host}:{api_server_port}/v1/completions"
         
         # Mark when request was sent
         request.sended_at = time.time()
         
-        return await async_request(request)
+        return await async_request(request, logger=logger)
     
     async def run_global_server(self, check_interval: float = 0.1):
         """Main server loop that processes requests from the waiting queue.
@@ -150,8 +154,7 @@ class GlobalServer:
                         
                         # Get head node IP for logging
                         pipeline = self.cluster.pipelines[pipeline_index]
-                        head_node_ip = pipeline.vnodes[0].node_ip
-                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index} (head: {head_node_ip})")
+                        logger.info(f"Dispatched request {request.request_id} from {queue_type} queue to pipeline {pipeline_index} (head: {pipeline.api_server_host}:{pipeline.api_server_port})")
                         
                     except Exception as e:
                         logger.error(f"Error dispatching request: {e}")

@@ -29,7 +29,7 @@ async def test_single_pipeline_single_node():
     global_server = GlobalServer()
 
     # Configuration for single pipeline across two nodes
-    node_ip_1 = "172.31.23.180"
+    node_ip_1 = "172.31.60.109"
     
     # Pipeline Parallelism: 16 layers on each node (total 32 layers)
     node_layer_mapping = [
@@ -44,7 +44,6 @@ async def test_single_pipeline_single_node():
         "pp_layer_partition": "32",  # Pipeline partition: 16 layers per node
         "parallel_strategy": [1],     # 1 GPU per node (no tensor parallelism)
         "max_model_len": 4096,
-        "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
         "max_num_seqs": 16,
         "model_source": "s3",

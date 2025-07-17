@@ -7,12 +7,20 @@ DEFAULT_API_SERVER_BASE_PORT = 8001
 
 PYTHON = "/usr/bin/python"
 PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
+RAY = "/home/ubuntu/.local/bin/ray"
 
 def get_tensor_store_command(model_name: str, 
                             tensor_parallel_size: int,
                             local_rank: int, 
+                            pipeline_parallel_size: int,
+                            pipeline_parallel_rank: int,
                             start_layer_id: int,
                             end_layer_id: int,
+                            block_size: int,
+                            gpu_memory_utilization: float,
+                            swap_space: float,
+                            cache_dtype: str,
+                            max_model_len: int,
                             status_port: Optional[int] = None,
                             dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
@@ -30,6 +38,13 @@ def get_tensor_store_command(model_name: str,
         dtype: Data type for model weights
         s3_path: S3 path where model tensors are stored (e.g., 's3://bucket/path/to/models')
         aws_profile: AWS profile to use for S3 access
+        block_size: Block size for KV cache
+        gpu_memory_utilization: GPU memory utilization ratio
+        swap_space: Size of CPU swap space per GPU in GiB
+        cache_dtype: Data type for KV cache storage
+        pipeline_parallel_size: Pipeline parallel size for virtual engine allocation
+        pipeline_parallel_rank: Pipeline parallel rank
+        max_model_len: Maximum model sequence length
     
     Returns:
         Command string to execute
@@ -51,7 +66,14 @@ def get_tensor_store_command(model_name: str,
             f"--local-rank {local_rank} "
             f"--start-layer-id {start_layer_id} "
             f"--end-layer-id {end_layer_id} "
-            f"--status-port {final_port}"
+            f"--status-port {final_port} "
+            f"--pipeline-parallel-size {pipeline_parallel_size} "
+            f"--pipeline-parallel-rank {pipeline_parallel_rank} "
+            f"--block-size {block_size} "
+            f"--gpu-memory-utilization {gpu_memory_utilization} "
+            f"--swap-space {swap_space} "
+            f"--cache-dtype {cache_dtype} "
+            f"--max-model-len {max_model_len}"
         )
         if aws_profile:
             cmd += f" --aws-profile {aws_profile}"
@@ -67,10 +89,16 @@ def get_tensor_store_command(model_name: str,
             f"--start-layer-id {start_layer_id} "
             f"--end-layer-id {end_layer_id} "
             f"--status-port {final_port} "
+            f"--pipeline-parallel-size {pipeline_parallel_size} "
+            f"--pipeline-parallel-rank {pipeline_parallel_rank} "
+            f"--block-size {block_size} "
+            f"--gpu-memory-utilization {gpu_memory_utilization} "
+            f"--swap-space {swap_space} "
+            f"--cache-dtype {cache_dtype} "
+            f"--max-model-len {max_model_len}"
         )
         if dtype is not None:
             cmd += f" --dtype {dtype}"
-    
     return cmd
 
 
@@ -79,12 +107,15 @@ def get_api_server_command(model_name: str,
                           parallel_strategy: List[int],
                           host: str,
                           node_rank_mapping: str,
+                          ray_address: str,
+                          num_gpu_blocks_override: Optional[int] = None,
                           port: Optional[int] = None,
                           dtype: Optional[str] = None,
                           max_model_len: Optional[int] = None,
                           gpu_memory_utilization: Optional[float] = None,
                           max_num_batched_tokens: Optional[int] = None,
-                          max_num_seqs: Optional[int] = None) -> str:
+                          max_num_seqs: Optional[int] = None,
+                          enforce_eager: bool = True) -> str:
     """
     Generate command to start API server based on launch_server_example.sh.
     
@@ -122,7 +153,8 @@ def get_api_server_command(model_name: str,
         f"--host={host}",
         f"--port={port}",
         f'--pp-layer-partition="{pp_layer_partition}"',
-        f"--parallel-strategy {parallel_strategy_str}"
+        f"--parallel-strategy {parallel_strategy_str}",
+        f"--ray-address={ray_address}",
     ]
     
     if dtype is not None:
@@ -144,5 +176,39 @@ def get_api_server_command(model_name: str,
     
     if max_num_seqs is not None:
         cmd_parts.append(f"--max-num-seqs={max_num_seqs}")
+
+    if enforce_eager:
+        cmd_parts.append("--enforce-eager")
+
+    # For Testing Dummy Value
+    num_gpu_blocks_override = 2048
+    if num_gpu_blocks_override is not None:
+        cmd_parts.append(f"--num-gpu-blocks={num_gpu_blocks_override}")
     
     return " ".join(cmd_parts)
+
+
+def get_ray_start_worker_command(head_address: str) -> str:
+    """
+    Generate command to start Ray worker node.
+    
+    Args:
+        head_address: Address of Ray head node (e.g., "192.168.1.100:6379")
+    
+    Returns:
+        Command string to execute
+    """
+    return f"{RAY} start --address={head_address} --disable-usage-stats"
+
+
+def get_ray_stop_command() -> str:
+    """
+    Generate command to stop Ray on a node.
+    
+    This command forcefully stops all Ray processes on the node,
+    which includes workers, actors, and any other Ray components.
+    
+    Returns:
+        Command string to execute via SSH
+    """
+    return f"{RAY} stop --force"

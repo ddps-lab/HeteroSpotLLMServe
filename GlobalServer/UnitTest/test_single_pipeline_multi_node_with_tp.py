@@ -29,13 +29,12 @@ async def test_single_pipeline_multi_node():
     global_server = GlobalServer()
 
     # Configuration for single pipeline across two nodes
-    node_ip_1 = "172.31.53.208"
-    node_ip_2 = "172.31.23.180"
+    node_ip_1 = "172.31.60.109"
+    node_ip_2 = "172.31.57.171" # this node has 4 gpus.
     
-    # Pipeline Parallelism: 16 layers on each node (total 32 layers)
     node_layer_mapping = [
-        (node_ip_1, 16),  # Node 1 handles layers 0-15
-        (node_ip_2, 16)   # Node 2 handles layers 16-31
+        (node_ip_1, 8),  # Node 1 handles layers 0-15
+        (node_ip_2, 24)   # Node 2 handles layers 16-31
     ]
     
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
@@ -43,16 +42,15 @@ async def test_single_pipeline_multi_node():
     config = {
         "model_name": model_name,
         "total_num_layers": 32,
-        "pp_layer_partition": "16,16",  # Pipeline partition: 16 layers per node
-        "parallel_strategy": [1, 1],     # 1 GPU per node (no tensor parallelism)
+        "pp_layer_partition": "8,24",
+        "parallel_strategy": [1,4],
         "max_model_len": 4096,
-        "gpu_memory_utilization": 0.25,
         "max_num_batched_tokens": 4096,
         "max_num_seqs": 16,
         "model_source": "s3",
         "s3_path": f"s3://{bucket_name}/{model_name}",
     }
-    dummy_throughput = 80  # Lower throughput due to pipeline overhead
+    dummy_throughput = 800  # Lower throughput due to pipeline overhead
 
     # Create pipeline helper function
     async def create_pipeline_async():
