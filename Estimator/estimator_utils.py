@@ -1,44 +1,14 @@
 from typing import List, Optional
 import torch
+import logging
+from hardware_specs import GPU_SPEC, INTERCONNECT_SPEC, INSTANCE_SPEC
 
-# spec 은 float 16 기준
-gpu_spec = {
-    "T4": {"memory_size": 16000, "FLOPS": 65 * 10**12, "memory_bandwidth": 320 * 10**9},
-    "A10G": {"memory_size": 24000, "FLOPS": 125 * 10**12, "memory_bandwidth": 600 * 10**9},
-    "L4": {"memory_size": 24000, "FLOPS": 121 * 10**12, "memory_bandwidth": 300 * 10**9},
-    "L40S": {"memory_size": 48000, "FLOPS": 362 * 10**12, "memory_bandwidth": 864 * 10**9},
-    "A100_40GB": {"memory_size": 40000, "FLOPS": 312 * 10**12, "memory_bandwidth": 1555 * 10**9},
-    "A100_80GB": {"memory_size": 80000, "FLOPS": 312 * 10**12, "memory_bandwidth": 2039 * 10**9},
-    "H100": {"memory_size": 80000, "FLOPS": 1979 * 10**12, "memory_bandwidth": 3350 * 10**9},
-    "H200": {"memory_size": 141000, "FLOPS": 1979 * 10**12, "memory_bandwidth": 4800 * 10**9},
-}
+import sys
+import os
+# Add parent directory to path for protocols import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from protocols import OUT_OF_MEMORY
 
-interconnect_spec = {
-    "PCIe Gen3x16": {"bandwidth": 32 * 10**9},
-    "PCIe Gen4x16": {"bandwidth": 64 * 10**9},
-    "NVSwitch 3.0": {"bandwidth": 600 * 10**9},
-    "NVSwitch 4.0": {"bandwidth": 900 * 10**9},
-}
-
-static_instances_config = {
-    "g4dn.xlarge": {"gpu_type": "T4", "gpu_count": 1, "interconnect": "PCIe Gen3x16", "ondemand_price": 0.526},
-    "g4dn.12xlarge": {"gpu_type": "T4", "gpu_count": 4, "interconnect": "PCIe Gen3x16", "ondemand_price": 3.912},
-    "g4dn.metal": {"gpu_type": "T4", "gpu_count": 8, "interconnect": "PCIe Gen3x16", "ondemand_price": 7.824},
-    "g5.xlarge": {"gpu_type": "A10G", "gpu_count": 1, "interconnect": "PCIe Gen4x16", "ondemand_price": 1.006},
-    "g5.12xlarge": {"gpu_type": "A10G", "gpu_count": 4, "interconnect": "PCIe Gen4x16", "ondemand_price": 5.672},
-    "g5.48xlarge": {"gpu_type": "A10G", "gpu_count": 8, "interconnect": "PCIe Gen4x16", "ondemand_price": 16.288},
-    "g6.xlarge": {"gpu_type": "L4", "gpu_count": 1, "interconnect": "PCIe Gen4x16", "ondemand_price": 0.805},
-    "g6.12xlarge": {"gpu_type": "L4", "gpu_count": 4, "interconnect": "PCIe Gen4x16", "ondemand_price": 4.602},
-    "g6.48xlarge": {"gpu_type": "L4", "gpu_count": 8, "interconnect": "PCIe Gen4x16", "ondemand_price": 13.35},
-    "g6e.xlarge": {"gpu_type": "L40S", "gpu_count": 1, "interconnect": "PCIe Gen4x16", "ondemand_price": 1.861},
-    "g6e.12xlarge": {"gpu_type": "L40S", "gpu_count": 4, "interconnect": "PCIe Gen4x16", "ondemand_price": 10.493},
-    "g6e.48xlarge": {"gpu_type": "L40S", "gpu_count": 8, "interconnect": "PCIe Gen4x16", "ondemand_price": 30.131},
-    "p4d.24xlarge": {"gpu_type": "A100_40GB", "gpu_count": 8, "interconnect": "NVSwitch 3.0", "ondemand_price": 32.773},
-    "p4de.24xlarge": {"gpu_type": "A100_80GB", "gpu_count": 8, "interconnect": "NVSwitch 3.0", "ondemand_price": 40.966},
-    "p5.48xlarge": {"gpu_type": "H100", "gpu_count": 8, "interconnect": "NVSwitch 4.0", "ondemand_price": 98.320},
-    "p5e.48xlarge": {"gpu_type": "H200", "gpu_count": 8, "interconnect": "NVSwitch 4.0", "ondemand_price": 84.800}, # 온디맨드 가격이 존재하지 않음.
-    "p5en.48xlarge": {"gpu_type": "H200", "gpu_count": 8, "interconnect": "NVSwitch 4.0", "ondemand_price": 84.800},
-}
 
 
 def get_prefill_computation_ops_per_layer(
@@ -268,9 +238,9 @@ def get_prefill_computation_latency_per_layer(
     ) * dtype.itemsize  # Bytes 단위로 변환
     arithmetic_intensity = computation_ops_per_layer / computation_memory_access_per_layer
     
-    gpu_spec_info = gpu_spec[gpu_type]
-    flops = gpu_spec_info["FLOPS"]
-    memory_bandwidth = gpu_spec_info["memory_bandwidth"]
+    GPU_SPEC_info = GPU_SPEC[gpu_type]
+    flops = GPU_SPEC_info["FLOPS"]
+    memory_bandwidth = GPU_SPEC_info["memory_bandwidth"]
     device_arithmetic_intensity = flops / memory_bandwidth
 
     if arithmetic_intensity < device_arithmetic_intensity:
@@ -303,9 +273,9 @@ def get_decodeing_computation_latency_per_layer(
     ) * dtype.itemsize  # Bytes 단위로 변환
     arithmetic_intensity = computation_ops_per_layer / computation_memory_access_per_layer
     
-    gpu_spec_info = gpu_spec[gpu_type]
-    flops = gpu_spec_info["FLOPS"]
-    memory_bandwidth = gpu_spec_info["memory_bandwidth"]
+    GPU_SPEC_info = GPU_SPEC[gpu_type]
+    flops = GPU_SPEC_info["FLOPS"]
+    memory_bandwidth = GPU_SPEC_info["memory_bandwidth"]
     device_arithmetic_intensity = flops / memory_bandwidth
 
     if arithmetic_intensity < device_arithmetic_intensity:
@@ -352,10 +322,10 @@ def get_global_batch_size(
     global_batch_sizes = []
 
     for node_type, az, layer_count in node_layer_comb:
-        gpu_type = static_instances_config[node_type]["gpu_type"]
-        num_gpu = static_instances_config[node_type]["gpu_count"]
-        gpu_spec_info = gpu_spec[gpu_type]
-        memory_size_per_gpu= gpu_spec_info["memory_size"] * 10**6 # MB to Bytes
+        gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
+        num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
+        GPU_SPEC_info = GPU_SPEC[gpu_type]
+        memory_size_per_gpu= GPU_SPEC_info["memory_size"] * 10**6 # MB to Bytes
         memory_size = memory_size_per_gpu * num_gpu
 
         # Get total memory available
@@ -384,13 +354,13 @@ def get_global_batch_size(
 
         global_batch_sizes.append(global_batch_size)
 
-        print(f"Total Memory Available ({node_type}, {layer_count}): {total_memory_available / (1000**3):.2f} GB")
-        print(f"Model Weight Memory ({node_type}, {layer_count}): {model_weight_memory / (1000**3):.2f} GB")
-        print(f"Forwarding Memory ({node_type}, {layer_count}): {forwarding_memory / (1000**3):.2f} GB")
-        print(f"Available KV Cache Memory ({node_type}, {layer_count}): {available_kv_cache_memory / (1000**3):.2f} GB")
-        print(f"KV Cache Memory when one time max model len forwarding ({node_type}, {layer_count}): {kv_memory_needed_per_layer * layer_count / (1000**3):.2f} GB")
+        logging.debug(f"Total Memory Available ({node_type}, {layer_count}): {total_memory_available / (1000**3):.2f} GB")
+        logging.debug(f"Model Weight Memory ({node_type}, {layer_count}): {model_weight_memory / (1000**3):.2f} GB")
+        logging.debug(f"Forwarding Memory ({node_type}, {layer_count}): {forwarding_memory / (1000**3):.2f} GB")
+        logging.debug(f"Available KV Cache Memory ({node_type}, {layer_count}): {available_kv_cache_memory / (1000**3):.2f} GB")
+        logging.debug(f"KV Cache Memory when one time max model len forwarding ({node_type}, {layer_count}): {kv_memory_needed_per_layer * layer_count / (1000**3):.2f} GB")
 
-    print(f"Available Global Batch Sizes per Stage: {global_batch_sizes}")
+    logging.debug(f"Available Global Batch Sizes per Stage: {global_batch_sizes}")
 
     return min(global_batch_sizes)
 
@@ -421,7 +391,7 @@ def get_throughput(
         dtype=dtype
     )
     if global_batch_size == 0:
-        return 0
+        return OUT_OF_MEMORY # global_batch_size 가 0이라는 것은 메모리 제약조건을 충족하지 못한다는 뜻.
 
     prefill_latencies = []
     decoding_latencies = []
@@ -431,9 +401,9 @@ def get_throughput(
     pp_size = len(node_layer_comb)
     
     for stage, (node_type, az, layer_count) in enumerate(node_layer_comb):
-        gpu_type = static_instances_config[node_type]["gpu_type"]
-        num_gpu = static_instances_config[node_type]["gpu_count"]
-        p2p_bandwidth = interconnect_spec[static_instances_config[node_type]["interconnect"]]["bandwidth"]
+        gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
+        num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
+        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
 
         # 아래 두 개는 Computation 과 Communication 연산을 포함한다.
         prefill_computation_latency = 0
@@ -621,15 +591,15 @@ def get_throughput(
 
         
         # debugging 용 logging
-        print(f"Stage {stage} ({node_type}, {az}, {layer_count}):")
-        print(f"  Prefill Latency: {prefill_computation_latency + prefill_pp_communication_latency + prefill_tp_communication_latency:.2f} ms")
-        print(f"    Prefill Computation Latency: {prefill_computation_latency:.2f} ms")
-        print(f"    Prefill PP Communication Latency: {prefill_pp_communication_latency:.2f} ms")
-        print(f"    Prefill TP Communication Latency: {prefill_tp_communication_latency:.2f} ms")
-        print(f"  Decoding Latency: {decoding_computation_latency + decoding_pp_communication_latency + decoding_tp_communication_latency:.2f} ms")
-        print(f"    Decoding Computation Latency: {decoding_computation_latency:.2f} ms")
-        print(f"    Decoding PP Communication Latency: {decoding_pp_communication_latency:.2f} ms")
-        print(f"    Decoding TP Communication Latency: {decoding_tp_communication_latency:.2f} ms")
+        logging.debug(f"Stage {stage} ({node_type}, {az}, {layer_count}):")
+        logging.debug(f"  Prefill Latency: {prefill_computation_latency + prefill_pp_communication_latency + prefill_tp_communication_latency:.2f} ms")
+        logging.debug(f"    Prefill Computation Latency: {prefill_computation_latency:.2f} ms")
+        logging.debug(f"    Prefill PP Communication Latency: {prefill_pp_communication_latency:.2f} ms")
+        logging.debug(f"    Prefill TP Communication Latency: {prefill_tp_communication_latency:.2f} ms")
+        logging.debug(f"  Decoding Latency: {decoding_computation_latency + decoding_pp_communication_latency + decoding_tp_communication_latency:.2f} ms")
+        logging.debug(f"    Decoding Computation Latency: {decoding_computation_latency:.2f} ms")
+        logging.debug(f"    Decoding PP Communication Latency: {decoding_pp_communication_latency:.2f} ms")
+        logging.debug(f"    Decoding TP Communication Latency: {decoding_tp_communication_latency:.2f} ms")
 
         prefill_latencies.append(prefill_computation_latency + prefill_pp_communication_latency + prefill_tp_communication_latency)
         decoding_latencies.append(decoding_computation_latency + decoding_pp_communication_latency + decoding_tp_communication_latency)
@@ -642,8 +612,8 @@ def get_throughput(
 
     throughput = global_batch_size / (total_latency_per_global_batch / 1000)  # ms to seconds
 
-    print(f"Global Batch Size: {global_batch_size}")
-    print(f"System Throughput: {throughput:.2f} reqs/s")
+    logging.debug(f"Global Batch Size: {global_batch_size}")
+    logging.debug(f"System Throughput: {throughput:.2f} reqs/s")
 
     return throughput
 
