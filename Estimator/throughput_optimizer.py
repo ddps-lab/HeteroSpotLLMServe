@@ -481,15 +481,54 @@ class DPOptimizer:
         logger.info("")
 
 
+def run_test_case(config: Dict, budget: float, latency_slo: float, look_rank: int = 5) -> Tuple[Pipeline, DPOptimizer, float]:
+    """
+    Run a single test case with given budget and SLO.
+    
+    Args:
+        config: Model configuration dictionary
+        budget: Budget in USD per hour
+        latency_slo: Latency SLO in milliseconds
+        look_rank: Number of top pipelines to show
+    
+    Returns:
+        Tuple of (Optimal Pipeline, DPOptimizer, optimization_time)
+    """
+    optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo)
+    
+    start_time = time.time()
+    result = optimizer.optimize()
+    optimization_time = time.time() - start_time
+    
+    if result:
+        logger.info(f"✓ Found optimal pipeline:")
+        logger.info(f"  {result}")
+        logger.info(f"  - Stages: {result.stages}")
+        logger.info(f"  - Layers per stage: {result.layer_per_stage}")
+        logger.info(f"  - Total layers: {sum(result.layer_per_stage)}")
+        
+        # Show top ranked pipelines
+        optimizer.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
+    else:
+        logger.info("✗ No feasible pipeline found within constraints")
+    
+    # Show DP table for debugging
+    optimizer.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
+    logger.info(f"⏱️  Optimization time: {optimization_time:.3f} seconds")
+    logger.info("")
+    
+    return result, optimizer, optimization_time
+
+
 if __name__ == "__main__":
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
 
     config = {
         "expected_input_len": 900,  # 입력 시퀀스 길이
-        "expected_output_len": 1024,  # 출력 시퀀스 길이
+        "expected_output_len": 200,  # 출력 시퀀스 길이
         "hidden_size": model_config.hidden_size,
         "num_layers": model_config.num_hidden_layers,
         "num_attention_heads": model_config.num_attention_heads,
@@ -500,7 +539,7 @@ if __name__ == "__main__":
         "dtype": torch.float16,
         "max_model_len": 8192,
         "gpu_mem_utilization": 0.9,
-        "total_model_mem": 140 * 10**9,  # 16GB Model Memory
+        "total_model_mem": 16 * 10**9,  # 16GB Model Memory
     }
 
     logger.info("=" * 80)
@@ -516,152 +555,45 @@ if __name__ == "__main__":
 
     # 테스트 시나리오 1: 낮은 예산, 느슨한 지연시간
     logger.info("-" * 80)
-    logger.info("Test Case 1: Low budget ($15/hour), relaxed latency (60s)")
+    logger.info("Test Case 1: Low budget ($5/hour), relaxed latency (5s)")
     logger.info("-" * 80)
-    optimizer1 = DPOptimizer(config, budget=15.0, latency_slo=60000)
-    
-    start_time = time.time()
-    result1 = optimizer1.optimize()
-    optimization_time1 = time.time() - start_time
-    
-    if result1:
-        logger.info(f"✓ Found optimal pipeline:")
-        logger.info(f"  {result1}")
-        logger.info(f"  - Stages: {result1.stages}")
-        logger.info(f"  - Layers per stage: {result1.layer_per_stage}")
-        logger.info(f"  - Total layers: {sum(result1.layer_per_stage)}")
-        
-        # 디버깅: 상위 look_rank 개 완전한 파이프라인 랭킹
-        optimizer1.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
-    else:
-        logger.info("✗ No feasible pipeline found within constraints")
-    # 디버깅: DP 테이블 확인
-    optimizer1.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
-    logger.info(f"⏱️  Optimization time: {optimization_time1:.3f} seconds")
-    logger.info("")
+    result1, optimizer1, optimization_time1 = run_test_case(config, budget=5.0, latency_slo=5000, look_rank=look_rank)
 
     # 테스트 시나리오 2: 중간 예산, 중간 지연시간
     logger.info("-" * 80)
-    logger.info("Test Case 2: Medium budget ($20/hour), moderate latency (5s)")
+    logger.info("Test Case 2: Medium budget ($10/hour), moderate latency (3s)")
     logger.info("-" * 80)
-    optimizer2 = DPOptimizer(config, budget=20.0, latency_slo=5000)
-    
-    start_time = time.time()
-    result2 = optimizer2.optimize()
-    optimization_time2 = time.time() - start_time
-    
-    if result2:
-        logger.info(f"✓ Found optimal pipeline:")
-        logger.info(f"  {result2}")
-        logger.info(f"  - Stages: {result2.stages}")
-        logger.info(f"  - Layers per stage: {result2.layer_per_stage}")
-        logger.info(f"  - Total layers: {sum(result2.layer_per_stage)}")
-
-        # 디버깅: 상위 look_rank 개 완전한 파이프라인 랭킹
-        optimizer2.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
-    else:
-        logger.info("✗ No feasible pipeline found within constraints")
-    # 디버깅: DP 테이블 확인
-    optimizer2.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
-    logger.info(f"⏱️  Optimization time: {optimization_time2:.3f} seconds")
-    logger.info("")
+    result2, optimizer2, optimization_time2 = run_test_case(config, budget=10.0, latency_slo=3000, look_rank=look_rank)
 
     # 테스트 시나리오 3: 높은 예산, 엄격한 지연시간
     logger.info("-" * 80)
-    logger.info("Test Case 3: High budget ($50/hour), strict latency (2s)")
+    logger.info("Test Case 3: High budget ($40/hour), strict latency (1s)")
     logger.info("-" * 80)
-    optimizer3 = DPOptimizer(config, budget=50.0, latency_slo=2000)
-    
-    start_time = time.time()
-    result3 = optimizer3.optimize()
-    optimization_time3 = time.time() - start_time
-    
-    if result3:
-        logger.info(f"✓ Found optimal pipeline:")
-        logger.info(f"  {result3}")
-        logger.info(f"  - Stages: {result3.stages}")
-        logger.info(f"  - Layers per stage: {result3.layer_per_stage}")
-        logger.info(f"  - Total layers: {sum(result3.layer_per_stage)}")
-
-        # 디버깅: 상위 look_rank 개 완전한 파이프라인 랭킹
-        optimizer3.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
-    else:
-        logger.info("✗ No feasible pipeline found within constraints")
-    # 디버깅: DP 테이블 확인
-    optimizer3.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
-    logger.info(f"⏱️  Optimization time: {optimization_time3:.3f} seconds")
-    logger.info("")
+    result3, optimizer3, optimization_time3 = run_test_case(config, budget=40.0, latency_slo=1000, look_rank=look_rank)
 
     # 테스트 시나리오 4: 매우 낮은 예산 (실패 케이스)
     logger.info("-" * 80)
-    logger.info("Test Case 4: Very low budget ($1/hour), moderate latency (5s)")
+    logger.info("Test Case 4: Very low budget ($1/hour), moderate latency (10s)")
     logger.info("-" * 80)
-    optimizer4 = DPOptimizer(config, budget=1.0, latency_slo=5000)
-    
-    start_time = time.time()
-    result4 = optimizer4.optimize()
-    optimization_time4 = time.time() - start_time
-    
-    if result4:
-        logger.info(f"✓ Found optimal pipeline:")
-        logger.info(f"  {result4}")
-        
-        # 디버깅: 상위 look_rank 개 완전한 파이프라인 랭킹
-        optimizer4.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
-    else:
-        logger.info("✗ No feasible pipeline found within constraints (expected)")
-    # 디버깅: DP 테이블 확인
-    optimizer4.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
-    logger.info(f"⏱️  Optimization time: {optimization_time4:.3f} seconds")
-    logger.info("")
+    result4, optimizer4, optimization_time4 = run_test_case(config, budget=1.0, latency_slo=5000, look_rank=look_rank)
 
     # 테스트 시나리오 5: 매우 엄격한 지연시간 (실패 케이스)
     logger.info("-" * 80)
     logger.info("Test Case 5: Medium budget ($20/hour), very strict latency (500ms)")
     logger.info("-" * 80)
-    optimizer5 = DPOptimizer(config, budget=20.0, latency_slo=500)
-    
-    start_time = time.time()
-    result5 = optimizer5.optimize()
-    optimization_time5 = time.time() - start_time
-    
-    if result5:
-        logger.info(f"✓ Found optimal pipeline:")
-        logger.info(f"  {result5}")
-
-        # 디버깅: 상위 look_rank 개 완전한 파이프라인 랭킹
-        optimizer5.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
-    else:
-        logger.info("✗ No feasible pipeline found within constraints (expected)")
-    # 디버깅: DP 테이블 확인
-    optimizer5.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
-    logger.info(f"⏱️  Optimization time: {optimization_time5:.3f} seconds")
-    logger.info("")
+    result5, optimizer5, optimization_time5 = run_test_case(config, budget=20.0, latency_slo=500, look_rank=look_rank)
 
     # 테스트 시나리오 6: 매우 높은 예산, 매우 엄격한 지연시간
     logger.info("-" * 80)
-    logger.info("Test Case 6: Very high budget ($90/hour), very strict latency (500ms)")
+    logger.info("Test Case 6: Very high budget ($90/hour), very strict latency (200ms)")
     logger.info("-" * 80)
-    optimizer6 = DPOptimizer(config, budget=90.0, latency_slo=500)
-    
-    start_time = time.time()
-    result6 = optimizer6.optimize()
-    optimization_time6 = time.time() - start_time
-    
-    if result6:
-        logger.info(f"✓ Found optimal pipeline:")
-        logger.info(f"  {result6}")
-        logger.info(f"  - Stages: {result6.stages}")
-        logger.info(f"  - Layers per stage: {result6.layer_per_stage}")
-        logger.info(f"  - Total layers: {sum(result6.layer_per_stage)}")
+    result6, optimizer6, optimization_time6 = run_test_case(config, budget=90.0, latency_slo=500, look_rank=look_rank)
 
-        # 디버깅: 상위 look_rank 개 완전한 파이프라인 랭킹
-        optimizer6.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
-    else:
-        logger.info("✗ No feasible pipeline found within constraints")
-    # 디버깅: DP 테이블 확인
-    optimizer6.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
-    logger.info(f"⏱️  Optimization time: {optimization_time6:.3f} seconds")
+    # 테스트 시나리오 7: 예산 무한, 지연시간 무제한
+    logger.info("-" * 80)
+    logger.info("Test Case 7: Unlimited budget, unlimited latency")
+    logger.info("-" * 80)
+    result7, optimizer7, optimization_time7 = run_test_case(config, budget=9999, latency_slo=9999999999, look_rank=look_rank)
     
     logger.info("")
     logger.info("=" * 80)
@@ -684,26 +616,8 @@ if __name__ == "__main__":
         else:
             logger.info(f"{test_name}: FAILED - No feasible solution (⏱️ {opt_time:.3f}s)")
     
-    # 유효한 파이프라인 개수 출력
-    logger.info(f"Valid pipelines found per test:")
-    optimizers = [
-        ("Test 1", optimizer1),
-        ("Test 2", optimizer2),
-        ("Test 3", optimizer3),
-        ("Test 4", optimizer4),
-        ("Test 5", optimizer5),
-        ("Test 6", optimizer6)
-    ]
-    
-    total_valid_count = 0
-    for test_name, opt in optimizers:
-        valid_count = len(opt.get_all_valid_pipelines())
-        total_valid_count += valid_count
-        logger.info(f"  {test_name}: {valid_count} pipelines")
-    
-    logger.info(f"  Total: {total_valid_count} pipelines")
-    
     # 최적화 시간 통계
+    logger.info("")
     optimization_times = [optimization_time1, optimization_time2, optimization_time3, optimization_time4, optimization_time5, optimization_time6]
     total_optimization_time = sum(optimization_times)
     avg_optimization_time = total_optimization_time / 6
