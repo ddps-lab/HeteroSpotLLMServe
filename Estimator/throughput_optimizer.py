@@ -104,7 +104,7 @@ def initialize_computation_latencies(config: Dict[str, Any]):
             dtype=dtype,
         )
 
-        decode_computation_latency_per_layer = get_decodeing_computation_latency_per_layer(
+        decode_computation_latency_per_layer = get_decoding_computation_latency_per_layer(
             gpu_type=gpu_type,
             gpu_count=gpu_count,
             input_len=expected_input_len,
@@ -482,14 +482,14 @@ class DPOptimizer:
 
 
 if __name__ == "__main__":
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = "meta-llama/Llama-3.1-70B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
 
     config = {
         "expected_input_len": 900,  # 입력 시퀀스 길이
-        "expected_output_len": 300,  # 출력 시퀀스 길이
+        "expected_output_len": 1024,  # 출력 시퀀스 길이
         "hidden_size": model_config.hidden_size,
         "num_layers": model_config.num_hidden_layers,
         "num_attention_heads": model_config.num_attention_heads,
@@ -498,9 +498,9 @@ if __name__ == "__main__":
         "vocab_size": model_config.vocab_size,
         "max_position_embeddings": model_config.max_position_embeddings,
         "dtype": torch.float16,
-        "max_model_len": 4096,
+        "max_model_len": 8192,
         "gpu_mem_utilization": 0.9,
-        "total_model_mem": 16000 * 10**6,  # 16GB Model Memory
+        "total_model_mem": 140 * 10**9,  # 16GB Model Memory
     }
 
     logger.info("=" * 80)
@@ -516,9 +516,9 @@ if __name__ == "__main__":
 
     # 테스트 시나리오 1: 낮은 예산, 느슨한 지연시간
     logger.info("-" * 80)
-    logger.info("Test Case 1: Low budget ($5/hour), relaxed latency (10s)")
+    logger.info("Test Case 1: Low budget ($15/hour), relaxed latency (60s)")
     logger.info("-" * 80)
-    optimizer1 = DPOptimizer(config, budget=5.0, latency_slo=10000)
+    optimizer1 = DPOptimizer(config, budget=15.0, latency_slo=60000)
     
     start_time = time.time()
     result1 = optimizer1.optimize()
