@@ -393,68 +393,6 @@ async def benchmark(
 
     benchmark_duration = time.perf_counter() - benchmark_start_time
 
-
-    print("Estimation 시작")
-    # huggingface 에서 모델 이름을 통해 config 를 불러와야 함
-    config = AutoConfig.from_pretrained(model_id)
-    hidden_dim_size = config.hidden_size
-    num_attention_heads = config.num_attention_heads
-    num_key_value_heads = getattr(config, "num_key_value_heads",
-                                  config.num_attention_heads)
-    intermediate_dim_size = config.intermediate_size
-    data_byte_size = 2 # 그냥 일단 하드코딩
-    device_FLOPS = 242 * 10**12 # 그냥 일단 하드코딩 242 TFlops (L4)
-    device_memory_bandwidth = 300 * 10**9 # 그냥 일단 하드코딩 300GB/s
-
-    total_layer_num = config.num_hidden_layers
-
-    total_hexgen_compute_latency = 0
-    total_hexgen_memory_scan_latency = 0
-    total_compute_latency = 0
-    total_memory_scan_latency = 0
-    total_latency = 0
-    for output in outputs:
-        input_sequence_length = output.prompt_len
-        output_sequence_length = output.output_tokens
-
-        hexgen_compute_latency, hexgen_memory_scan_latency = get_computation_latency_hexgen(
-            input_sequence_length=input_sequence_length,
-            output_sequence_length=output_sequence_length,
-            hidden_dim_size=hidden_dim_size,
-            data_byte_size=data_byte_size,
-            device_FLOPS=device_FLOPS,
-            device_memory_bandwidth=device_memory_bandwidth,
-        )
-
-        compute_latency, memory_scan_latency = get_computation_latency(
-            input_sequence_length=input_sequence_length,
-            output_sequence_length=output_sequence_length,
-            hidden_dim_size=hidden_dim_size,
-            num_attention_heads=num_attention_heads,
-            num_key_value_heads=num_key_value_heads,
-            intermediate_dim_size=intermediate_dim_size,
-            data_byte_size=data_byte_size,
-            device_FLOPS=device_FLOPS,
-            device_memory_bandwidth=device_memory_bandwidth,
-        )
-        
-        total_hexgen_compute_latency += hexgen_compute_latency * total_layer_num
-        total_hexgen_memory_scan_latency += hexgen_memory_scan_latency * total_layer_num
-        total_compute_latency += compute_latency * total_layer_num
-        total_memory_scan_latency += memory_scan_latency * total_layer_num
-        total_latency += output.latency
-
-    total_hexgen_estimation = total_hexgen_compute_latency + total_hexgen_memory_scan_latency
-    total_modified_estimation = total_compute_latency + total_memory_scan_latency
-
-    print(f"Hexgen estimation : {total_hexgen_estimation:.3f} seconds")
-    print(f"\tHexgen compute latency : {total_hexgen_compute_latency:.3f} seconds")
-    print(f"\tHexgen memory scan latency : {total_hexgen_memory_scan_latency:.3f} seconds")
-    print(f"Modified estimation : {total_modified_estimation:.3f} seconds")
-    print(f"\tModified compute latency : {total_compute_latency:.3f} seconds")
-    print(f"\tModified memory scan latency : {total_memory_scan_latency:.3f} seconds")
-    print(f"Meausred Total latency : {total_latency:.3f} seconds")
-
     metrics, actual_output_lens = calculate_metrics(
         input_requests=input_requests,
         outputs=outputs,
