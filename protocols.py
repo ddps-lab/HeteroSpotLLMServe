@@ -7,6 +7,7 @@ of the system, including TensorStore servers and API servers.
 
 from enum import Enum
 
+OUT_OF_MEMORY = -1  # Special value indicating out of memory condition
 
 class TensorStoreRequest(Enum):
     """Request commands for TensorStore server."""
