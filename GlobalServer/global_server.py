@@ -109,7 +109,7 @@ class GlobalServer:
         
         return await async_request(request, logger=logger)
     
-    async def run_global_server(self, check_interval: float = 0.1):
+    async def run_global_server(self, check_interval: float = 0.01):
         """Main server loop that processes requests from the waiting queue.
         
         Args:

@@ -138,6 +138,7 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
             # Continue generation from where it left off
             prompt = request_input.prompt + request.output.generated_text
             remaining_tokens = request_input.expected_output_len - request.output.output_tokens
+            logger.info(f"Continuing request {request.request_id} with remaining tokens: {remaining_tokens}")
         else:
             prompt = request_input.prompt
             remaining_tokens = request_input.expected_output_len
