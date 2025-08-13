@@ -46,6 +46,7 @@ class Cluster:
     def __init__(self):
         self.pipelines: List[Pipeline] = []
         self.ideal_throughput: float = 0.0
+        self.ray_init_lock = threading.Lock()  # Lock for Ray initialization
         
     def create_pipeline(self, 
                        node_layer_mapping: List[Tuple[str, int]], 
@@ -82,7 +83,7 @@ class Cluster:
                 raise ValueError(f"config must contain '{key}'")
             
         pipeline = Pipeline()
-        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput)
+        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
         self.pipelines.append(pipeline)
         self.ideal_throughput += ideal_throughput
 
@@ -165,7 +166,8 @@ class Pipeline:
     def initialize_pipeline(self, 
                             node_layer_mapping: List[Tuple[str, int]], 
                             config: Dict,
-                            ideal_throughput: float):
+                            ideal_throughput: float,
+                            ray_init_lock: threading.Lock = None):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
 
         cluster_logger.info(f"Initializing pipeline with {node_layer_mapping}")
@@ -202,7 +204,7 @@ class Pipeline:
         
         # Now start Ray cluster with all vnodes
         ray_port = self.get_alternate_ray_port()
-        self.start_ray_cluster(ray_port)
+        self.start_ray_cluster(ray_port, ray_init_lock)
         
         # Update VNode GPU counts from Ray cluster information
         for vnode in self.vnodes:
@@ -275,7 +277,7 @@ class Pipeline:
         else:
             return 6379
     
-    def start_ray_cluster(self, ray_port: int):
+    def start_ray_cluster(self, ray_port: int, ray_init_lock: threading.Lock = None):
         """Start Ray cluster and ensure all vnodes are connected.
         
         Args:
@@ -289,16 +291,25 @@ class Pipeline:
         
         cluster_logger.info(f"Starting Ray cluster on port {ray_port}")
         
-        # Initialize or connect to Ray cluster
+        # Initialize or connect to Ray cluster with lock if provided
         ray_address = f"{self.ray_head_ip}:{ray_port}"
-        try:
-            if ray.is_initialized():
-                ray.shutdown()
-            ray.init(address=ray_address, ignore_reinit_error=True)
-            cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
-        except Exception as e:
-            cluster_logger.error(f"Failed to connect to Ray cluster: {e}")
-            raise
+        
+        def init_ray():
+            try:
+                if ray.is_initialized():
+                    ray.shutdown()
+                cluster_logger.info(f"Connecting to Ray cluster at {ray_address}")
+                ray.init(address=ray_address, ignore_reinit_error=True)
+                cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
+            except Exception as e:
+                cluster_logger.error(f"Failed to connect to Ray cluster: {e}")
+                raise
+        
+        if ray_init_lock:
+            with ray_init_lock:
+                init_ray()
+        else:
+            init_ray()
         
         # Get currently connected nodes
         ray_nodes = ray.nodes()
