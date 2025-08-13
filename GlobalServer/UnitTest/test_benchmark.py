@@ -6,7 +6,7 @@ import asyncio
 import concurrent.futures
 import sys
 import os
-from typing import List
+from typing import Dict, List, Tuple
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,7 +30,9 @@ async def run_benchmark(
     model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
     max_concurrency: int = None,
     percentiles: List[float] = None,
-    disable_tqdm: bool = False
+    disable_tqdm: bool = False,
+    run_initial_test: bool = True,
+    test_requests_per_pipeline: int = 2
 ):
     """
     Run a benchmark test on the GlobalServer.
@@ -45,6 +47,8 @@ async def run_benchmark(
         max_concurrency: Maximum number of concurrent requests (None for no limit)
         percentiles: List of percentiles to calculate (default: [25, 50, 75, 99])
         disable_tqdm: Whether to disable progress bar
+        run_initial_test: Whether to run initial test requests
+        test_requests_per_pipeline: Number of test requests per pipeline
         
     Returns:
         BenchmarkMetrics object with results
@@ -70,6 +74,45 @@ async def run_benchmark(
         ignore_eos=True  # Ensure consistent output length
     )
     
+    # Run initial test if requested
+    if run_initial_test:
+        num_pipelines = len(global_server.cluster.pipelines)
+        print(f"\nRunning initial test on {num_pipelines} pipeline(s)...")
+        
+        # Generate test requests (2 per pipeline)
+        test_count = test_requests_per_pipeline * num_pipelines
+        test_inputs = request_inputs[:test_count] if test_count <= len(request_inputs) else generate_random_requests(
+            num_prompts=test_count,
+            input_len=input_len,
+            output_len=output_len,
+            model_name=model_name,
+            ignore_eos=True
+        )
+        
+        # Send test requests
+        print(f"Sending {test_count} test requests ({test_requests_per_pipeline} per pipeline)...")
+        test_requests = []
+        for test_input in test_inputs:
+            request = await global_server.add_request_and_wait(test_input)
+            test_requests.append(request)
+        
+        # Check results
+        failed_count = 0
+        for i, request in enumerate(test_requests):
+            if not (request.output and request.output.success):
+                failed_count += 1
+                error_msg = request.output.error if request.output else "No output"
+                print(f"  Test request {i+1} failed: {error_msg}")
+        
+        if failed_count > 0:
+            raise ValueError(
+                f"Initial test failed - {failed_count}/{test_count} requests failed. "
+                "Please check pipeline configuration and server status."
+            )
+        else:
+            print(f"Initial test completed successfully - all {test_count} requests succeeded!")
+            print("Starting main benchmark run...\n")
+    
     # Run benchmark (send requests and wait for completion)
     requests, actual_duration = await run_benchmark_requests(
         global_server, request_inputs, request_rate, max_concurrency, disable_tqdm
@@ -93,11 +136,18 @@ async def test_benchmark():
     global_server = GlobalServer()
     
     # Configuration for single node
-    node_ip = "172.31.62.65"  # Update with your actual node IP
-    node_layer_mapping = [(node_ip, 32)]  # Single node with all 32 layers
-    
+    node_ip_1 = "172.31.6.141"  # Update with your actual node IP
+    node_ip_2 = "172.31.8.240"
+    node_ip_3 = "172.31.4.224"
+    node_layer_mapping_1 = [(node_ip_1, 32)]
+    node_layer_mapping_2 = [(node_ip_2, 32)]
+    node_layer_mapping_3 = [(node_ip_3, 32)]
+    throughput_1 = 100
+    throughput_2 = 100
+    throughput_3 = 100
+
     model_name = "meta-llama/Llama-3.1-8B-Instruct"
-    config = {
+    pipeline_config = {
         "model_name": model_name,
         "total_num_layers": 32,
         "pp_layer_partition": "32",
@@ -108,10 +158,9 @@ async def test_benchmark():
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
     }
-    dummy_throughput = 100
     
     # Create pipeline in background
-    async def create_pipeline_async():
+    async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor() as executor:
             await loop.run_in_executor(
@@ -119,20 +168,24 @@ async def test_benchmark():
                 global_server.create_pipeline,
                 node_layer_mapping,
                 config,
-                dummy_throughput
+                throughput
             )
         logger.info("Pipeline creation completed")
     
     # Start pipeline creation
-    pipeline_task = asyncio.create_task(create_pipeline_async())
-    
+    pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_1, throughput_1))
+    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_2, throughput_2))
+    pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_3, throughput_3))
+
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
     
     try:
         # Wait for pipeline creation to complete
         logger.info("Waiting for pipeline creation to complete...")
-        await pipeline_task
+        await pipeline_task_1
+        await pipeline_task_2
+        await pipeline_task_3
         logger.info("Pipeline is ready!")
         
         # Run benchmark
@@ -145,7 +198,9 @@ async def test_benchmark():
             model_name=model_name,
             max_concurrency=None,  # Limit concurrent requests
             percentiles=[25, 50, 75, 99],  # Custom percentiles
-            disable_tqdm=False  # Show progress bars
+            disable_tqdm=False,  # Show progress bars
+            run_initial_test=True,  # Run test requests first
+            test_requests_per_pipeline=2  # 2 test requests per pipeline
         )
         
         # Print results
@@ -160,10 +215,12 @@ async def test_benchmark():
         # Cleanup
         logger.info("Cleaning up...")
         server_task.cancel()
-        pipeline_task.cancel()
-        
+        pipeline_task_1.cancel()
+        pipeline_task_2.cancel()
+        pipeline_task_3.cancel()
+
         try:
-            await asyncio.gather(server_task, pipeline_task, return_exceptions=True)
+            await asyncio.gather(server_task, pipeline_task_1, pipeline_task_2, pipeline_task_3, return_exceptions=True)
         except:
             pass
 
