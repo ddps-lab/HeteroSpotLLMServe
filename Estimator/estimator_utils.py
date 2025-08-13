@@ -252,7 +252,7 @@ def get_prefill_computation_latency_per_layer(
 
     return latency_per_layer
 
-def get_decodeing_computation_latency_per_layer(
+def get_decoding_computation_latency_per_layer(
     gpu_type: str,
     gpu_count: int,
     input_len: int,
@@ -543,7 +543,7 @@ def get_throughput(
             if num_iteration == 0 or decoding_batch_size == 0:
                 continue
 
-            tmp_decoding_computation_latency = get_decodeing_computation_latency_per_layer(
+            tmp_decoding_computation_latency = get_decoding_computation_latency_per_layer(
                 gpu_type=gpu_type,
                 gpu_count=num_gpu,
                 input_len=avg_input_len,
