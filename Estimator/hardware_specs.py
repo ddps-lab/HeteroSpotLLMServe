@@ -3,7 +3,7 @@ GPU_SPEC = {
     "T4": {"memory_size": 16000, "FLOPS": 65 * 10**12, "memory_bandwidth": 320 * 10**9},
     "A10G": {"memory_size": 24000, "FLOPS": 125 * 10**12, "memory_bandwidth": 600 * 10**9},
     "L4": {"memory_size": 24000, "FLOPS": 121 * 10**12, "memory_bandwidth": 300 * 10**9},
-    "L40S": {"memory_size": 48000, "FLOPS": 362 * 10**12, "memory_bandwidth": 864 * 10**9},
+    "L40S": {"memory_size": 46068, "FLOPS": 362 * 10**12, "memory_bandwidth": 864 * 10**9},
     "A100_40GB": {"memory_size": 40000, "FLOPS": 312 * 10**12, "memory_bandwidth": 1555 * 10**9},
     "A100_80GB": {"memory_size": 80000, "FLOPS": 312 * 10**12, "memory_bandwidth": 2039 * 10**9},
     "H100": {"memory_size": 80000, "FLOPS": 989.5 * 10**12, "memory_bandwidth": 3350 * 10**9},
