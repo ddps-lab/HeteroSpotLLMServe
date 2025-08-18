@@ -60,15 +60,15 @@ class Pipeline:
         for i, (instance, layer_count) in enumerate(zip(self.stages, self.layer_per_stage)):
             node_layer_comb.append((instance, self.azs[i], layer_count))
         
-        throughput = get_throughput(
+        throughput, total_latency_per_global_batch = get_throughput(
             avg_input_len=config["expected_input_len"],
             avg_output_len=config["expected_output_len"],
             max_model_len=config["max_model_len"],
             hidden_dim=config["hidden_size"],
             num_attention_head=config["num_attention_heads"],
             num_kv_cache_head=config["num_key_value_heads"],
-            total_layer_num=config["num_layers"],
-            total_model_mem=config["total_model_mem"],
+            vocab_size=config["vocab_size"],
+            intermediate_dim=config["intermediate_size"],
             gpu_mem_utilization=config["gpu_mem_utilization"],
             node_layer_comb=node_layer_comb,
             dtype=config["dtype"]
@@ -521,14 +521,14 @@ def run_test_case(config: Dict, budget: float, latency_slo: float, look_rank: in
 
 
 if __name__ == "__main__":
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = "meta-llama/Llama-3.1-70B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
 
     config = {
-        "expected_input_len": 900,  # 입력 시퀀스 길이
-        "expected_output_len": 200,  # 출력 시퀀스 길이
+        "expected_input_len": 512,  # 입력 시퀀스 길이
+        "expected_output_len": 128,  # 출력 시퀀스 길이
         "hidden_size": model_config.hidden_size,
         "num_layers": model_config.num_hidden_layers,
         "num_attention_heads": model_config.num_attention_heads,
@@ -537,9 +537,8 @@ if __name__ == "__main__":
         "vocab_size": model_config.vocab_size,
         "max_position_embeddings": model_config.max_position_embeddings,
         "dtype": torch.float16,
-        "max_model_len": 8192,
-        "gpu_mem_utilization": 0.9,
-        "total_model_mem": 16 * 10**9,  # 16GB Model Memory
+        "max_model_len": 4096,
+        "gpu_mem_utilization": 0.9
     }
 
     logger.info("=" * 80)
@@ -587,7 +586,7 @@ if __name__ == "__main__":
     logger.info("-" * 80)
     logger.info("Test Case 6: Very high budget ($90/hour), very strict latency (200ms)")
     logger.info("-" * 80)
-    result6, optimizer6, optimization_time6 = run_test_case(config, budget=90.0, latency_slo=500, look_rank=look_rank)
+    result6, optimizer6, optimization_time6 = run_test_case(config, budget=90.0, latency_slo=200, look_rank=look_rank)
 
     # 테스트 시나리오 7: 예산 무한, 지연시간 무제한
     logger.info("-" * 80)
