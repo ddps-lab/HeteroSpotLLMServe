@@ -305,6 +305,53 @@ def get_forwarding_memory(
 
     return forwarding_memory
 
+def get_memory_size_embedding_or_lm_head_weight_bytes(hidden_dim: int, vocab_size: int, dtype: torch.dtype):
+    return vocab_size * hidden_dim * dtype.itemsize  # Unit : Bytes
+
+def get_memory_size_decoder_layer_weight_bytes(
+    hidden_dim: int,
+    num_attention_head: int,
+    num_key_value_head: int,
+    intermediate_dim: int,
+    dtype: torch.dtype
+):
+    """
+    하나의 Decoder Layer 에는 아래와 같은 weight 가 존재한다.
+      - input layer norm
+      - q projection 
+      - k projection
+      - v projection
+      - o projection
+      - post attention layer norm
+      - up projection
+      - gate projection
+      - down projection
+    """
+    assert num_attention_head % num_key_value_head == 0, "num_attention_head must be divisible by num_key_value_head"
+    num_total_elem = 0
+    kv_cache_dim = hidden_dim // (num_attention_head // num_key_value_head)
+
+    # input layer norm
+    input_layer_norm_elem = hidden_dim
+    num_total_elem += input_layer_norm_elem
+
+    # q, o projection
+    q_o_projection_elem = hidden_dim * hidden_dim * 2
+    num_total_elem += q_o_projection_elem
+
+    # k, v projection
+    k_v_projection_elem = hidden_dim * kv_cache_dim * 2
+    num_total_elem += k_v_projection_elem
+
+    # post attention layer norm
+    post_attention_layer_norm_elem = hidden_dim
+    num_total_elem += post_attention_layer_norm_elem
+
+    # up, gate, down projection
+    up_gate_down_projection_elem = hidden_dim * intermediate_dim * 3
+    num_total_elem += up_gate_down_projection_elem
+
+    return num_total_elem * dtype.itemsize  # Unit : Bytes
 
 def get_global_batch_size(
     avg_input_len: int,
@@ -313,25 +360,48 @@ def get_global_batch_size(
     hidden_dim: int,
     num_attention_head: int,
     num_kv_cache_head: int,
-    total_layer_num: int,
-    total_model_mem: int,
+    vocab_size: int,
+    intermediate_dim: int,
     gpu_mem_utilization: float,
     node_layer_comb: List[tuple[str, str, int]], # node type, az, containing layer count,
     dtype: torch.dtype = torch.float16,
 ):
     global_batch_sizes = []
 
-    for node_type, az, layer_count in node_layer_comb:
+    for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
         num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
         GPU_SPEC_info = GPU_SPEC[gpu_type]
         memory_size_per_gpu= GPU_SPEC_info["memory_size"] * 10**6 # MB to Bytes
-        memory_size = memory_size_per_gpu * num_gpu
 
         # Get total memory available
-        total_memory_available = memory_size * gpu_mem_utilization
+        total_memory_available = memory_size_per_gpu * num_gpu * gpu_mem_utilization
+
         # Get model weight memory
-        model_weight_memory = total_model_mem * (layer_count / total_layer_num)
+        # 여기서 이제 lm_head weight 가 들어가는 첫 번째 layer 나 마지막 layer 에 대한 별도 처리가 들어가주어야 함
+        model_weight_memory = get_memory_size_decoder_layer_weight_bytes(
+            hidden_dim=hidden_dim,
+            num_attention_head=num_attention_head,
+            num_key_value_head=num_kv_cache_head,
+            intermediate_dim=intermediate_dim,
+            dtype=dtype
+        ) * layer_count  # Multiply by layer count for this node
+        
+        # Add embedding or lm_head weight for first and last nodes
+        if i == 0:  # First node has embedding
+            model_weight_memory += get_memory_size_embedding_or_lm_head_weight_bytes(
+                hidden_dim=hidden_dim,
+                vocab_size=vocab_size,
+                dtype=dtype
+            )
+        if i == len(node_layer_comb) - 1:  # Last node has lm_head
+            model_weight_memory += get_memory_size_embedding_or_lm_head_weight_bytes(
+                hidden_dim=hidden_dim,
+                vocab_size=vocab_size,
+                dtype=dtype
+            )
+
+
         forwarding_memory = get_forwarding_memory(
             max_model_len,
             hidden_dim,
@@ -344,7 +414,7 @@ def get_global_batch_size(
             global_batch_sizes.append(0)
             # 이미 KV cache 를 하나의 request 에 대해서도 할당할 수가 없을때
             # 굳이 남은 for 문을 돌릴 필요가 없다.
-            # 해당 파이프라인을 불가능한 파이프라인이기 때문에.
+            # 해당 파이프라인은 불가능한 파이프라인이기 때문에.
             break
 
         global_batch_size = (
@@ -371,8 +441,8 @@ def get_throughput(
     hidden_dim: int,
     num_attention_head: int,
     num_kv_cache_head: int,
-    total_layer_num: int,
-    total_model_mem: int,
+    vocab_size: int,
+    intermediate_dim: int,
     gpu_mem_utilization: float,
     node_layer_comb: List[tuple[str, str, int]], # node type, az, containing layer count,
     dtype: torch.dtype = torch.float16,
@@ -384,14 +454,14 @@ def get_throughput(
         hidden_dim=hidden_dim,
         num_attention_head=num_attention_head,
         num_kv_cache_head=num_kv_cache_head,
-        total_layer_num=total_layer_num,
-        total_model_mem=total_model_mem,
+        vocab_size=vocab_size,
+        intermediate_dim=intermediate_dim,
         gpu_mem_utilization=gpu_mem_utilization,
         node_layer_comb=node_layer_comb,
         dtype=dtype
     )
     if global_batch_size == 0:
-        return OUT_OF_MEMORY # global_batch_size 가 0이라는 것은 메모리 제약조건을 충족하지 못한다는 뜻.
+        return OUT_OF_MEMORY, float("inf") # global_batch_size 가 0이라는 것은 메모리 제약조건을 충족하지 못한다는 뜻.
 
     prefill_latencies = []
     decoding_latencies = []
@@ -647,8 +717,8 @@ if __name__ == "__main__":
     look_rank = 5
 
     config = {
-        "expected_input_len": 1024,  # 입력 시퀀스 길이
-        "expected_output_len": 1024,  # 출력 시퀀스 길이
+        "expected_input_len": 512,  # 입력 시퀀스 길이
+        "expected_output_len": 128,  # 출력 시퀀스 길이
         "hidden_size": model_config.hidden_size,
         "num_layers": model_config.num_hidden_layers,
         "num_attention_heads": model_config.num_attention_heads,
@@ -659,33 +729,83 @@ if __name__ == "__main__":
         "dtype": torch.float16,
         "max_model_len": 4096,
         "gpu_mem_utilization": 0.9,
-        "total_model_mem": 144 * 10**9,  # 16GB Model Memory
     }
 
+    # Unit test for model weights
+
+    decoder_layer_weight_bytes = get_memory_size_decoder_layer_weight_bytes(
+        hidden_dim=config["hidden_size"],
+        num_attention_head=config["num_attention_heads"],
+        num_key_value_head=config["num_key_value_heads"],
+        intermediate_dim=config["intermediate_size"],
+        dtype=config["dtype"]
+    )
+
+    embedding_weight_bytes = get_memory_size_embedding_or_lm_head_weight_bytes(
+        hidden_dim=config["hidden_size"],
+        vocab_size=config["vocab_size"],
+        dtype=config["dtype"]
+    )
+
+    lm_head_weight_bytes = get_memory_size_embedding_or_lm_head_weight_bytes(
+        hidden_dim=config["hidden_size"],
+        vocab_size=config["vocab_size"],
+        dtype=config["dtype"]
+    )
+
+    total_model_mem = (
+        decoder_layer_weight_bytes * config["num_layers"] + 
+        embedding_weight_bytes + 
+        lm_head_weight_bytes
+    )
+
+    logging.debug(f"Decoder Layer Weight Bytes: {decoder_layer_weight_bytes / (10**6):.2f} MB")
+    logging.debug(f"Embedding Weight Bytes: {embedding_weight_bytes / (10**6):.2f} MB")
+    logging.debug(f"LM Head Weight Bytes: {lm_head_weight_bytes / (10**6):.2f} MB")
+    logging.debug(f"Total Model Memory: {total_model_mem / (10**6):.2f} MB")
+
+    logging.debug(f"\n")
+
+    # Unit Test : Get Global Batch Size
     node_layer_comb = [
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        ("g6e.xlarge", "dummy-az", 10),
-        # ("g6e.xlarge", "dummy-az", 8),
-        # ("g6e.xlarge", "dummy-az", 8),
+        ("g6e.xlarge", "dummy-az", 19),
+        ("g6e.xlarge", "dummy-az", 21),
+        ("g6e.xlarge", "dummy-az", 21),
+        ("g6e.xlarge", "dummy-az", 19),
     ]
 
-    system_throughput = get_throughput(
+    global_batch_size = get_global_batch_size(
         avg_input_len=config["expected_input_len"],
         avg_output_len=config["expected_output_len"],
-        max_model_len= config["max_model_len"],
-        hidden_dim= config["hidden_size"],
-        num_attention_head= config["num_attention_heads"],
-        num_kv_cache_head= config["num_key_value_heads"],
-        total_layer_num= config["num_layers"],
-        total_model_mem= config["total_model_mem"],
+        max_model_len=config["max_model_len"],
+        hidden_dim=config["hidden_size"],
+        num_attention_head=config["num_attention_heads"],
+        num_kv_cache_head=config["num_key_value_heads"],
+        vocab_size=config["vocab_size"],
+        intermediate_dim=config["intermediate_size"],
         gpu_mem_utilization=config["gpu_mem_utilization"],
         node_layer_comb=node_layer_comb,
         dtype=config["dtype"]
     )
 
+    logging.debug(f"Global Batch Size: {global_batch_size}")
+
+    logging.debug(f"\n")
+
+
+    # Unit Test : Get Throughput
+    throughput, total_latency = get_throughput(
+        avg_input_len=config["expected_input_len"],
+        avg_output_len=config["expected_output_len"],
+        max_model_len=config["max_model_len"],
+        hidden_dim=config["hidden_size"],
+        num_attention_head=config["num_attention_heads"],
+        num_kv_cache_head=config["num_key_value_heads"],
+        vocab_size=config["vocab_size"],
+        intermediate_dim=config["intermediate_size"],
+        gpu_mem_utilization=config["gpu_mem_utilization"],
+        node_layer_comb=node_layer_comb,
+        dtype=config["dtype"]
+    )
+
+    logging.debug(f"Throughput: {throughput:.2f} reqs/s")
