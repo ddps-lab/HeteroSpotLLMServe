@@ -324,16 +324,30 @@ class Pipeline:
             cluster_logger.info(f"Need to connect nodes: {nodes_to_connect}")
             ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
             
+            # Prepare all commands
+            connection_tasks = []
             for node_ip in nodes_to_connect:
-                # Join the Ray cluster
                 ray_command = get_ray_start_worker_command(f"{self.ray_head_ip}:{self.ray_port}")
                 join_cmd = f"ssh {ssh_options} {node_ip} '{ray_command}'"
                 cluster_logger.info(f"Connecting {node_ip} to Ray cluster with command: {join_cmd}")
                 
-                result = subprocess.run(join_cmd, shell=True, capture_output=True, text=True)
-                if result.returncode != 0:
-                    cluster_logger.error(f"Failed to connect {node_ip}: {result.stderr}")
-                    raise RuntimeError(f"Failed to connect {node_ip} to Ray cluster")
+                # Start subprocess asynchronously
+                proc = subprocess.Popen(join_cmd, shell=True, stdout=subprocess.PIPE, 
+                                       stderr=subprocess.PIPE, text=True)
+                connection_tasks.append((node_ip, proc))
+            
+            # Wait for all tasks to complete and collect results
+            failed_nodes = []
+            for node_ip, proc in connection_tasks:
+                stdout, stderr = proc.communicate()
+                if proc.returncode != 0:
+                    cluster_logger.error(f"Failed to connect {node_ip}: {stderr}")
+                    failed_nodes.append(node_ip)
+                else:
+                    cluster_logger.info(f"Successfully connected {node_ip}")
+            
+            if failed_nodes:
+                raise RuntimeError(f"Failed to connect nodes to Ray cluster: {failed_nodes}")
             
             # Wait for all nodes to be connected with retry logic
             max_attempts = 30  # 30 attempts with 1 second interval = 30 seconds timeout
