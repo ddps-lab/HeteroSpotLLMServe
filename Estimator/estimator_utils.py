@@ -360,6 +360,7 @@ def get_global_batch_size(
     hidden_dim: int,
     num_attention_head: int,
     num_kv_cache_head: int,
+    total_num_layers: int,
     vocab_size: int,
     intermediate_dim: int,
     gpu_mem_utilization: float,
@@ -367,6 +368,7 @@ def get_global_batch_size(
     dtype: torch.dtype = torch.float16,
 ):
     global_batch_sizes = []
+    cumulative_layers = 0  # Track cumulative layer count
 
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
@@ -387,14 +389,17 @@ def get_global_batch_size(
             dtype=dtype
         ) * layer_count  # Multiply by layer count for this node
         
-        # Add embedding or lm_head weight for first and last nodes
+        # Add embedding weight for first node
         if i == 0:  # First node has embedding
             model_weight_memory += get_memory_size_embedding_or_lm_head_weight_bytes(
                 hidden_dim=hidden_dim,
                 vocab_size=vocab_size,
                 dtype=dtype
             )
-        if i == len(node_layer_comb) - 1:  # Last node has lm_head
+        
+        # Check if this node contains the last layer of the model
+        cumulative_layers += layer_count
+        if cumulative_layers == total_num_layers:  # This node has the actual last layer
             model_weight_memory += get_memory_size_embedding_or_lm_head_weight_bytes(
                 hidden_dim=hidden_dim,
                 vocab_size=vocab_size,
@@ -441,6 +446,7 @@ def get_throughput(
     hidden_dim: int,
     num_attention_head: int,
     num_kv_cache_head: int,
+    total_num_layers: int,
     vocab_size: int,
     intermediate_dim: int,
     gpu_mem_utilization: float,
@@ -454,6 +460,7 @@ def get_throughput(
         hidden_dim=hidden_dim,
         num_attention_head=num_attention_head,
         num_kv_cache_head=num_kv_cache_head,
+        total_num_layers=total_num_layers,
         vocab_size=vocab_size,
         intermediate_dim=intermediate_dim,
         gpu_mem_utilization=gpu_mem_utilization,

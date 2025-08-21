@@ -4,6 +4,7 @@ import logging
 import time
 from estimator_utils import *
 from hardware_specs import INSTANCE_SPEC
+from cluster_pool import ClusterPool
 import sys
 import os
 # Add parent directory to path for protocols import
@@ -45,14 +46,9 @@ class Pipeline:
                 f"ratio={ratio:.3f}, "
                 f"latency={self.lowest_inference_latency:.0f}ms)")
     
-    def calculate_cost(self) -> float:
-        """파이프라인의 총 비용을 계산하고 self.cost에 저장합니다 (hourly cost)."""
-        total_cost = 0
-        for instance in self.stages:
-            if instance in INSTANCE_SPEC:
-                total_cost += INSTANCE_SPEC[instance]["ondemand_price"]
-        self.cost = total_cost
-        return self.cost
+    def set_cost(self, cost: float):
+        """파이프라인의 총 비용을 설정합니다 (hourly cost)."""
+        self.cost = cost
     
     def calculate_throughput(self, config: Dict[str, Any]) -> float:
         """파이프라인의 throughput을 계산하고 self.throughput에 저장합니다."""
@@ -67,6 +63,7 @@ class Pipeline:
             hidden_dim=config["hidden_size"],
             num_attention_head=config["num_attention_heads"],
             num_kv_cache_head=config["num_key_value_heads"],
+            total_num_layers=config["num_layers"],
             vocab_size=config["vocab_size"],
             intermediate_dim=config["intermediate_size"],
             gpu_mem_utilization=config["gpu_mem_utilization"],
@@ -220,18 +217,20 @@ def get_minimum_latency(pipeline: Pipeline, config: Dict[str, Any]):
 class DPOptimizer:
     """Dynamic Programming based optimizer for throughput/cost optimization"""
     
-    def __init__(self, config: Dict[str, Any], budget: float, latency_slo: float):
+    def __init__(self, config: Dict[str, Any], budget: float, latency_slo: float, cluster_pool: ClusterPool):
         """
         Args:
             config: 모델 및 시스템 설정
             budget: 예산 상한 (hourly cost in dollars)
             latency_slo: 지연시간 SLO (milliseconds)
+            cluster: 클러스터 리소스 관리자 (필수)
         """
         self.config = config
         self.budget = budget
         self.latency_slo = latency_slo
         self.num_layers = config["num_layers"]
         self.instance_types = list(INSTANCE_SPEC.keys())
+        self.cluster_pool = cluster_pool
         
         # DP 캐시: dp[layer_idx][num_stages] = Pipeline
         # 최대 stage 수를 num_layers로 설정 (최악의 경우 각 layer가 하나의 stage)
@@ -255,8 +254,11 @@ class DPOptimizer:
             pipeline.azs.append("dummy-az")
             pipeline.layer_per_stage.append(layer_count)
         
-        # 비용 계산
-        pipeline.calculate_cost()
+        # 비용 계산 - ClusterPool의 가격 사용
+        total_cost = 0
+        for instance in pipeline.stages:
+            total_cost += self.cluster_pool.get_instance_price(instance)
+        pipeline.set_cost(total_cost)
         
         # Throughput 계산
         pipeline.calculate_throughput(self.config)
@@ -311,6 +313,10 @@ class DPOptimizer:
                             for i in range(len(prev_pipeline.stages)):
                                 new_stages.append((prev_pipeline.stages[i], prev_pipeline.layer_per_stage[i]))
                             new_stages.append((instance, layers_to_process))
+                        
+                        # 클러스터 리소스 제약 확인 (cluster가 설정된 경우)
+                        if self.cluster_pool and not self.cluster_pool.check_feasibility(new_stages):
+                            continue
                         
                         # 새로운 파이프라인 생성 및 평가
                         new_pipeline = self._create_pipeline(new_stages)
@@ -481,7 +487,12 @@ class DPOptimizer:
         logger.info("")
 
 
-def run_test_case(config: Dict, budget: float, latency_slo: float, look_rank: int = 5) -> Tuple[Pipeline, DPOptimizer, float]:
+def run_test_case(
+        config: Dict, 
+        budget: float, 
+        latency_slo: float, 
+        cluster_pool: ClusterPool,
+        look_rank: int = 5) -> Tuple[Pipeline, DPOptimizer, float]:
     """
     Run a single test case with given budget and SLO.
     
@@ -494,7 +505,7 @@ def run_test_case(config: Dict, budget: float, latency_slo: float, look_rank: in
     Returns:
         Tuple of (Optimal Pipeline, DPOptimizer, optimization_time)
     """
-    optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo)
+    optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo, cluster_pool=cluster_pool)
     
     start_time = time.time()
     result = optimizer.optimize()
@@ -521,7 +532,7 @@ def run_test_case(config: Dict, budget: float, latency_slo: float, look_rank: in
 
 
 if __name__ == "__main__":
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
@@ -541,6 +552,34 @@ if __name__ == "__main__":
         "gpu_mem_utilization": 0.9
     }
 
+    available_spot_nodes = {
+        "(spot)g4dn.xlarge":      50,
+        "(spot)g4dn.12xlarge":    5,
+        "(spot)g4dn.metal":       1,
+        "(spot)g5.xlarge":        50,
+        "(spot)g5.12xlarge":      5,
+        "(spot)g5.48xlarge":      1,
+        "(spot)g6.xlarge":        50,
+        "(spot)g6.12xlarge":      5,
+        "(spot)g6.48xlarge":      1,
+        "(spot)g6e.xlarge":       50,
+        "(spot)g6e.12xlarge":     5,
+        "(spot)g6e.48xlarge":     1,
+        "(spot)p4d.24xlarge":     0,
+        "(spot)p4de.24xlarge":    0,
+        "(spot)p5.4xlarge":       0,
+        "(spot)p5.48xlarge":      0,
+        "(spot)p5e.48xlarge":     0,
+        "(spot)p5en.48xlarge":    0,
+        "(spot)p6-b200.48xlarge": 0,
+    }
+    spot_prices = {
+        "(spot)p5.4xlarge":       9999, # spot 없음.
+        "(spot)p5e.48xlarge":     22,
+    }
+    cluster_pool = ClusterPool(available_spot_nodes=available_spot_nodes, spot_prices=spot_prices)
+
+
     logger.info("=" * 80)
     logger.info("            Dynamic Programming Optimizer Test")
     logger.info("=" * 80)
@@ -556,43 +595,43 @@ if __name__ == "__main__":
     logger.info("-" * 80)
     logger.info("Test Case 1: Low budget ($5/hour), relaxed latency (5s)")
     logger.info("-" * 80)
-    result1, optimizer1, optimization_time1 = run_test_case(config, budget=5.0, latency_slo=5000, look_rank=look_rank)
+    result1, optimizer1, optimization_time1 = run_test_case(config, budget=5.0, latency_slo=5000, look_rank=look_rank, cluster_pool=cluster_pool)
 
     # 테스트 시나리오 2: 중간 예산, 중간 지연시간
     logger.info("-" * 80)
     logger.info("Test Case 2: Medium budget ($10/hour), moderate latency (3s)")
     logger.info("-" * 80)
-    result2, optimizer2, optimization_time2 = run_test_case(config, budget=10.0, latency_slo=3000, look_rank=look_rank)
+    result2, optimizer2, optimization_time2 = run_test_case(config, budget=10.0, latency_slo=3000, look_rank=look_rank, cluster_pool=cluster_pool)
 
     # 테스트 시나리오 3: 높은 예산, 엄격한 지연시간
     logger.info("-" * 80)
     logger.info("Test Case 3: High budget ($40/hour), strict latency (1s)")
     logger.info("-" * 80)
-    result3, optimizer3, optimization_time3 = run_test_case(config, budget=40.0, latency_slo=1000, look_rank=look_rank)
+    result3, optimizer3, optimization_time3 = run_test_case(config, budget=40.0, latency_slo=1000, look_rank=look_rank, cluster_pool=cluster_pool)
 
     # 테스트 시나리오 4: 매우 낮은 예산 (실패 케이스)
     logger.info("-" * 80)
     logger.info("Test Case 4: Very low budget ($1/hour), moderate latency (10s)")
     logger.info("-" * 80)
-    result4, optimizer4, optimization_time4 = run_test_case(config, budget=1.0, latency_slo=5000, look_rank=look_rank)
+    result4, optimizer4, optimization_time4 = run_test_case(config, budget=1.0, latency_slo=5000, look_rank=look_rank, cluster_pool=cluster_pool)
 
     # 테스트 시나리오 5: 매우 엄격한 지연시간 (실패 케이스)
     logger.info("-" * 80)
     logger.info("Test Case 5: Medium budget ($20/hour), very strict latency (500ms)")
     logger.info("-" * 80)
-    result5, optimizer5, optimization_time5 = run_test_case(config, budget=20.0, latency_slo=500, look_rank=look_rank)
+    result5, optimizer5, optimization_time5 = run_test_case(config, budget=20.0, latency_slo=500, look_rank=look_rank, cluster_pool=cluster_pool)
 
     # 테스트 시나리오 6: 매우 높은 예산, 매우 엄격한 지연시간
     logger.info("-" * 80)
     logger.info("Test Case 6: Very high budget ($90/hour), very strict latency (200ms)")
     logger.info("-" * 80)
-    result6, optimizer6, optimization_time6 = run_test_case(config, budget=90.0, latency_slo=200, look_rank=look_rank)
+    result6, optimizer6, optimization_time6 = run_test_case(config, budget=90.0, latency_slo=200, look_rank=look_rank, cluster_pool=cluster_pool)
 
     # 테스트 시나리오 7: 예산 무한, 지연시간 무제한
     logger.info("-" * 80)
     logger.info("Test Case 7: Unlimited budget, unlimited latency")
     logger.info("-" * 80)
-    result7, optimizer7, optimization_time7 = run_test_case(config, budget=9999, latency_slo=9999999999, look_rank=look_rank)
+    result7, optimizer7, optimization_time7 = run_test_case(config, budget=9999, latency_slo=9999999999, look_rank=look_rank, cluster_pool=cluster_pool)
     
     logger.info("")
     logger.info("=" * 80)
