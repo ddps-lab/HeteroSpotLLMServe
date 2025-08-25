@@ -701,6 +701,8 @@ def get_throughput(
         decoding_latencies.append(decoding_computation_latency + decoding_pp_communication_latency + decoding_tp_communication_latency)
     
 
+    logging.debug(f"Prefill latencies per Stage : {prefill_latencies}")
+    logging.debug(f"Decoding latencies per Stage : {decoding_latencies}")
     max_prefill_latency = max(prefill_latencies)
     max_decoding_latency = max(decoding_latencies)
 
@@ -775,10 +777,9 @@ if __name__ == "__main__":
 
     # Unit Test : Get Global Batch Size
     node_layer_comb = [
-        ("g6e.xlarge", "dummy-az", 19),
-        ("g6e.xlarge", "dummy-az", 21),
-        ("g6e.xlarge", "dummy-az", 21),
-        ("g6e.xlarge", "dummy-az", 19),
+        ("g6e.xlarge", "dummy-az", 9),
+        ("g6e.12xlarge", "dummy-az", 36),
+        ("g6e.12xlarge", "dummy-az", 35),
     ]
 
     global_batch_size = get_global_batch_size(
@@ -791,6 +792,7 @@ if __name__ == "__main__":
         vocab_size=config["vocab_size"],
         intermediate_dim=config["intermediate_size"],
         gpu_mem_utilization=config["gpu_mem_utilization"],
+        total_num_layers=config["num_layers"],
         node_layer_comb=node_layer_comb,
         dtype=config["dtype"]
     )
@@ -811,6 +813,7 @@ if __name__ == "__main__":
         vocab_size=config["vocab_size"],
         intermediate_dim=config["intermediate_size"],
         gpu_mem_utilization=config["gpu_mem_utilization"],
+        total_num_layers=config["num_layers"],
         node_layer_comb=node_layer_comb,
         dtype=config["dtype"]
     )
