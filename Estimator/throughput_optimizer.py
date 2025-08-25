@@ -25,7 +25,7 @@ class Pipeline:
         self.cost = 0 # 전체 파이프라인의 비용
         self.global_batch_size = 0
         self.num_cache_blocks = 0 # 캐시 블록의 개수
-        self.lowest_inference_latency = 0 # 파이프라인의 추론 최소 지연 시간
+        self.latency_per_global_batch = 0 # 파이프라인의 추론 최소 지연 시간
     
     def __repr__(self):
         """Pipeline 객체의 문자열 표현"""
@@ -72,158 +72,21 @@ class Pipeline:
         )
         
         self.throughput = throughput
+        self.latency_per_global_batch = total_latency_per_global_batch
         return self.throughput
-
-# 아래 인자는 Latency 계산을 미리 캐싱해두는 역할을 맡을 것이며, 나중에 Pipeline 의 latency 하한을 맡을 것
-instance_computation_latency_per_layer_cache = {} # instance 별로 캐시된 computation latency (Batch size 1 기준)
-
-def initialize_computation_latencies(config: Dict[str, Any]):
-    """
-    파이프라인의 각 stage 별로 computation latency를 초기화합니다.
-    """
-    # config에서 자주 사용되는 값들을 미리 추출
-    expected_input_len = config["expected_input_len"]
-    expected_output_len = config["expected_output_len"]
-    hidden_size = config["hidden_size"]
-    dtype = config["dtype"]
-    
-    for instance in INSTANCE_SPEC.keys():
-        gpu_type = INSTANCE_SPEC[instance]["gpu_type"]
-        gpu_count = INSTANCE_SPEC[instance]["gpu_count"]
-
-        prefill_computation_latency_per_layer = get_prefill_computation_latency_per_layer(
-            gpu_type=gpu_type,
-            gpu_count=gpu_count,
-            input_len=expected_input_len,
-            hidden_dim=hidden_size,
-            batch_size=1,
-            intermediate_dim=None,
-            dtype=dtype,
-        )
-
-        decode_computation_latency_per_layer = get_decoding_computation_latency_per_layer(
-            gpu_type=gpu_type,
-            gpu_count=gpu_count,
-            input_len=expected_input_len,
-            output_len=expected_output_len,
-            hidden_dim=hidden_size,
-            batch_size=1,
-            intermediate_dim=None,
-            dtype=dtype,
-        )
-
-        instance_computation_latency_per_layer_cache[instance] = {
-            "prefill": prefill_computation_latency_per_layer,
-            "decode": decode_computation_latency_per_layer
-        }
-
-def get_minimum_latency(pipeline: Pipeline, config: Dict[str, Any]):
-    """
-    파이프라인의 최소 지연 시간을 계산합니다.
-    """
-    # config에서 자주 사용되는 값들을 미리 추출
-    expected_input_len = config["expected_input_len"]
-    expected_output_len = config["expected_output_len"]
-    hidden_size = config["hidden_size"]
-    dtype = config["dtype"]
-    
-    total_prefill_computation_latency = 0
-    total_decode_computation_latency = 0
-    total_pp_communication_latency = 0
-    total_tp_communication_latency = 0
-    
-    for stage_idx in range(len(pipeline.stages)):
-        instance = pipeline.stages[stage_idx]
-        layer_count = pipeline.layer_per_stage[stage_idx]
-        gpu_count = INSTANCE_SPEC[instance]["gpu_count"]
-        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[instance]["interconnect"]]["bandwidth"]
-
-        prefill_computation_latency_per_layer = instance_computation_latency_per_layer_cache[instance]["prefill"]
-        decode_computation_latency_per_layer = instance_computation_latency_per_layer_cache[instance]["decode"]
-
-        if stage_idx != len(pipeline.stages) - 1:
-            # 마지막 stage 가 아니라면 다음 stage 에게 send 해야함
-            prefill_pp_communication_send_latency = get_pp_communication_latency_send_recv(
-                batch_size=1,
-                sequence_len=expected_input_len,
-                hidden_dim=hidden_size,
-                inter_node_latency_ms=None,  # intra region latency
-                inter_node_bandwidth=None,  # intra region bandwidth
-                dtype=dtype
-            )
-            decode_pp_communication_send_latency = get_pp_communication_latency_send_recv(
-                batch_size=1,
-                sequence_len=1,
-                hidden_dim=hidden_size,
-                inter_node_latency_ms=None,  # intra region latency
-                inter_node_bandwidth=None,  # intra region bandwidth
-                dtype=dtype
-            ) * expected_output_len
-        else:
-            # 마지막 stage 는 다음 stage 가 없으므로 통신 지연이 없음
-            prefill_pp_communication_send_latency = 0
-            decode_pp_communication_send_latency = 0
-
-        if stage_idx != 0 and gpu_count > 1:  # 첫 번째 Stage 가 아니고 tp size 가 1보다 크면 broadcast 를 해야함.
-            prefill_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                batch_size=1,
-                sequence_len=expected_input_len,
-                hidden_dim=hidden_size,
-                tp_size=gpu_count,
-                p2p_bandwidth=p2p_bandwidth,
-                p2p_latency_ms=None,
-                dtype=dtype
-            )
-            decode_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                batch_size=1,
-                sequence_len=1,
-                hidden_dim=hidden_size,
-                tp_size=gpu_count,
-                p2p_bandwidth=p2p_bandwidth,
-                p2p_latency_ms=None,
-                dtype=dtype
-            ) * expected_output_len
-        else:
-            prefill_pp_communication_broadcast_latency = 0
-            decode_pp_communication_broadcast_latency = 0
-        
-        prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
-            tp_size=gpu_count,
-            batch_size=1,
-            sequence_len=expected_input_len,
-            hidden_dim=hidden_size,
-            p2p_bandwidth=p2p_bandwidth,
-            dtype=dtype
-        ) * layer_count
-        decode_tp_communication_latency = get_tp_communication_latency_per_layer(
-            tp_size=gpu_count,
-            batch_size=1,
-            sequence_len=1,
-            hidden_dim=hidden_size,
-            p2p_bandwidth=p2p_bandwidth,
-            dtype=dtype
-        ) * layer_count * expected_output_len
-
-        total_prefill_computation_latency += prefill_computation_latency_per_layer * layer_count
-        total_decode_computation_latency += decode_computation_latency_per_layer * layer_count
-        total_pp_communication_latency += (prefill_pp_communication_send_latency + prefill_pp_communication_broadcast_latency)
-        total_pp_communication_latency += (decode_pp_communication_send_latency + decode_pp_communication_broadcast_latency)
-        total_tp_communication_latency += prefill_tp_communication_latency + decode_tp_communication_latency
-
-    total_latency = total_prefill_computation_latency + total_decode_computation_latency + total_pp_communication_latency + total_tp_communication_latency
-    return total_latency
 
 
 class DPOptimizer:
     """Dynamic Programming based optimizer for throughput/cost optimization"""
     
-    def __init__(self, config: Dict[str, Any], budget: float, latency_slo: float, cluster_pool: ClusterPool):
+    def __init__(self, config: Dict[str, Any], budget: float, latency_slo: float, cluster_pool: ClusterPool, max_stages: Optional[int] = None):
         """
         Args:
             config: 모델 및 시스템 설정
             budget: 예산 상한 (hourly cost in dollars)
             latency_slo: 지연시간 SLO (milliseconds)
             cluster: 클러스터 리소스 관리자 (필수)
+            max_stages: 파이프라인의 최대 스테이지 수 제한 (None이면 제한 없음)
         """
         self.config = config
         self.budget = budget
@@ -232,12 +95,13 @@ class DPOptimizer:
         self.instance_types = list(INSTANCE_SPEC.keys())
         self.cluster_pool = cluster_pool
         
+        # 최대 스테이지 수 설정 (기본값: num_layers, 즉 제한 없음)
+        # 실용적으로는 더 작은 값으로 제한하여 파이프라인 오버헤드를 줄임
+        self.max_stages = max_stages if max_stages is not None else self.num_layers
+        
         # DP 캐시: dp[layer_idx][num_stages] = Pipeline
         # 최대 stage 수를 num_layers로 설정 (최악의 경우 각 layer가 하나의 stage)
         self.dp = [[None for _ in range(self.num_layers + 1)] for _ in range(self.num_layers + 1)]
-        
-        # computation latency 초기화
-        initialize_computation_latencies(config)
     
     def _check_budget_constraint(self, pipeline: Pipeline) -> bool:
         """파이프라인이 예산 제약을 만족하는지 확인"""
@@ -260,11 +124,8 @@ class DPOptimizer:
             total_cost += self.cluster_pool.get_instance_price(instance)
         pipeline.set_cost(total_cost)
         
-        # Throughput 계산
+        # Throughput 및 latency 계산
         pipeline.calculate_throughput(self.config)
-        
-        # Latency 계산
-        pipeline.lowest_inference_latency = get_minimum_latency(pipeline, self.config)
         
         return pipeline
     
@@ -298,11 +159,20 @@ class DPOptimizer:
                     # 이전 상태의 레이어 수 계산
                     prev_layer = current_layer - layers_to_process
                     
-                    # 이전 상태들을 확인 (모든 가능한 스테이지 수에 대해)
-                    for prev_num_stages in range(self.num_layers):
+                    # 이전 상태들을 확인 (최대 스테이지 수 제한 적용)
+                    # prev_num_stages가 max_stages-1이면, 새 스테이지 추가 시 max_stages가 됨
+                    for prev_num_stages in range(self.max_stages):
                         prev_pipeline = self.dp[prev_layer][prev_num_stages]
                         if prev_pipeline is None:
                             continue
+                        
+                        # 새로운 스테이지 수 계산
+                        new_num_stages = prev_num_stages + 1
+                        
+                        # 마지막 스테이지인 경우, 남은 모든 레이어를 처리해야 함
+                        if new_num_stages == self.max_stages:
+                            if layers_to_process != (self.num_layers - prev_layer):
+                                continue
                         
                         # 새로운 스테이지 구성 생성
                         if prev_num_stages == 0:  # 첫 번째 스테이지인 경우
@@ -492,7 +362,8 @@ def run_test_case(
         budget: float, 
         latency_slo: float, 
         cluster_pool: ClusterPool,
-        look_rank: int = 5) -> Tuple[Pipeline, DPOptimizer, float]:
+        look_rank: int = 5,
+        max_stages: Optional[int] = None) -> Tuple[Pipeline, DPOptimizer, float]:
     """
     Run a single test case with given budget and SLO.
     
@@ -501,11 +372,12 @@ def run_test_case(
         budget: Budget in USD per hour
         latency_slo: Latency SLO in milliseconds
         look_rank: Number of top pipelines to show
+        max_stages: Maximum number of stages allowed (None for no limit)
     
     Returns:
         Tuple of (Optimal Pipeline, DPOptimizer, optimization_time)
     """
-    optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo, cluster_pool=cluster_pool)
+    optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo, cluster_pool=cluster_pool, max_stages=max_stages)
     
     start_time = time.time()
     result = optimizer.optimize()
@@ -532,10 +404,11 @@ def run_test_case(
 
 
 if __name__ == "__main__":
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = "meta-llama/Llama-3.1-70B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
+    max_stages = 10
 
     config = {
         "expected_input_len": 512,  # 입력 시퀀스 길이
@@ -553,20 +426,20 @@ if __name__ == "__main__":
     }
 
     available_spot_nodes = {
-        "(spot)g4dn.xlarge":      50,
-        "(spot)g4dn.12xlarge":    5,
-        "(spot)g4dn.metal":       1,
-        "(spot)g5.xlarge":        50,
-        "(spot)g5.12xlarge":      5,
-        "(spot)g5.48xlarge":      1,
-        "(spot)g6.xlarge":        50,
-        "(spot)g6.12xlarge":      5,
-        "(spot)g6.48xlarge":      1,
-        "(spot)g6e.xlarge":       50,
-        "(spot)g6e.12xlarge":     5,
-        "(spot)g6e.48xlarge":     1,
-        "(spot)p4d.24xlarge":     0,
-        "(spot)p4de.24xlarge":    0,
+        "(spot)g4dn.xlarge":      100,
+        "(spot)g4dn.12xlarge":    100,
+        "(spot)g4dn.metal":       100,
+        "(spot)g5.xlarge":        30,
+        "(spot)g5.12xlarge":      100,
+        "(spot)g5.48xlarge":      100,
+        "(spot)g6.xlarge":        40,
+        "(spot)g6.12xlarge":      100,
+        "(spot)g6.48xlarge":      100,
+        "(spot)g6e.xlarge":       35,
+        "(spot)g6e.12xlarge":     100,
+        "(spot)g6e.48xlarge":     100,
+        "(spot)p4d.24xlarge":     100,
+        "(spot)p4de.24xlarge":    100,
         "(spot)p5.4xlarge":       0,
         "(spot)p5.48xlarge":      0,
         "(spot)p5e.48xlarge":     0,
@@ -591,47 +464,51 @@ if __name__ == "__main__":
     logger.info("=" * 80)
     logger.info("")
 
-    # 테스트 시나리오 1: 낮은 예산, 느슨한 지연시간
-    logger.info("-" * 80)
-    logger.info("Test Case 1: Low budget ($5/hour), relaxed latency (5s)")
-    logger.info("-" * 80)
-    result1, optimizer1, optimization_time1 = run_test_case(config, budget=5.0, latency_slo=5000, look_rank=look_rank, cluster_pool=cluster_pool)
+    # 시나리오 1, 2, 3 : 같은 예산에서 다른 SLO
+    # 시나리오 4, 5, 6 : 같은 SLO 에서 다른 예산
+    # 시나리오 7 : 예산 무제한, SLO 없음
 
-    # 테스트 시나리오 2: 중간 예산, 중간 지연시간
+    # 테스트 시나리오 1: 
     logger.info("-" * 80)
-    logger.info("Test Case 2: Medium budget ($10/hour), moderate latency (3s)")
+    logger.info("Test Case 1: Budget ($60/hour), Latency (20s)")
     logger.info("-" * 80)
-    result2, optimizer2, optimization_time2 = run_test_case(config, budget=10.0, latency_slo=3000, look_rank=look_rank, cluster_pool=cluster_pool)
+    result1, optimizer1, optimization_time1 = run_test_case(config, budget=60.0, latency_slo=20000, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
 
-    # 테스트 시나리오 3: 높은 예산, 엄격한 지연시간
+    # 테스트 시나리오 2: 
     logger.info("-" * 80)
-    logger.info("Test Case 3: High budget ($40/hour), strict latency (1s)")
+    logger.info("Test Case 2: Budget ($60/hour), Latency (10s)")
     logger.info("-" * 80)
-    result3, optimizer3, optimization_time3 = run_test_case(config, budget=40.0, latency_slo=1000, look_rank=look_rank, cluster_pool=cluster_pool)
+    result2, optimizer2, optimization_time2 = run_test_case(config, budget=60.0, latency_slo=10000, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
 
-    # 테스트 시나리오 4: 매우 낮은 예산 (실패 케이스)
+    # 테스트 시나리오 3: 
     logger.info("-" * 80)
-    logger.info("Test Case 4: Very low budget ($1/hour), moderate latency (10s)")
+    logger.info("Test Case 3: Budget ($60/hour), Latency (5s)")
     logger.info("-" * 80)
-    result4, optimizer4, optimization_time4 = run_test_case(config, budget=1.0, latency_slo=5000, look_rank=look_rank, cluster_pool=cluster_pool)
+    result3, optimizer3, optimization_time3 = run_test_case(config, budget=60.0, latency_slo=5000, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
 
-    # 테스트 시나리오 5: 매우 엄격한 지연시간 (실패 케이스)
+    # 테스트 시나리오 4: 
     logger.info("-" * 80)
-    logger.info("Test Case 5: Medium budget ($20/hour), very strict latency (500ms)")
+    logger.info("Test Case 4: Budget ($60/hour), Latency (30s)")
     logger.info("-" * 80)
-    result5, optimizer5, optimization_time5 = run_test_case(config, budget=20.0, latency_slo=500, look_rank=look_rank, cluster_pool=cluster_pool)
+    result4, optimizer4, optimization_time4 = run_test_case(config, budget=60.0, latency_slo=30000, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
 
-    # 테스트 시나리오 6: 매우 높은 예산, 매우 엄격한 지연시간
+    # 테스트 시나리오 5: 
     logger.info("-" * 80)
-    logger.info("Test Case 6: Very high budget ($90/hour), very strict latency (200ms)")
+    logger.info("Test Case 5: Budget ($30/hour), Latency (30s)")
     logger.info("-" * 80)
-    result6, optimizer6, optimization_time6 = run_test_case(config, budget=90.0, latency_slo=200, look_rank=look_rank, cluster_pool=cluster_pool)
+    result5, optimizer5, optimization_time5 = run_test_case(config, budget=30.0, latency_slo=30000, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
+
+    # 테스트 시나리오 6: 
+    logger.info("-" * 80)
+    logger.info("Test Case 6: Budget ($10/hour), Latency (30s)")
+    logger.info("-" * 80)
+    result6, optimizer6, optimization_time6 = run_test_case(config, budget=10.0, latency_slo=30000, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
 
     # 테스트 시나리오 7: 예산 무한, 지연시간 무제한
     logger.info("-" * 80)
     logger.info("Test Case 7: Unlimited budget, unlimited latency")
     logger.info("-" * 80)
-    result7, optimizer7, optimization_time7 = run_test_case(config, budget=9999, latency_slo=9999999999, look_rank=look_rank, cluster_pool=cluster_pool)
+    result7, optimizer7, optimization_time7 = run_test_case(config, budget=9999, latency_slo=9999999999, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
     
     logger.info("")
     logger.info("=" * 80)
@@ -640,12 +517,12 @@ if __name__ == "__main__":
     
     # 결과 요약
     results = [
-        ("Test 1 (Low budget, relaxed latency)", result1, optimization_time1),
-        ("Test 2 (Medium budget, moderate latency)", result2, optimization_time2),
-        ("Test 3 (High budget, strict latency)", result3, optimization_time3),
-        ("Test 4 (Very low budget)", result4, optimization_time4),
-        ("Test 5 (Very strict latency)", result5, optimization_time5),
-        ("Test 6 (Very high budget, very strict latency)", result6, optimization_time6)
+        ("Test 1", result1, optimization_time1),
+        ("Test 2", result2, optimization_time2),
+        ("Test 3", result3, optimization_time3),
+        ("Test 4", result4, optimization_time4),
+        ("Test 5", result5, optimization_time5),
+        ("Test 6", result6, optimization_time6)
     ]
     
     for test_name, result, opt_time in results:
