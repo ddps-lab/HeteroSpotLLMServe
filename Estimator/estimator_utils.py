@@ -366,9 +366,12 @@ def get_global_batch_size(
     gpu_mem_utilization: float,
     node_layer_comb: List[tuple[str, str, int]], # node type, az, containing layer count,
     dtype: torch.dtype = torch.float16,
+    block_size: int = 16,
 ):
     global_batch_sizes = []
     cumulative_layers = 0  # Track cumulative layer count
+
+    dim_kv_head = hidden_dim // num_attention_head * num_kv_cache_head
 
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
@@ -413,7 +416,7 @@ def get_global_batch_size(
             dtype=dtype
         )
         available_kv_cache_memory = total_memory_available - model_weight_memory - forwarding_memory
-        kv_memory_needed_per_layer = 2 * max_model_len * hidden_dim * dtype.itemsize
+        kv_memory_needed_per_layer = 2 * max_model_len * dim_kv_head * dtype.itemsize
 
         if available_kv_cache_memory <= kv_memory_needed_per_layer * layer_count:
             global_batch_sizes.append(0)
@@ -424,7 +427,7 @@ def get_global_batch_size(
 
         global_batch_size = (
             available_kv_cache_memory //
-            (2 * (avg_input_len + avg_output_len) * (hidden_dim // num_attention_head * num_kv_cache_head) * layer_count * dtype.itemsize)
+            (2 * (avg_input_len + avg_output_len) * dim_kv_head * layer_count * dtype.itemsize)
         )
 
         global_batch_sizes.append(global_batch_size)
@@ -437,7 +440,35 @@ def get_global_batch_size(
 
     logging.debug(f"Available Global Batch Sizes per Stage: {global_batch_sizes}")
 
-    return min(global_batch_sizes)
+    # min_global_batch_size = global_batch_sizes[0]
+    # min_memory_index = 0
+    # for i in range(1, len(global_batch_sizes)):
+    #     if global_batch_sizes[i] < min_global_batch_size:
+    #         min_global_batch_size = global_batch_sizes[i]
+    #         min_memory_index = i
+    
+    # # Block 수 계산
+    # num_layers_with_minimum_memory_stage = node_layer_comb[min_memory_index][2]
+
+    # cache_block_size_bytes = num_layers_with_minimum_memory_stage * block_size * 2*dim_kv_head * dtype.itemsize
+    # # global batch size 로부터 남은 메모리 양을 다시 가져와야함
+    # available_memory = min_global_batch_size * \
+    #     (2 * (avg_input_len + avg_output_len) * dim_kv_head * num_layers_with_minimum_memory_stage * dtype.itemsize)
+    # available_num_blocks = available_memory // cache_block_size_bytes
+
+    # # 위 과정이 결국 아래와 같이 되는 것인데, 이를 미리 나눠줄 수 있음 (소거)
+    # available_num_blocks = \
+    #     min_global_batch_size * \
+    #     ((avg_input_len + avg_output_len) * 2*dim_kv_head * num_layers_with_minimum_memory_stage * dtype.itemsize) \
+    #     // (num_layers_with_minimum_memory_stage * block_size * 2*dim_kv_head * dtype.itemsize)
+
+    # 결과적으로 아래와 같이 간단화될 수 있다.
+
+    min_global_batch_size = min(global_batch_sizes)
+
+    available_num_blocks = min_global_batch_size * (avg_input_len + avg_output_len) // block_size
+
+    return min_global_batch_size, int(available_num_blocks)
 
 def get_throughput(
     avg_input_len: int,
@@ -452,8 +483,9 @@ def get_throughput(
     gpu_mem_utilization: float,
     node_layer_comb: List[tuple[str, str, int]], # node type, az, containing layer count,
     dtype: torch.dtype = torch.float16,
+    block_size: int = 16,
 ):
-    global_batch_size = get_global_batch_size(
+    global_batch_size, num_blocks = get_global_batch_size(
         avg_input_len=avg_input_len,
         avg_output_len=avg_output_len,
         max_model_len=max_model_len,
@@ -465,10 +497,11 @@ def get_throughput(
         intermediate_dim=intermediate_dim,
         gpu_mem_utilization=gpu_mem_utilization,
         node_layer_comb=node_layer_comb,
-        dtype=dtype
+        dtype=dtype,
+        block_size=block_size,
     )
     if global_batch_size == 0:
-        return OUT_OF_MEMORY, float("inf") # global_batch_size 가 0이라는 것은 메모리 제약조건을 충족하지 못한다는 뜻.
+        return OUT_OF_MEMORY, float("inf"), 0 # global_batch_size 가 0이라는 것은 메모리 제약조건을 충족하지 못한다는 뜻.
 
     prefill_latencies = []
     decoding_latencies = []
@@ -714,7 +747,7 @@ def get_throughput(
     logging.debug(f"End to End Latency per Global Batch: {total_latency_per_global_batch:.2f} ms")
     logging.debug(f"System Throughput: {throughput:.2f} reqs/s")
 
-    return throughput, total_latency_per_global_batch
+    return throughput, total_latency_per_global_batch, num_blocks
 
 
 if __name__ == "__main__":
@@ -777,9 +810,10 @@ if __name__ == "__main__":
 
     # Unit Test : Get Global Batch Size
     node_layer_comb = [
-        ("g6e.xlarge", "dummy-az", 9),
-        ("g6e.12xlarge", "dummy-az", 36),
-        ("g6e.12xlarge", "dummy-az", 35),
+        ("g6e.xlarge", "dummy-az", 20),
+        ("g6e.xlarge", "dummy-az", 20),
+        ("g6e.xlarge", "dummy-az", 20),
+        ("g6e.xlarge", "dummy-az", 20),
     ]
 
     global_batch_size = get_global_batch_size(
@@ -803,7 +837,7 @@ if __name__ == "__main__":
 
 
     # Unit Test : Get Throughput
-    throughput, total_latency = get_throughput(
+    throughput, total_latency, num_blocks = get_throughput(
         avg_input_len=config["expected_input_len"],
         avg_output_len=config["expected_output_len"],
         max_model_len=config["max_model_len"],
