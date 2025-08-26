@@ -442,13 +442,32 @@ if __name__ == "__main__":
         "(spot)p4de.24xlarge":    0,
         "(spot)p5.4xlarge":       0,
         "(spot)p5.48xlarge":      0,
-        "(spot)p5e.48xlarge":     0,
-        "(spot)p5en.48xlarge":    0,
-        "(spot)p6-b200.48xlarge": 0,
+        "(spot)p5e.48xlarge":     1,
+        "(spot)p5en.48xlarge":    1,
+        "(spot)p6-b200.48xlarge": 1,
     }
+    # us-west-2 의 2025-08-26 00:00 에서의 가격 기록
+    # AZ 별로 가격이 약간씩 상이하나 인스턴스가 존재하는 첫 번째 AZ 기준으로 설정
     spot_prices = {
-        "(spot)p5.4xlarge":       9999, # spot 없음.
-        "(spot)p5e.48xlarge":     22,
+        "(spot)g4dn.xlarge":      0.2523,
+        "(spot)g4dn.12xlarge":    1.4673,
+        "(spot)g4dn.metal":       3.4434,
+        "(spot)g5.xlarge":        0.6424,
+        "(spot)g5.12xlarge":      2.4761,
+        "(spot)g5.48xlarge":      6.3587,
+        "(spot)g6.xlarge":        0.4207,
+        "(spot)g6.12xlarge":      2.1210,
+        "(spot)g6.48xlarge":      5.3874,
+        "(spot)g6e.xlarge":       0.9613,
+        "(spot)g6e.12xlarge":     5.0399,
+        "(spot)g6e.48xlarge":     13.2044,
+        "(spot)p4d.24xlarge":     10.7828,
+        "(spot)p4de.24xlarge":    14.6877,
+        "(spot)p5.4xlarge":       9999, # no available spot on us-west-2
+        "(spot)p5.48xlarge":      18.1301,
+        "(spot)p5e.48xlarge":     21.6759,
+        "(spot)p5en.48xlarge":    22.5218,
+        "(spot)p6-b200.48xlarge": 29.2084,
     }
     cluster_pool = ClusterPool(available_spot_nodes=available_spot_nodes, spot_prices=spot_prices)
 
