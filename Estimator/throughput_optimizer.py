@@ -26,6 +26,8 @@ class Pipeline:
         self.global_batch_size = 0
         self.num_cache_blocks = 0 # 캐시 블록의 개수
         self.latency_per_global_batch = 0 # 파이프라인의 추론 최소 지연 시간
+        self.num_blocks = 0 # 파이프라인의 block 개수
+        self.block_size = 16
     
     def __repr__(self):
         """Pipeline 객체의 문자열 표현"""
@@ -44,8 +46,9 @@ class Pipeline:
                 f"throughput={self.throughput:.3f}, "
                 f"cost=${self.cost:.3f}, "
                 f"ratio={ratio:.3f}, "
-                f"latency_per_global_batch={self.latency_per_global_batch:.0f}ms)")
-    
+                f"latency_per_global_batch={self.latency_per_global_batch:.0f}ms), "
+                f"num_blocks={self.num_blocks})")
+
     def set_cost(self, cost: float):
         """파이프라인의 총 비용을 설정합니다 (hourly cost)."""
         self.cost = cost
@@ -56,7 +59,7 @@ class Pipeline:
         for i, (instance, layer_count) in enumerate(zip(self.stages, self.layer_per_stage)):
             node_layer_comb.append((instance, self.azs[i], layer_count))
         
-        throughput, total_latency_per_global_batch = get_throughput(
+        throughput, total_latency_per_global_batch, num_blocks = get_throughput(
             avg_input_len=config["expected_input_len"],
             avg_output_len=config["expected_output_len"],
             max_model_len=config["max_model_len"],
@@ -73,6 +76,8 @@ class Pipeline:
         
         self.throughput = throughput
         self.latency_per_global_batch = total_latency_per_global_batch
+        self.num_blocks = num_blocks
+        self.global_batch_size = num_blocks * self.block_size // (config["expected_input_len"] + config["expected_output_len"])
         return self.throughput
 
 
@@ -380,7 +385,7 @@ def run_test_case(
     optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo, cluster_pool=cluster_pool, max_stages=max_stages)
     
     start_time = time.time()
-    result = optimizer.optimize()
+    result: Pipeline = optimizer.optimize()
     optimization_time = time.time() - start_time
     
     if result:
@@ -389,7 +394,12 @@ def run_test_case(
         logger.info(f"  - Stages: {result.stages}")
         logger.info(f"  - Layers per stage: {result.layer_per_stage}")
         logger.info(f"  - Total layers: {sum(result.layer_per_stage)}")
-        
+        logger.info(f"  - Throughput : {result.throughput:.2f} req/s")
+        logger.info(f"  - Cost : {result.cost:.2f} USD/h")
+        logger.info(f"  - Global Batch : {result.global_batch_size}")
+        logger.info(f"  - E2E Latency per Global Batch : {result.latency_per_global_batch:.2f} ms")
+        logger.info(f"  - Num Available Blocks : {result.num_blocks}")
+
         # Show top ranked pipelines
         optimizer.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
     else:
@@ -426,18 +436,18 @@ if __name__ == "__main__":
     }
 
     available_spot_nodes = {
-        "(spot)g4dn.xlarge":      100,
-        "(spot)g4dn.12xlarge":    100,
-        "(spot)g4dn.metal":       100,
-        "(spot)g5.xlarge":        30,
-        "(spot)g5.12xlarge":      100,
-        "(spot)g5.48xlarge":      100,
-        "(spot)g6.xlarge":        40,
-        "(spot)g6.12xlarge":      100,
-        "(spot)g6.48xlarge":      100,
-        "(spot)g6e.xlarge":       35,
-        "(spot)g6e.12xlarge":     100,
-        "(spot)g6e.48xlarge":     100,
+        "(spot)g4dn.xlarge":      200,
+        "(spot)g4dn.12xlarge":    50,
+        "(spot)g4dn.metal":       25,
+        "(spot)g5.xlarge":        50,
+        "(spot)g5.12xlarge":      12,
+        "(spot)g5.48xlarge":      6,
+        "(spot)g6.xlarge":        35,
+        "(spot)g6.12xlarge":      7,
+        "(spot)g6.48xlarge":      3,
+        "(spot)g6e.xlarge":       20,
+        "(spot)g6e.12xlarge":     5,
+        "(spot)g6e.48xlarge":     2,
         "(spot)p4d.24xlarge":     0,
         "(spot)p4de.24xlarge":    0,
         "(spot)p5.4xlarge":       0,
