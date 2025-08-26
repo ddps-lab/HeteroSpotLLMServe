@@ -44,7 +44,7 @@ class Pipeline:
                 f"throughput={self.throughput:.3f}, "
                 f"cost=${self.cost:.3f}, "
                 f"ratio={ratio:.3f}, "
-                f"latency={self.lowest_inference_latency:.0f}ms)")
+                f"latency_per_global_batch={self.latency_per_global_batch:.0f}ms)")
     
     def set_cost(self, cost: float):
         """파이프라인의 총 비용을 설정합니다 (hourly cost)."""
@@ -205,7 +205,7 @@ class DPOptimizer:
                             continue
                         
                         # 지연시간 제약: 최소 지연시간이 SLO를 초과하면 스킵
-                        if new_pipeline.lowest_inference_latency > self.latency_slo:
+                        if new_pipeline.latency_per_global_batch > self.latency_slo:
                             continue
                         
                         # 새로운 스테이지 수
@@ -438,8 +438,8 @@ if __name__ == "__main__":
         "(spot)g6e.xlarge":       35,
         "(spot)g6e.12xlarge":     100,
         "(spot)g6e.48xlarge":     100,
-        "(spot)p4d.24xlarge":     100,
-        "(spot)p4de.24xlarge":    100,
+        "(spot)p4d.24xlarge":     0,
+        "(spot)p4de.24xlarge":    0,
         "(spot)p5.4xlarge":       0,
         "(spot)p5.48xlarge":      0,
         "(spot)p5e.48xlarge":     0,
