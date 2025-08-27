@@ -88,6 +88,7 @@ def evaluate(individual):
     
     for sub_group_index in range(len(individual.genes)):
         individual_genes = individual.genes[sub_group_index] 
+        # print(individual_genes) # [[4, 2, 4, 2], [4, 2, 4, 2]]
         sub_group_plan_list = []
         sub_group_cost_list = []
         sub_group_mem_list = []
@@ -99,7 +100,10 @@ def evaluate(individual):
             # init new sub group's batch as 1
             individual.batch = individual.batch + [1] * (len(individual_genes) - len(individual.batch))
         for sub_group, bias_value, bsz in zip(individual_genes, individual.bias, individual.batch):
+            # print(f"sub_group: {sub_group}, bias_value: {bias_value}, bsz: {bsz}") # sub_group: [4, 2, 4, 2], bias_value: -1, bsz: 1
             all_unique_combinations = [generate_unique_combinations(num_gpus) for num_gpus in sub_group]
+            # all_unique_combinations: [[(2, 2), (1, 1, 1, 1), (4,), (1, 1, 2)], [(1, 1), (2,)], [(2, 2), (1, 1, 1, 1), (4,), (1, 1, 2)], [(1, 1), (2,)]]
+            # print(f"all_unique_combinations: {all_unique_combinations}")
             final_combinations = []
             for combination in product(*all_unique_combinations):
                 final_combinations.append(list(combination))
@@ -108,7 +112,9 @@ def evaluate(individual):
             for alloc in final_combinations:
                 # Each alloc is a sub_group plan: [(1, 2, 1), (1, 2, 1), (1, 2, 1)]
                 # Convert alloc to parallel config list: [1, 2, 1, 1, 2, 1, 1, 2, 1]
+                # print(f"alloc: {alloc}") # [(2, 2), (1, 1), (2, 2), (1, 1)]
                 parallel_config = [item for sublist in alloc for item in sublist]
+                # print(f"parallel_config: {parallel_config}") # [2, 2, 1, 1, 2, 2, 1, 1]
                 # If the parallel_config is NULL, we return a huge value and continue searching
                 if len(parallel_config) == 0:
                     cost_list.append([1e9, alloc])
@@ -235,12 +241,40 @@ def mutate(individual):
                             idx = 0
                             valid_mutation = True
                         group = genes[idx]
-                        new_group = [x // 2 for x in group]
-                        if is_group_valid(new_group, gpu_mem_limit_list_):
-                            genes[idx] = [x - x // 2 for x in group]
+
+                        # new_group = [x // 2 for x in group]
+                        # if is_group_valid(new_group, gpu_mem_limit_list_):
+                        #     genes[idx] = [x - x // 2 for x in group]
+                        #     genes.insert(idx + 1, new_group)
+                        #     valid_mutation = True
+
+                        # 위 방법 실제 HEXGEN 의 알고리즘이다.
+                        # 변경하는 이유는 만약 애초에 초기 노드 그룹이 모든 Node 가 단일한 GPU 를 채택한다면
+                        # 절대 그룹을 분할할 수 없는 상황이 오기 때문이다.
+                        # 이 경우를 해결하기 위해서, Single GPU Node 가 1개만 존재하는 경우 
+                        # 그룹 분할을 // 2 를 통해 하는 것이 아니라 random 하게 포함 여부를 선택하게 한다.
+                        new_group = []
+                        for node_count in group:
+                            # 2개 이상인 경우 기존 방식을 채택한다.
+                            if node_count > 1:
+                                new_group.append(node_count // 2)
+                            elif 0 <= node_count <= 1: # 0 일 경우도 아래의 로직을 통해 함께 처리될 수 있다.
+                                # 50% 확률을 통해 random 으로 넣을지 말지 결정
+                                if random.random() < 0.5:
+                                    new_group.append(node_count)
+                                else:
+                                    new_group.append(0)
+                            else: # 이 경우 node_count 가 음수가 되었다는 얘기인데 무언가 문제가 발생했다는 것이다.
+                                raise ValueError(f"Node count is negative. group:{group}, new_group:{new_group}")
+                        
+                        # 기존에는 업데이트시에 다시 계산했지만, 이미 생성된 group 을 통해서 기존 노드 수를 감소시키는 것으로 대체한다.
+                        parent_group = [x - y for x, y in zip(group, new_group)]
+                        # 이 경우 사실 기존에 쪼개져버린 원본 그룹도 체크를 해주어야 한다. 원본 HEXGEN 코드에 버그가 있던 것.
+                        if is_group_valid(new_group, gpu_mem_limit_list_) and is_group_valid(parent_group, gpu_mem_limit_list_):
+                            genes[idx] = parent_group
                             genes.insert(idx + 1, new_group)
                             valid_mutation = True
-                
+
                 validate_and_adjust(genes, initial_array_)
                 
                 # Ensure no sub-array is all zeros
@@ -346,7 +380,28 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     
     # Run genetic algorithm (exactly like original)
     for gen in range(generations):
+        # 이 varOr 가 mutation 을 실시하게됨
         offspring = algorithms.varOr(population, toolbox, lambda_=10, cxpb=cxpb, mutpb=mutpb)
+        
+        # Debug: Print offspring structure (only first generation)
+        if gen == 0 and verbose:
+            print(f"\n=== Offspring Debug (Gen {gen}) ===")
+            print(f"Type of offspring: {type(offspring)}")
+            print(f"Number of offspring: {len(offspring)}")
+            
+            # Print all offspring details
+            for i, ind in enumerate(offspring):
+                print(f"\nOffspring[{i}] details:")
+                print(f"  Type: {type(ind)}")
+                print(f"  Genes: {ind.genes}")
+                print(f"  Bias: {ind.bias}")
+                print(f"  Batch: {ind.batch}")
+                print(f"  Iter: {ind.iter}")
+                print(f"  Has fitness: {hasattr(ind, 'fitness')}")
+                if hasattr(ind, 'goodput_store'):
+                    print(f"  Goodput_store: {ind.goodput_store}")
+            print("=" * 40 + "\n")
+        
         eval_data = list(map(toolbox.evaluate, offspring))
         for ind, data in zip(offspring, eval_data):
             fit, plan = data
@@ -386,19 +441,26 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
 def main():
     # Test 1: Single group (all nodes in one pipeline)
     print("\n" + "=" * 80)
-    print("Test 1: Single Pipeline Configuration")
+    print("Test 1: Single Group Configuration")
     print("=" * 80)
     
-    single_pipeline_config = {
-        'initial_array': [[8, 4, 8, 4]],  # All nodes in one group
-        'gpu_mem_limit_list': [[40, 24, 40, 24]],
-        'comp_abilities': [[1.0, 0.75, 1.0, 0.75]],
-        'comm_abilities': [[1.0, 1.0, 1.0, 1.0]]
+    # single_model_config = {
+    #     'initial_array': [[8, 4, 8, 4]],  # All nodes in one group
+    #     'gpu_mem_limit_list': [[40, 24, 40, 24]],
+    #     'comp_abilities': [[1.0, 0.75, 1.0, 0.75]],
+    #     'comm_abilities': [[1.0, 1.0, 1.0, 1.0]]
+    # }
+
+    single_model_config = {
+        "initial_array":        [[1]*20], # 20 nodes within single gpu
+        "gpu_mem_limit_list":   [[44]*20],  # Each node has 44GB memory
+        "comp_abilities":       [[1.0]*20],  # All nodes have same computation ability
+        "comm_abilities":       [[1.0]*20]  # All nodes
     }
     
     # Use reduced iterations for faster testing  
     result1 = run_hexgen_ga(
-        single_pipeline_config,
+        single_model_config,
         population_size=100,
         generations=300
     )
@@ -406,24 +468,12 @@ def main():
     
     # Display best individual from Test 1
     print("\n" + "=" * 80)
-    print("Best Individual from Single Pipeline:")
+    print("Best Individual from Single Group:")
     print("=" * 80)
     print(f"  Fitness: {best_ind1.fitness.values[0]:.6f}")
     print(f"  Genes: {best_ind1.genes}")
     print(f"  Bias: {best_ind1.bias}")
     print(f"  Batch: {best_ind1.batch}")
-    
-    # Test 2: Your original multi-group config
-    print("\n" + "=" * 80)
-    print("Test 2: Multi-Group Configuration")
-    print("=" * 80)
-    
-    multi_group_config = {
-        'initial_array': [[8, 4], [8], [4, 4]],
-        'gpu_mem_limit_list': [[40, 24], [40], [24, 24]],
-        'comp_abilities': [[1.0, 0.75], [1.0], [0.75, 0.75]],
-        'comm_abilities': [[1.0, 1.0], [1.0], [1.0, 1.0]]
-    }
 
 
 
