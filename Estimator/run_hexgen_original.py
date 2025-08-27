@@ -79,12 +79,6 @@ def initialize_individual():
     ind.iter = 0
     ind.goodput_store = 0
     
-    # Debug: Check initial_array integrity
-    if len(initial_array) > 0 and len(initial_array[0]) != 19:
-        print(f"WARNING: initial_array corrupted in initialize_individual!")
-        print(f"  initial_array: {initial_array}")
-        print(f"  Length: {[len(g) for g in initial_array]}")
-    
     return ind
 
 def evaluate(individual): 
@@ -460,7 +454,7 @@ def main():
         },
         {
             "instance_type": "g5.12xlarge",
-            "num_instances": 2,
+            "num_instances": 3,
             "num_gpu_per_instance": 4,
             "memory_limit": 22,
             "computation_ability": 0.5,
@@ -531,6 +525,7 @@ def main():
         print(f"Pipeline {i + 1}")
         for instance_type, PP_strategy in group_config.items():
             print(f"  {instance_type}: {PP_strategy}")
+        print(f"  Bias: {best_ind1.bias[i]}")
 
 if __name__ == "__main__":
     # Check for deap
