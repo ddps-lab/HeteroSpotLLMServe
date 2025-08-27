@@ -21,6 +21,7 @@ from predict_cost import predict_cost
 from validate_and_adjust import validate_and_adjust
 from cost_model_impl import compute_costs, tp_communication_costs, inter_device_communication_cost
 from cost_function_for_mutation import cost_function
+from simulator_v2 import Simulator
 
 # Set random seed
 random.seed(123)
@@ -77,6 +78,13 @@ def initialize_individual():
     ind.batch = [1] * len(ind.genes)
     ind.iter = 0
     ind.goodput_store = 0
+    
+    # Debug: Check initial_array integrity
+    if len(initial_array) > 0 and len(initial_array[0]) != 19:
+        print(f"WARNING: initial_array corrupted in initialize_individual!")
+        print(f"  initial_array: {initial_array}")
+        print(f"  Length: {[len(g) for g in initial_array]}")
+    
     return ind
 
 def evaluate(individual): 
@@ -153,18 +161,25 @@ def evaluate(individual):
     # Calculate fitness
     summation_group_cost = sum(sum(inner_list) for inner_list in group_cost_list)
     
-    if summation_group_cost > 1e9:
-        # Memory overflow, return high penalty
-        return 1e9, group_plan_list
+    # if summation_group_cost > 1e9:
+    #     # Memory overflow, return high penalty
+    #     # 기존 코드는 왜 group_plan_list 를 반환할까? -> format 이 일정하지 않은 문제 발생;; 그래서 고쳤다.
+    #     return 1e9, individual.genes
     
-    # Use simple fitness based on number of groups (minimize groups = minimize latency)
-    fitness = 1 / sum(len(inner_list) for inner_list in individual.genes)
-    
-    # Alternative: use cost-based fitness (commented in original)
-    # flattened_cost_list = [sublist for inner_list in group_cost_list for sublist in inner_list] 
-    # fitness = 1 / (sum(flattened_cost_list) / len(flattened_cost_list))
-    
-    individual.iter += 1
+    # 원본 hexgen genetic algorithm logic 복구
+    set_interval_for_global_search = 10
+    if individual.iter % set_interval_for_global_search == 0 and individual.iter >= 100:
+        flattened_plan_list = [sublist for inner_list in group_plan_list for sublist in inner_list]
+        simulator = Simulator(flattened_plan_list, individual.bias, individual.batch, slo=0.05) # In current impl, slo can be of any value.
+        goodput = simulator.exec()
+        print(goodput)
+        individual.goodput_store = goodput
+        fitness = 1 / goodput
+    else:
+        # # Local optimal strategy search
+        # fitness =  1 / sum(len(inner_list) for inner_list in individual.genes)
+        flattened_cost_list = [sublist for inner_list in group_cost_list for sublist in inner_list] 
+        fitness = 1 / (sum(flattened_cost_list) / len(flattened_cost_list))
     return fitness, individual.genes # Return the average cost as fitness
 
 def is_group_valid(group, gpu_mem_list):
@@ -377,30 +392,11 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     # Track best individual across all generations
     best_individual = None
     best_fitness = float('inf')
+    best_gen_iteration = 0
     
     # Run genetic algorithm (exactly like original)
     for gen in range(generations):
-        # 이 varOr 가 mutation 을 실시하게됨
         offspring = algorithms.varOr(population, toolbox, lambda_=10, cxpb=cxpb, mutpb=mutpb)
-        
-        # Debug: Print offspring structure (only first generation)
-        if gen == 0 and verbose:
-            print(f"\n=== Offspring Debug (Gen {gen}) ===")
-            print(f"Type of offspring: {type(offspring)}")
-            print(f"Number of offspring: {len(offspring)}")
-            
-            # Print all offspring details
-            for i, ind in enumerate(offspring):
-                print(f"\nOffspring[{i}] details:")
-                print(f"  Type: {type(ind)}")
-                print(f"  Genes: {ind.genes}")
-                print(f"  Bias: {ind.bias}")
-                print(f"  Batch: {ind.batch}")
-                print(f"  Iter: {ind.iter}")
-                print(f"  Has fitness: {hasattr(ind, 'fitness')}")
-                if hasattr(ind, 'goodput_store'):
-                    print(f"  Goodput_store: {ind.goodput_store}")
-            print("=" * 40 + "\n")
         
         eval_data = list(map(toolbox.evaluate, offspring))
         for ind, data in zip(offspring, eval_data):
@@ -413,7 +409,8 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
             if fit < best_fitness:
                 best_fitness = fit
                 best_individual = copy.deepcopy(ind)
-                
+                best_gen_iteration = ind.iter
+
         population = toolbox.select(offspring, k=3)
         
         # Record the plan
@@ -432,6 +429,7 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     
     print("\n" + "=" * 80)
     print(f"Optimization Complete! Final Min: {min_[-1]:.6f}")
+    print(f"Best Iteration of Generation : {best_gen_iteration}")
     print("=" * 80)
     
     # Return statistics and best individual
@@ -451,14 +449,56 @@ def main():
     #     'comm_abilities': [[1.0, 1.0, 1.0, 1.0]]
     # }
 
+    cluster = [
+        {
+            "instance_type": "g6e.xlarge",
+            "num_instances": 10,
+            "num_gpu_per_instance": 1,
+            "memory_limit": 44,
+            "computation_ability": 1.0,
+            "communication_ability": 1.0
+        },
+        {
+            "instance_type": "g5.12xlarge",
+            "num_instances": 2,
+            "num_gpu_per_instance": 4,
+            "memory_limit": 22,
+            "computation_ability": 0.5,
+            "communication_ability": 1.0
+        },
+        {
+            "instance_type": "g4dn.xlarge",
+            "num_instances": 7,
+            "num_gpu_per_instance": 1,
+            "memory_limit": 15,
+            "computation_ability": 0.25,
+            "communication_ability": 1.0
+        }
+    ]
+
+    cluster_config_flatten = []
+
     single_model_config = {
-        "initial_array":        [[1]*20], # 20 nodes within single gpu
-        "gpu_mem_limit_list":   [[44]*20],  # Each node has 44GB memory
-        "comp_abilities":       [[1.0]*20],  # All nodes have same computation ability
-        "comm_abilities":       [[1.0]*20]  # All nodes
+        "initial_array": [[]],
+        "gpu_mem_limit_list": [[]],
+        "comp_abilities": [[]],
+        "comm_abilities": [[]],
     }
-    
-    # Use reduced iterations for faster testing  
+
+    for node_info in cluster:
+        node_count = node_info["num_instances"]
+        num_gpu = node_info["num_gpu_per_instance"]
+        memory_limit = node_info["memory_limit"]
+        comp_ability = node_info["computation_ability"]
+        comm_ability = node_info["communication_ability"]
+        for i in range(node_count):
+            single_model_config["initial_array"][0].append(num_gpu)
+            single_model_config["gpu_mem_limit_list"][0].append(memory_limit)
+            single_model_config["comp_abilities"][0].append(comp_ability)
+            single_model_config["comm_abilities"][0].append(comm_ability)
+
+            cluster_config_flatten.append(node_info["instance_type"])
+
     result1 = run_hexgen_ga(
         single_model_config,
         population_size=100,
@@ -475,7 +515,22 @@ def main():
     print(f"  Bias: {best_ind1.bias}")
     print(f"  Batch: {best_ind1.batch}")
 
+    for i, node_group in enumerate(best_ind1.genes[0]):
+        group_config = {} # instance_type : [PP_strategy]
+        for j, node_count in enumerate(node_group):
+            if node_count == 0:
+                continue
+            elif node_count < 0:
+                raise ValueError("Node Count of Final gene < 0")
+            instance_type = cluster_config_flatten[j]
+            if not group_config.get(instance_type):
+                group_config[instance_type] = []
 
+            group_config[instance_type].append(node_count)
+
+        print(f"Pipeline {i + 1}")
+        for instance_type, PP_strategy in group_config.items():
+            print(f"  {instance_type}: {PP_strategy}")
 
 if __name__ == "__main__":
     # Check for deap
