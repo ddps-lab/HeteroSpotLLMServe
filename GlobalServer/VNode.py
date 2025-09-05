@@ -755,7 +755,8 @@ class VNode:
             ray_address=ray_address,
             gpu_memory_utilization=config.get("gpu_memory_utilization"),
             max_num_batched_tokens=config.get("max_num_batched_tokens"),
-            max_num_seqs=config.get("max_num_seqs")
+            max_num_seqs=config.get("max_num_seqs"),
+            num_gpu_blocks_override=config.get("num_gpu_blocks"),
         )
         
         # Prepare log file - save directly to local remote logs directory
