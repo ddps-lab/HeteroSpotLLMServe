@@ -367,22 +367,22 @@ class BeamSearchDPOptimizer:
                                 continue
 
                             new_pipeline = self._add_new_stage(prev_pipeline, new_stage_instance, new_num_layer)
-                            new_pipieline_signature = tuple(sorted(new_pipeline.stages))
+                            new_pipeline_signature = tuple(sorted(new_pipeline.stages))
                             # 제약조건을 만족하지 못하면 건너뜀
                             if not self._check_feasibility_pipeline(new_pipeline, self.latency_slo, self.budget):
                                 continue
                             new_pipeline = self._recalculate_pipeline_throughput(new_pipeline)
                                 
                             # 이미 같은 signature 가 dp table 안에 존재하는 경우 더 좋은 것만 남김
-                            if new_pipieline_signature in self.dp[pivot_layer][current_num_stage].keys():
-                                existing_pipeline = self.dp[pivot_layer][current_num_stage][new_pipieline_signature]
+                            if new_pipeline_signature in self.dp[pivot_layer][current_num_stage].keys():
+                                existing_pipeline = self.dp[pivot_layer][current_num_stage][new_pipeline_signature]
                                 if (new_pipeline.throughput / new_pipeline.cost) > (existing_pipeline.throughput / existing_pipeline.cost):
-                                    self.dp[pivot_layer][current_num_stage][new_pipieline_signature] = new_pipeline
+                                    self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
                             # 해당 signature 가 dp table 에 존재하지 않는 경우 추가
                             # 단 beam search 를 고려하여 top-k 개수만 유지해야 함
                             else:
                                 if len(self.dp[pivot_layer][current_num_stage].keys()) < self.top_k:
-                                    self.dp[pivot_layer][current_num_stage][new_pipieline_signature] = new_pipeline
+                                    self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
                                 else:
                                     min_ratio = float('inf')
                                     min_signature = None
@@ -394,7 +394,7 @@ class BeamSearchDPOptimizer:
                                     # 새로운 파이프라인이 기존의 최소 ratio 보다 크면 교체
                                     if (new_pipeline.throughput / new_pipeline.cost) > min_ratio:
                                         del self.dp[pivot_layer][current_num_stage][min_signature]
-                                        self.dp[pivot_layer][current_num_stage][new_pipieline_signature] = new_pipeline
+                                        self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
 
         
         # 최종 결과 선택: 모든 레이어를 처리하는 파이프라인 중에서
