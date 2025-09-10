@@ -1,6 +1,7 @@
 """
 Request handler for global server.
 """
+import asyncio
 import json
 import logging
 import time
@@ -25,6 +26,7 @@ class Request:
     output: Optional['RequestOutput'] = None  # Output object (exists if request was halted)
     sended_at: Optional[float] = None  # When forwarded to inference pipeline
     halted_at: Optional[float] = None  # When request was halted (if applicable)
+    _completion_event: Optional[asyncio.Event] = field(default=None, init=False, repr=False)
     
     @classmethod
     def create(cls, request_input: 'RequestInput') -> 'Request':
@@ -32,10 +34,18 @@ class Request:
         global _request_counter
         request_id = _request_counter
         _request_counter += 1
-        return cls(
+        request = cls(
             request_id=request_id,
             input=request_input
         )
+        request._completion_event = asyncio.Event()
+        return request
+    
+    async def wait_for_completion(self):
+        """Wait for this request to complete."""
+        if self._completion_event:
+            await self._completion_event.wait()
+        return self
 
 @dataclass
 class RequestInput:
@@ -128,6 +138,7 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
             # Continue generation from where it left off
             prompt = request_input.prompt + request.output.generated_text
             remaining_tokens = request_input.expected_output_len - request.output.output_tokens
+            logger.info(f"Continuing request {request.request_id} with remaining tokens: {remaining_tokens}")
         else:
             prompt = request_input.prompt
             remaining_tokens = request_input.expected_output_len
@@ -202,7 +213,7 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
                                 most_recent_timestamp = timestamp
 
                                 if choices[0].get("finish_reason") is not None:
-                                    output.latency = time.time() - most_recent_timestamp
+                                    output.latency = time.time() - request.sended_at
                                     output.output_tokens = len(output.itl) + 1
                                     
                             # Check for usage stats
@@ -215,10 +226,7 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
                             continue
                     
                     output.success = True
-                    
-                    # Ensure latency is set if not already
-                    if output.latency == 0:
-                        output.latency = time.time() - most_recent_timestamp
+                    output.latency = time.time() - request.sended_at
                         
                 else:
                     output.error = f"HTTP {response.status}: {await response.text()}"

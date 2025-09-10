@@ -64,7 +64,7 @@ TENSOR_INITIALIZE_COMPLETE = False
 SHUTDOWN_EVENT = threading.Event()
 
 # KV cache related global variables
-BLOCK_SIZE = -1
+BLOCK_SIZE = -1 # BLOCK_SIZE defines how many tokens are contained in one block.
 GPU_MEMORY_UTILIZATION = -1.0
 SWAP_SPACE_BYTES = -1
 CACHE_DTYPE = None  # Will be set based on model dtype
@@ -192,6 +192,47 @@ def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bo
     logging.info(f"Filtered to {len(required_tensors)} required tensors out of {len(all_tensor_names)} total")
     return required_tensors
 
+def check_local_tensor_files(local_storage_path: str, required_tensor_names: List[str]) -> tuple[List[str], List[str]]:
+    """Check which tensor files exist locally and which need to be downloaded
+    
+    Returns:
+        tuple: (existing_tensors, missing_tensors)
+    """
+    existing_tensors = []
+    missing_tensors = []
+    
+    for tensor_name in required_tensor_names:
+        local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
+        if os.path.exists(local_file_path):
+            existing_tensors.append(tensor_name)
+        else:
+            missing_tensors.append(tensor_name)
+    
+    logging.info(f"[Local Cache Check] {len(existing_tensors)} tensors found locally, {len(missing_tensors)} need download")
+    return existing_tensors, missing_tensors
+
+def save_tensor_to_local(tensor: torch.Tensor, local_storage_path: str, tensor_name: str):
+    """Save a tensor to local storage"""
+    local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
+    
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+    
+    # Save tensor
+    torch.save(tensor, local_file_path)
+    logging.debug(f"Saved tensor to local: {local_file_path}")
+
+def load_tensor_from_local(local_storage_path: str, tensor_name: str) -> torch.Tensor:
+    """Load a tensor from local storage"""
+    local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
+    
+    if not os.path.exists(local_file_path):
+        raise FileNotFoundError(f"Local tensor file not found: {local_file_path}")
+    
+    logging.debug(f"Loading tensor from local: {local_file_path}")
+    tensor = torch.load(local_file_path, map_location="cpu")
+    return tensor
+
 def log_required_tensors_summary(required_tensor_names: List[str]):
     """Log required tensors in a formatted, readable way"""
     logging.info("=" * 80)
@@ -284,8 +325,8 @@ def load_tensor_from_s3_direct(s3_client: boto3.client, bucket_name: str, s3_key
         logging.error(f"Unexpected error loading {s3_key}: {e}")
         raise
 
-def process_tensor_from_s3(tensor_name: str, full_tensor: torch.Tensor):
-    """Process a tensor loaded from S3 - use original dtype from tensor"""
+def process_tensor(tensor_name: str, full_tensor: torch.Tensor):
+    """Process a tensor - use original dtype from tensor"""
     global DTYPE
     
     try:
@@ -477,27 +518,51 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
         "total_gpu_cache_size_gb": (num_gpu_blocks * cache_block_size) / (1024**3),
     }
 
-def load_and_process_tensor_from_s3(s3_client, bucket_name: str, base_s3_path: str, tensor_name: str):
-    """Load a tensor directly from S3 and process it"""
-    # Prepare S3 key
-    if base_s3_path:
-        s3_key = f"{base_s3_path}/{tensor_name}.bin"
-    else:
-        s3_key = f"{tensor_name}.bin"
+def load_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, tensor_name: str, local_storage_path: Optional[str] = None):
+    """Load a tensor from local cache or S3 and process it"""
+    full_tensor = None
     
-    # Load tensor directly from S3 to CPU memory
-    full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
+    # Try to load from local storage first if path is provided
+    if local_storage_path:
+        local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
+        if os.path.exists(local_file_path):
+            logging.info(f"Loading {tensor_name} from local cache: {local_file_path}")
+            full_tensor = load_tensor_from_local(local_storage_path, tensor_name)
+        else:
+            # Load from S3 and save to local
+            logging.info(f"{tensor_name} not found locally, downloading from S3...")
+            if base_s3_path:
+                s3_key = f"{base_s3_path}/{tensor_name}.bin"
+            else:
+                s3_key = f"{tensor_name}.bin"
+            
+            full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
+            
+            # Save to local storage for future use
+            save_tensor_to_local(full_tensor, local_storage_path, tensor_name)
+            logging.info(f"Saved {tensor_name} to local cache: {local_file_path}")
+    else:
+        # No local storage path, load directly from S3
+        if base_s3_path:
+            s3_key = f"{base_s3_path}/{tensor_name}.bin"
+        else:
+            s3_key = f"{tensor_name}.bin"
+        
+        full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
     
     # Process tensor
-    process_tensor_from_s3(tensor_name, full_tensor)
+    process_tensor(tensor_name, full_tensor)
 
-def load_required_tensors_from_s3(s3_client, bucket_name: str, base_s3_path: str, required_tensor_names: List[str]):
-    """Load required tensors directly from S3 to memory"""
+def load_required_tensors(s3_client, bucket_name: str, base_s3_path: str, required_tensor_names: List[str], local_storage_path: Optional[str] = None):
+    """Load required tensors from local cache or S3"""
     if not required_tensor_names:
         logging.warning("No tensors to load")
         return
     
-    logging.info(f"Loading and processing {len(required_tensor_names)} required tensors directly from S3")
+    if local_storage_path:
+        logging.info(f"Loading and processing {len(required_tensor_names)} required tensors (with local cache at {local_storage_path})")
+    else:
+        logging.info(f"Loading and processing {len(required_tensor_names)} required tensors directly from S3")
     
     # Use threading for parallel loading and processing
     max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))  
@@ -509,8 +574,8 @@ def load_required_tensors_from_s3(s3_client, bucket_name: str, base_s3_path: str
         for tensor_name in required_tensor_names:
             # Submit loading and processing task
             future = executor.submit(
-                load_and_process_tensor_from_s3,
-                s3_client, bucket_name, base_s3_path, tensor_name
+                load_and_process_tensor,
+                s3_client, bucket_name, base_s3_path, tensor_name, local_storage_path
             )
             futures.append(future)
         
@@ -624,6 +689,8 @@ def parse_args():
                         help="Port for readiness TCP server")
     parser.add_argument("--aws-profile", type=str, default=None,
                         help="AWS profile to use for S3 access")
+    parser.add_argument("--local-storage-path", type=str, default=None,
+                        help="Local path to cache model weights (default: /opt/dlami/nvme/models/{model_name})")
     
     # KV cache related arguments
     parser.add_argument("--block-size", type=int, default=16, choices=[8, 16, 32],
@@ -816,12 +883,32 @@ def main():
     # Log the required tensors in a formatted way
     log_required_tensors_summary(required_tensor_names)
     
-    # Step 4: Load and process required tensors directly from S3
-    logging.info("Step 4: Loading and processing required tensors directly from S3...")
+    # Determine local storage path
+    if args.local_storage_path:
+        local_storage_path = args.local_storage_path
+    else:
+        # Use default path with model name
+        local_storage_path = f"/opt/dlami/nvme/models/{args.model_name}"
+    
+    logging.info(f"Local storage path: {local_storage_path}")
+    
+    # Create local storage directory if it doesn't exist
+    if local_storage_path:
+        os.makedirs(local_storage_path, exist_ok=True)
+        
+        # Also save config.json locally if not already present
+        config_local_path = os.path.join(local_storage_path, "config.json")
+        if not os.path.exists(config_local_path):
+            with open(config_local_path, 'w') as f:
+                json.dump(config_dict, f, indent=2)
+            logging.info(f"Saved config.json to local storage: {config_local_path}")
+    
+    # Step 4: Load and process required tensors from local cache or S3
+    logging.info("Step 4: Loading and processing required tensors...")
     load_start = time.perf_counter()
     
     try:
-        load_required_tensors_from_s3(s3_client, bucket_name, base_s3_path, required_tensor_names)
+        load_required_tensors(s3_client, bucket_name, base_s3_path, required_tensor_names, local_storage_path)
         
         load_end = time.perf_counter()
         logging.info(f"Loading and processing completed in {load_end - load_start:.2f} seconds")
