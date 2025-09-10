@@ -125,7 +125,7 @@ class ClusterPool:
             print(f"Warning: Price not found for {instance_type}")
             return 0.0
     
-    def check_feasibility(self, stages: List[Tuple[str, int]]) -> bool:
+    def check_cluster_availability(self, stages: List[str]) -> bool:
         """
         파이프라인 구성이 현재 클러스터에서 실행 가능한지 확인합니다.
         
@@ -137,7 +137,7 @@ class ClusterPool:
         """
         # 필요한 인스턴스 타입별 수량 계산
         required_counts = defaultdict(int)
-        for instance_type, _ in stages:
+        for instance_type in stages:
             required_counts[instance_type] += 1
         
         # 각 인스턴스 타입별로 가용 수량 확인

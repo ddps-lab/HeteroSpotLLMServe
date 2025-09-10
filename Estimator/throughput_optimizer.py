@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Dict, List, Tuple, Optional
 from transformers import AutoConfig
 import logging
@@ -78,7 +79,6 @@ class Pipeline:
         
         self.throughput = throughput
         self.latency_per_global_batch = total_latency_per_global_batch
-        self.single_request_latency = get_minimum_latency(self, config)
         self.num_blocks = num_blocks
         self.global_batch_size = num_blocks * self.block_size // (config["expected_input_len"] + config["expected_output_len"])
         return self.throughput
@@ -224,10 +224,16 @@ def get_minimum_latency(pipeline: Pipeline, config: Dict[str, Any]):
     return total_latency
 
 
-class DPOptimizer:
+class BeamSearchDPOptimizer:
     """Dynamic Programming based optimizer for throughput/cost optimization"""
     
-    def __init__(self, config: Dict[str, Any], budget: float, latency_slo: float, cluster_pool: ClusterPool, max_stages: Optional[int] = None):
+    def __init__(self, 
+                 config: Dict[str, Any], 
+                 budget: float, 
+                 latency_slo: float, 
+                 cluster_pool: ClusterPool, 
+                 max_stages: Optional[int] = None,
+                 top_k: int = 5):
         """
         Args:
             config: 모델 및 시스템 설정
@@ -246,10 +252,16 @@ class DPOptimizer:
         # 최대 스테이지 수 설정 (기본값: num_layers, 즉 제한 없음)
         # 실용적으로는 더 작은 값으로 제한하여 파이프라인 오버헤드를 줄임
         self.max_stages = max_stages if max_stages is not None else self.num_layers
-        
-        # DP 캐시: dp[layer_idx][num_stages] = Pipeline
+
+        # Beam Search 를 도입한다. Top-k 설정.
+        # k 가 높아지면 나중에 heap 으로 변환하는 것이 효율적이다.
+        # 하지만 현재 k 는 5 이하로 설정할 것이기 때문에 그냥 naive 한 기법을 사용한다.
+        self.top_k = top_k
+
+        # DP 캐시: dp[layer_idx][num_stages] = Pipelines
         # 최대 stage 수를 num_layers로 설정 (최악의 경우 각 layer가 하나의 stage)
-        self.dp = [[None for _ in range(self.num_layers + 1)] for _ in range(self.num_layers + 1)]
+        # Beam 은 Dictionary 형태를 유지한다. (같은 인스턴스 구성이면 중복을 제거한다.)
+        self.dp: List[List[Dict[Pipeline]]] = [[{} for _ in range(self.num_layers + 1)] for _ in range(self.num_layers + 1)]
         # computation latency 초기화
         initialize_computation_latencies(config)
     
@@ -276,8 +288,47 @@ class DPOptimizer:
         
         # Throughput 및 latency 계산
         pipeline.calculate_throughput(self.config)
+        pipeline.single_request_latency = get_minimum_latency(pipeline, self.config)
         
         return pipeline
+
+    def _add_new_stage(self, pipeline: Pipeline, instance: str, layers: int) -> Pipeline:
+        """기존 파이프라인에 새로운 스테이지를 추가하여 새로운 파이프라인 생성"""
+        if layers <= 0:
+            assert False, "layers must be positive"
+        
+        new_pipeline = copy.deepcopy(pipeline)
+        new_pipeline.stages.append(instance)
+        new_pipeline.azs.append("dummy-az")
+        new_pipeline.layer_per_stage.append(layers)
+
+        # add new stage 부터 throughput 계산을 해버리면 feasibility check 전에 매번 계산해야하므로
+        # 시간이 매우 오래걸릴 것이다. 따라서 calculate 하는 경우에는 함수를 분리해서 feasibility check 이후에 한다.
+        # new_pipeline.calculate_throughput(self.config)
+
+        new_pipeline.set_cost(new_pipeline.cost + self.cluster_pool.get_instance_price(instance))
+        # single request latency 의 경우 slo constraint 에 박혀있기 때문에 필요하다.
+        new_pipeline.single_request_latency = get_minimum_latency(new_pipeline, self.config)
+
+        return new_pipeline
+
+    def _recalculate_pipeline_throughput(self, pipeline: Pipeline) -> Pipeline:
+        """파이프라인의 throughput을 재계산"""
+        pipeline.calculate_throughput(self.config)
+        return pipeline
+
+    
+    def _check_feasibility_pipeline(self, pipeline: Pipeline, slo: int, budget: float) -> bool:
+        """파이프라인이 주어진 SLO 및 예산 제약을 만족하는지 확인"""
+        if pipeline is None:
+            return False
+        if pipeline.single_request_latency > slo:
+            return False
+        if pipeline.cost > budget:
+            return False
+        if pipeline.throughput == OUT_OF_MEMORY:
+            return False
+        return True
     
     def optimize(self) -> Optional[Pipeline]:
         """
@@ -288,84 +339,63 @@ class DPOptimizer:
         - throughput/cost 비율을 최대화하는 파이프라인 구성을 찾습니다
         
         알고리즘:
-        1. DP 상태: dp[i][j] = i개의 레이어를 j개의 스테이지로 처리하는 최적 파이프라인
+        1. DP 상태: dp[i][j] = i개의 레이어를 j개의 스테이지로 처리하는 최적 파이프라인 Beam
         2. 전이: 새로운 인스턴스를 추가하여 더 많은 레이어를 처리
         3. 제약조건 체크: 예산, 지연시간, 메모리 제약을 만족하는지 확인
         
         Returns:
             최적의 Pipeline 객체 또는 실행 가능한 파이프라인이 없으면 None
         """
-        
         # Base case: 0개 레이어, 0개 스테이지로 시작
-        self.dp[0][0] = self._create_pipeline([])
+        self.dp[0][0][()] = self._create_pipeline([])
         
         # DP 수행: 1개부터 전체 레이어 수까지 순차적으로 최적해를 구함
-        for current_layer in range(1, self.num_layers + 1):
-            # 현재 스테이지에서 사용할 수 있는 모든 인스턴스 타입 탐색
-            for instance in self.instance_types:
-                # 이 인스턴스가 처리할 레이어 수를 1부터 current_layer까지 시도
-                # (한 인스턴스가 모든 레이어를 처리할 수도 있음)
-                for layers_to_process in range(1, current_layer + 1):
-                    # 이전 상태의 레이어 수 계산
-                    prev_layer = current_layer - layers_to_process
-                    
-                    # 이전 상태들을 확인 (최대 스테이지 수 제한 적용)
-                    # prev_num_stages가 max_stages-1이면, 새 스테이지 추가 시 max_stages가 됨
-                    for prev_num_stages in range(self.max_stages):
-                        prev_pipeline = self.dp[prev_layer][prev_num_stages]
-                        if prev_pipeline is None:
-                            continue
-                        
-                        # 새로운 스테이지 수 계산
-                        new_num_stages = prev_num_stages + 1
-                        
-                        # 마지막 스테이지인 경우, 남은 모든 레이어를 처리해야 함
-                        if new_num_stages == self.max_stages:
-                            if layers_to_process != (self.num_layers - prev_layer):
+        for pivot_layer in range(1, self.num_layers + 1):
+            print(f"Populate DP table for {pivot_layer} pivot layer...")
+            for prev_num_layer in range(0, pivot_layer):
+                new_num_layer = pivot_layer - prev_num_layer
+                for prev_num_stage in range(0, min(prev_num_layer + 1, self.max_stages)):
+                    # beam search, 여기서 signature 는 stages 의 튜플이다.
+                    # 아래 for 문이 최대 k 번만큼 순회함
+                    for pipeline_signature, prev_pipeline in self.dp[prev_num_layer][prev_num_stage].items():
+                        current_num_stage = prev_num_stage + 1
+
+                        # 새로운 스테이지 추가
+                        for new_stage_instance in self.instance_types:
+                            # 새로운 인스턴스 추가시 cluster 의 가용성을 체크
+                            if not self.cluster_pool.check_cluster_availability(prev_pipeline.stages + [new_stage_instance]):
                                 continue
-                        
-                        # 새로운 스테이지 구성 생성
-                        if prev_num_stages == 0:  # 첫 번째 스테이지인 경우
-                            new_stages = [(instance, layers_to_process)]
-                        else:
-                            # 기존 파이프라인에 새로운 스테이지 추가
-                            new_stages = []
-                            for i in range(len(prev_pipeline.stages)):
-                                new_stages.append((prev_pipeline.stages[i], prev_pipeline.layer_per_stage[i]))
-                            new_stages.append((instance, layers_to_process))
-                        
-                        # 클러스터 리소스 제약 확인 (cluster가 설정된 경우)
-                        if self.cluster_pool and not self.cluster_pool.check_feasibility(new_stages):
-                            continue
-                        
-                        # 새로운 파이프라인 생성 및 평가
-                        new_pipeline = self._create_pipeline(new_stages)
-                        
-                        # 제약 조건 확인
-                        # 메모리 제약: OUT_OF_MEMORY 상태인 경우 스킵
-                        if new_pipeline.throughput == OUT_OF_MEMORY:
-                            continue
 
-                        # 유효성 검사: throughput과 cost가 양수여야 함
-                        if new_pipeline.throughput <= 0 or new_pipeline.cost <= 0:
-                            continue
+                            new_pipeline = self._add_new_stage(prev_pipeline, new_stage_instance, new_num_layer)
+                            new_pipieline_signature = tuple(sorted(new_pipeline.stages))
+                            # 제약조건을 만족하지 못하면 건너뜀
+                            if not self._check_feasibility_pipeline(new_pipeline, self.latency_slo, self.budget):
+                                continue
+                            new_pipeline = self._recalculate_pipeline_throughput(new_pipeline)
+                                
+                            # 이미 같은 signature 가 dp table 안에 존재하는 경우 더 좋은 것만 남김
+                            if new_pipieline_signature in self.dp[pivot_layer][current_num_stage].keys():
+                                existing_pipeline = self.dp[pivot_layer][current_num_stage][new_pipieline_signature]
+                                if (new_pipeline.throughput / new_pipeline.cost) > (existing_pipeline.throughput / existing_pipeline.cost):
+                                    self.dp[pivot_layer][current_num_stage][new_pipieline_signature] = new_pipeline
+                            # 해당 signature 가 dp table 에 존재하지 않는 경우 추가
+                            # 단 beam search 를 고려하여 top-k 개수만 유지해야 함
+                            else:
+                                if len(self.dp[pivot_layer][current_num_stage].keys()) < self.top_k:
+                                    self.dp[pivot_layer][current_num_stage][new_pipieline_signature] = new_pipeline
+                                else:
+                                    min_ratio = float('inf')
+                                    min_signature = None
+                                    for sig, pl in self.dp[pivot_layer][current_num_stage].items():
+                                        ratio = pl.throughput / pl.cost
+                                        if ratio < min_ratio:
+                                            min_ratio = ratio
+                                            min_signature = sig
+                                    # 새로운 파이프라인이 기존의 최소 ratio 보다 크면 교체
+                                    if (new_pipeline.throughput / new_pipeline.cost) > min_ratio:
+                                        del self.dp[pivot_layer][current_num_stage][min_signature]
+                                        self.dp[pivot_layer][current_num_stage][new_pipieline_signature] = new_pipeline
 
-                        # 예산 제약: 총 비용이 budget을 초과하면 스킵
-                        if not self._check_budget_constraint(new_pipeline):
-                            continue
-                        
-                        # 지연시간 제약: 최소 지연시간이 SLO를 초과하면 스킵
-                        if new_pipeline.single_request_latency > self.latency_slo:
-                            continue
-                        
-                        # 새로운 스테이지 수
-                        new_num_stages = len(new_stages)
-                        
-                        # 현재 상태(current_layer, new_num_stages)에서의 최적해 업데이트
-                        # throughput/cost 비율이 더 높은 파이프라인으로 교체
-                        current_best = self.dp[current_layer][new_num_stages]
-                        if current_best is None or (new_pipeline.throughput / new_pipeline.cost) > (current_best.throughput / current_best.cost):
-                            self.dp[current_layer][new_num_stages] = new_pipeline
         
         # 최종 결과 선택: 모든 레이어를 처리하는 파이프라인 중에서
         # throughput/cost 비율이 가장 높은 것을 선택
@@ -373,138 +403,34 @@ class DPOptimizer:
         best_ratio = 0
         
         # 모든 가능한 스테이지 수에 대해 확인
-        for num_stages in range(1, self.num_layers + 1):
-            pipeline = self.dp[self.num_layers][num_stages]
-            if pipeline and pipeline.throughput > 0 and pipeline.cost > 0:
+        for num_stages in range(1, min(self.num_layers + 1, self.max_stages + 1)):
+            pipelines = self.dp[self.num_layers][num_stages]
+            for _, pipeline in pipelines.items():
                 ratio = pipeline.throughput / pipeline.cost
                 if ratio > best_ratio:
                     best_ratio = ratio
                     best_pipeline = pipeline
         
         return best_pipeline
-    
-    def print_dp_table(self, layer_range: Tuple[int, int] = None, stage_range: Tuple[int, int] = None):
-        """
-        디버깅용: DP 테이블의 내용을 출력합니다
-        
-        Args:
-            layer_range: (start, end) 레이어 범위. None이면 전체 범위
-            stage_range: (start, end) 스테이지 범위. None이면 전체 범위
-        """
-        # 기본값 설정
-        if layer_range is None:
-            layer_start, layer_end = 0, self.num_layers
-        else:
-            layer_start, layer_end = layer_range
-            layer_start = max(0, layer_start)
-            layer_end = min(self.num_layers, layer_end)
-        
-        if stage_range is None:
-            stage_start, stage_end = 0, self.num_layers
-        else:
-            stage_start, stage_end = stage_range
-            stage_start = max(0, stage_start)
-            stage_end = min(self.num_layers, stage_end)
-        
-        logger.info(f"=== DP Table (layers {layer_start}-{layer_end}, stages {stage_start}-{stage_end}) ===")
-        
-        # 헤더 출력
-        header = f"{'Layer':>6} |"
-        for stage in range(stage_start, stage_end + 1):
-            header += f" Stage {stage:<8} |"
-        logger.info(header)
-        logger.info("-" * len(header))
-        
-        # 데이터 출력
-        for layer in range(layer_start, layer_end + 1):
-            row = f"{layer:>6} |"
-            for stage in range(stage_start, stage_end + 1):
-                if stage < len(self.dp[layer]):
-                    pipeline = self.dp[layer][stage]
-                    if pipeline is None:
-                        row += f"{'None':^15} |"
-                    else:
-                        # 간단한 요약 정보: cost(throughput)
-                        summary = f"${pipeline.cost:.2f}({pipeline.throughput:.2f})"
-                        row += f"{summary:^15} |"
-                else:
-                    row += f"{'N/A':^15} |"
-            logger.info(row)
-    
-    def get_all_valid_pipelines(self) -> List[Pipeline]:
-        """디버깅용: DP 테이블에서 유효한 모든 파이프라인을 반환합니다"""
-        valid_pipelines = []
-        
-        for layer in range(len(self.dp)):
-            for stage in range(len(self.dp[layer])):
-                pipeline = self.dp[layer][stage]
-                if pipeline and pipeline.throughput > 0 and pipeline.cost > 0:
-                    valid_pipelines.append(pipeline)
-        
-        return valid_pipelines
-    
-    def get_ranked_pipelines(self, max_rank: int = 10, only_complete: bool = True) -> List[Tuple[int, Pipeline, float]]:
-        """
-        디버깅용: throughput/cost 비율에 따라 파이프라인을 랭킹으로 반환합니다
-        
-        Args:
-            max_rank: 반환할 최대 랭킹 수
-            only_complete: True면 모든 레이어를 처리하는 파이프라인만, False면 모든 유효한 파이프라인
-        
-        Returns:
-            List of (rank, pipeline, throughput/cost ratio)
-        """
-        if only_complete:
-            # 모든 레이어를 처리하는 파이프라인만 가져오기
-            complete_pipelines = []
-            if self.num_layers in range(len(self.dp)):
-                for stage in range(len(self.dp[self.num_layers])):
-                    pipeline = self.dp[self.num_layers][stage]
-                    if pipeline and pipeline.throughput > 0 and pipeline.cost > 0:
-                        complete_pipelines.append(pipeline)
-            pipelines_to_rank = complete_pipelines
-        else:
-            # 모든 유효한 파이프라인 가져오기
-            pipelines_to_rank = self.get_all_valid_pipelines()
-        
-        # throughput/cost 비율로 정렬
-        pipeline_ratios = []
-        for pipeline in pipelines_to_rank:
-            ratio = pipeline.throughput / pipeline.cost if pipeline.cost > 0 else 0
-            pipeline_ratios.append((pipeline, ratio))
-        
-        # 비율 내림차순으로 정렬
-        pipeline_ratios.sort(key=lambda x: x[1], reverse=True)
-        
-        # 상위 max_rank개만 반환
+
+    def show_pipeline_ranking(self, look_rank: int = 5):
+        """DP 테이블에 저장된 파이프라인들을 throughput/cost 비율 기준으로 정렬하여 출력"""
+        import heapq
         ranked_pipelines = []
-        for rank, (pipeline, ratio) in enumerate(pipeline_ratios[:max_rank], 1):
-            ranked_pipelines.append((rank, pipeline, ratio))
-        
-        return ranked_pipelines
-    
-    def print_ranked_pipelines(self, max_rank: int = 10, only_complete: bool = True):
-        """
-        디버깅용: 랭킹된 파이프라인들을 출력합니다
-        
-        Args:
-            max_rank: 출력할 최대 랭킹 수
-            only_complete: True면 모든 레이어를 처리하는 파이프라인만, False면 모든 유효한 파이프라인
-        """
-        ranked_pipelines = self.get_ranked_pipelines(max_rank, only_complete)
-        
-        if not ranked_pipelines:
-            logger.info("No valid pipelines found for ranking")
-            return
-        
-        scope = "complete pipelines" if only_complete else "all valid pipelines"
-        logger.info(f"=== Top {len(ranked_pipelines)} {scope} (by throughput/cost ratio) ===")
-        
-        for rank, pipeline, ratio in ranked_pipelines:
-            total_layers = sum(pipeline.layer_per_stage) if pipeline.layer_per_stage else 0
-            logger.info(f"Rank {rank:2d}: {pipeline} (ratio: {ratio:.3f}, layers: {total_layers})")
-        
-        logger.info("")
+        for stage in range(1, self.max_stages + 1):
+            # search beam
+            for _, pipeline in self.dp[self.num_layers][stage].items():
+                ratio = pipeline.throughput / pipeline.cost
+                if len(ranked_pipelines) < look_rank:
+                    heapq.heappush(ranked_pipelines, (ratio, pipeline))
+                else:
+                    heapq.heapreplace(ranked_pipelines, (ratio, pipeline))
+
+        sorted_by_ratio = sorted(ranked_pipelines, key=lambda x: x[0], reverse=True)
+        logger.info(f"Top-{look_rank} Pipelines in DP Table (by throughput/cost ratio):")
+        for rank, (ratio, pipeline) in enumerate(sorted_by_ratio, start=1):
+            logger.info(f"Rank {rank}: {pipeline} with ratio={ratio:.3f}")
+
 
 
 def run_test_case(
@@ -512,8 +438,9 @@ def run_test_case(
         budget: float, 
         latency_slo: float, 
         cluster_pool: ClusterPool,
+        top_k: int,
         look_rank: int = 5,
-        max_stages: Optional[int] = None) -> Tuple[Pipeline, DPOptimizer, float]:
+        max_stages: Optional[int] = None) -> Tuple[Pipeline, BeamSearchDPOptimizer, float]:
     """
     Run a single test case with given budget and SLO.
     
@@ -525,9 +452,9 @@ def run_test_case(
         max_stages: Maximum number of stages allowed (None for no limit)
     
     Returns:
-        Tuple of (Optimal Pipeline, DPOptimizer, optimization_time)
+        Tuple of (Optimal Pipeline, BeamSearchDPOptimizer, optimization_time)
     """
-    optimizer = DPOptimizer(config, budget=budget, latency_slo=latency_slo, cluster_pool=cluster_pool, max_stages=max_stages)
+    optimizer = BeamSearchDPOptimizer(config, budget=budget, latency_slo=latency_slo, cluster_pool=cluster_pool, max_stages=max_stages, top_k=top_k)
     
     start_time = time.time()
     result: Pipeline = optimizer.optimize()
@@ -545,14 +472,12 @@ def run_test_case(
         logger.info(f"  - E2E Latency per Global Batch : {result.latency_per_global_batch:.2f} ms")
         logger.info(f"  - Single Request E2E Latency : {result.single_request_latency:.2f} ms")
         logger.info(f"  - Num Available Blocks : {result.num_blocks}")
-
-        # Show top ranked pipelines
-        optimizer.print_ranked_pipelines(max_rank=look_rank, only_complete=True)
     else:
         logger.info("✗ No feasible pipeline found within constraints")
     
     # Show DP table for debugging
-    optimizer.print_dp_table(layer_range=(config['num_layers']-4, config['num_layers']), stage_range=(1, 4))
+    # TODO: Show Pipeline Ranking
+    optimizer.show_pipeline_ranking(look_rank=look_rank)
     logger.info(f"⏱️  Optimization time: {optimization_time:.3f} seconds")
     logger.info("")
     
@@ -565,6 +490,7 @@ if __name__ == "__main__":
 
     look_rank = 5
     max_stages = 10
+    top_k = 5
 
     config = {
         "expected_input_len": 512,  # 입력 시퀀스 길이
@@ -577,30 +503,30 @@ if __name__ == "__main__":
         "vocab_size": model_config.vocab_size,
         "max_position_embeddings": model_config.max_position_embeddings,
         "dtype": torch.float16,
-        "max_model_len": 4096,
+        "max_model_len": 8192,
         "gpu_mem_utilization": 0.9
     }
 
     available_spot_nodes = {
-        "(spot)g4dn.xlarge":      200,
-        "(spot)g4dn.12xlarge":    50,
-        "(spot)g4dn.metal":       25,
-        "(spot)g5.xlarge":        50,
-        "(spot)g5.12xlarge":      12,
-        "(spot)g5.48xlarge":      6,
-        "(spot)g6.xlarge":        35,
-        "(spot)g6.12xlarge":      7,
-        "(spot)g6.48xlarge":      3,
-        "(spot)g6e.xlarge":       20,
-        "(spot)g6e.12xlarge":     5,
-        "(spot)g6e.48xlarge":     2,
+        "(spot)g4dn.xlarge":      10,
+        "(spot)g4dn.12xlarge":    10,
+        "(spot)g4dn.metal":       10,
+        "(spot)g5.xlarge":        10,
+        "(spot)g5.12xlarge":      10,
+        "(spot)g5.48xlarge":      10,
+        "(spot)g6.xlarge":        16,
+        "(spot)g6.12xlarge":      4,
+        "(spot)g6.48xlarge":      2,
+        "(spot)g6e.xlarge":       10,
+        "(spot)g6e.12xlarge":     4,
+        "(spot)g6e.48xlarge":     1,
         "(spot)p4d.24xlarge":     0,
         "(spot)p4de.24xlarge":    0,
-        "(spot)p5.4xlarge":       0,
+        "(spot)p5.4xlarge":       0,    
         "(spot)p5.48xlarge":      0,
-        "(spot)p5e.48xlarge":     1,
-        "(spot)p5en.48xlarge":    1,
-        "(spot)p6-b200.48xlarge": 1,
+        "(spot)p5e.48xlarge":     0,
+        "(spot)p5en.48xlarge":    0,
+        "(spot)p6-b200.48xlarge": 0,
     }
     # us-west-2 의 2025-08-26 00:00 에서의 가격 기록
     # AZ 별로 가격이 약간씩 상이하나 인스턴스가 존재하는 첫 번째 AZ 기준으로 설정
@@ -639,38 +565,12 @@ if __name__ == "__main__":
     logger.info("=" * 80)
     logger.info("")
 
-    # 테스트 시나리오
-    logger.info("-" * 80)
-    logger.info("Test Case 1: Budget ($20/hour), NO SLO")
-    logger.info("-" * 80)
-    run_test_case(config, budget=20.0, latency_slo=999999999, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
+    # 기준 SLO (p4d.24xlarge -> 8xA100 에서 512+128 길이의 요청을 처리할 때의 single request latency latency) (ms)
+    baseline_SLO = 512
 
     # 테스트 시나리오
     logger.info("-" * 80)
-    logger.info("Test Case 2: Budget ($5/hour), NO SLO")
+    logger.info("Test Case 1: Budget ($20/hour), 10x SLO")
     logger.info("-" * 80)
-    run_test_case(config, budget=5.0, latency_slo=999999999, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
-
-    # 테스트 시나리오
-    logger.info("-" * 80)
-    logger.info("Test Case 3: Unlimited budget, 10s SLO")
-    logger.info("-" * 80)
-    run_test_case(config, budget=float("inf"), latency_slo=999999999, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
-
-    # 테스트 시나리오
-    logger.info("-" * 80)
-    logger.info("Test Case 4: Unlimited budget, 5s SLO")
-    logger.info("-" * 80)
-    run_test_case(config, budget=float("inf"), latency_slo=999999999, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
-
-    # 테스트 시나리오
-    logger.info("-" * 80)
-    logger.info("Test Case 5: Unlimited budget, 2s SLO")
-    logger.info("-" * 80)
-    run_test_case(config, budget=float("inf"), latency_slo=999999999, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages)
-
-    logger.info("")
-    logger.info("=" * 80)
-    logger.info("            Test Summary")
-    logger.info("=" * 80)
+    run_test_case(config, budget=20, latency_slo=baseline_SLO * 30, look_rank=look_rank, cluster_pool=cluster_pool, max_stages=max_stages, top_k=top_k)
     

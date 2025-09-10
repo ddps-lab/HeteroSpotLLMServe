@@ -118,6 +118,9 @@ def get_tp_communication_latency_per_layer(
     dtype: torch.dtype = torch.float16,
     p2p_latency_ms: Optional[float] = None,
 ):
+    if tp_size == 1:
+        return 0
+    
     if p2p_latency_ms is None:
         # intra p2p latency 는 너무 빨라서 거의 없다고 가정
         p2p_latency_ms = 0
@@ -352,6 +355,122 @@ def get_memory_size_decoder_layer_weight_bytes(
     num_total_elem += up_gate_down_projection_elem
 
     return num_total_elem * dtype.itemsize  # Unit : Bytes
+
+def get_single_request_latency(
+    avg_input_len: int,
+    avg_output_len: int,
+    hidden_dim: int,
+    num_attention_head: int,
+    num_kv_cache_head: int,
+    total_num_layers: int,
+    intermediate_dim: int,
+    node_layer_comb: List[tuple[str, str, int]],
+    dtype: torch.dtype = torch.float16
+):
+    batch_size = 1 #for single request
+    dim_kv_head = hidden_dim // num_attention_head * num_kv_cache_head
+
+    prefill_latencies = []
+    decoding_latencies = []
+
+    pp_communication_latency = 0
+    tp_communication_latency = 0
+
+    total_stages = len(node_layer_comb)
+
+    for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
+        gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
+        num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
+        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
+
+        prefill_computation_laytency_per_layer = get_prefill_computation_latency_per_layer(
+            gpu_type=gpu_type,
+            gpu_count=num_gpu,
+            input_len=avg_input_len,
+            hidden_dim=hidden_dim,
+            batch_size=batch_size,
+            intermediate_dim=intermediate_dim,
+            dtype=dtype
+        ) * layer_count
+
+        decoding_computation_latency_per_layer = get_decoding_computation_latency_per_layer(
+            gpu_type=gpu_type,
+            gpu_count=num_gpu,
+            input_len=avg_input_len,
+            output_len=avg_output_len,
+            hidden_dim=hidden_dim,
+            batch_size=batch_size,
+            intermediate_dim=intermediate_dim,
+            dtype=dtype
+        ) * layer_count
+
+        prefill_latencies.append(prefill_computation_laytency_per_layer)
+        decoding_latencies.append(decoding_computation_latency_per_layer)
+
+        # 마지막 stage 가 아니라면 send 해야함 (PP)
+        if i < total_stages - 1:
+            prefill_pp_communication_latency_send = get_pp_communication_latency_send_recv(
+                batch_size=batch_size,
+                sequence_len=avg_input_len,
+                hidden_dim=hidden_dim,
+                dtype=dtype
+            )
+            decoding_pp_communication_latency_send = get_pp_communication_latency_send_recv(
+                batch_size=batch_size,
+                sequence_len=1,
+                hidden_dim=hidden_dim,
+                dtype=dtype
+            ) * avg_output_len
+            pp_communication_latency += prefill_pp_communication_latency_send
+            pp_communication_latency += decoding_pp_communication_latency_send
+        
+        # 첫 번째 Stage 가 아니라면 broadcast 해야함 (PP)
+        if i != 0:
+            prefill_pp_communication_latency_broadcast = get_pp_communication_latency_broadcast(
+                batch_size=batch_size,
+                tp_size=num_gpu,
+                sequence_len=avg_input_len,
+                hidden_dim=hidden_dim,
+                p2p_bandwidth=p2p_bandwidth,
+                dtype=dtype
+            )
+            decoding_pp_communication_latency_broadcast = get_pp_communication_latency_broadcast(
+                batch_size=batch_size,
+                tp_size=num_gpu,
+                sequence_len=1,
+                hidden_dim=hidden_dim,
+                p2p_bandwidth=p2p_bandwidth,
+                dtype=dtype
+            ) * avg_output_len
+            pp_communication_latency += prefill_pp_communication_latency_broadcast
+            pp_communication_latency += decoding_pp_communication_latency_broadcast
+
+        # TP communication
+        prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
+            tp_size=num_gpu,
+            batch_size=batch_size,
+            sequence_len=avg_input_len,
+            hidden_dim=hidden_dim,
+            p2p_bandwidth=p2p_bandwidth,
+            dtype=dtype
+        ) * layer_count
+        decoding_tp_communication_latency = get_tp_communication_latency_per_layer(
+            tp_size=num_gpu,
+            batch_size=batch_size,
+            sequence_len=1,
+            hidden_dim=hidden_dim,
+            p2p_bandwidth=p2p_bandwidth,
+            dtype=dtype
+        ) * avg_output_len
+        tp_communication_latency += prefill_tp_communication_latency
+        tp_communication_latency += decoding_tp_communication_latency
+    
+    total_computation_latency = sum(prefill_latencies)
+    total_computation_latency += max(decoding_latencies) * total_stages
+    total_communication_latency = pp_communication_latency + tp_communication_latency
+
+    return total_computation_latency + total_communication_latency
+
 
 def get_global_batch_size(
     avg_input_len: int,
@@ -744,8 +863,9 @@ def get_throughput(
     throughput = global_batch_size / (total_latency_per_global_batch / 1000)  # ms to seconds
 
     logging.debug(f"Global Batch Size: {global_batch_size}")
+    logging.debug(f"Number of blocks : {num_blocks}")
     logging.debug(f"End to End Latency per Global Batch: {total_latency_per_global_batch:.2f} ms")
-    logging.debug(f"System Throughput: {throughput:.2f} reqs/s")
+    logging.debug(f"Throughput: {throughput:.2f} reqs/s")
 
     return throughput, total_latency_per_global_batch, num_blocks
 
@@ -753,7 +873,7 @@ def get_throughput(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
     from transformers import AutoConfig
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
@@ -769,7 +889,7 @@ if __name__ == "__main__":
         "vocab_size": model_config.vocab_size,
         "max_position_embeddings": model_config.max_position_embeddings,
         "dtype": torch.float16,
-        "max_model_len": 4096,
+        "max_model_len": 8192,
         "gpu_mem_utilization": 0.9,
     }
 
@@ -810,10 +930,9 @@ if __name__ == "__main__":
 
     # Unit Test : Get Global Batch Size
     node_layer_comb = [
-        ("g6e.xlarge", "dummy-az", 20),
-        ("g6e.xlarge", "dummy-az", 20),
-        ("g6e.xlarge", "dummy-az", 20),
-        ("g6e.xlarge", "dummy-az", 20),
+        ("g6.xlarge", "dummy-az", 16),
+        ("g6.xlarge", "dummy-az", 16),
+        # ("g6e.48xlarge", "dummy-az", 53)
     ]
 
     global_batch_size = get_global_batch_size(
@@ -852,4 +971,17 @@ if __name__ == "__main__":
         dtype=config["dtype"]
     )
 
-    logging.debug(f"Throughput: {throughput:.2f} reqs/s")
+    # Unit Test : Get Single Request Latency
+    latency = get_single_request_latency(
+        avg_input_len=config["expected_input_len"],
+        avg_output_len=config["expected_output_len"],
+        hidden_dim=config["hidden_size"],
+        num_attention_head=config["num_attention_heads"],
+        num_kv_cache_head=config["num_key_value_heads"],
+        total_num_layers=config["num_layers"],
+        intermediate_dim=config["intermediate_size"],
+        node_layer_comb=node_layer_comb,
+        dtype=config["dtype"]
+    )
+
+    logging.debug(f"Single Request Latency: {latency} ms")
