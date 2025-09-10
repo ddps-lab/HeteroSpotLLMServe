@@ -148,6 +148,7 @@ def get_api_server_command(model_name: str,
     parallel_strategy_str = " ".join(map(str, parallel_strategy))
     
     cmd_parts = [
+        f"RAY_DEDUP_LOGS=0",
         f"{PYTHON} {PROJECT_PATH}/InferenceServer/api_server.py",
         f"--model={model_name}",
         f"--host={host}",
@@ -181,7 +182,6 @@ def get_api_server_command(model_name: str,
         cmd_parts.append("--enforce-eager")
 
     # For Testing Dummy Value
-    num_gpu_blocks_override = 2048
     if num_gpu_blocks_override is not None:
         cmd_parts.append(f"--num-gpu-blocks={num_gpu_blocks_override}")
     

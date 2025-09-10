@@ -46,6 +46,7 @@ class Cluster:
     def __init__(self):
         self.pipelines: List[Pipeline] = []
         self.ideal_throughput: float = 0.0
+        self.ray_init_lock = threading.Lock()  # Lock for Ray initialization
         
     def create_pipeline(self, 
                        node_layer_mapping: List[Tuple[str, int]], 
@@ -82,7 +83,7 @@ class Cluster:
                 raise ValueError(f"config must contain '{key}'")
             
         pipeline = Pipeline()
-        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput)
+        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
         self.pipelines.append(pipeline)
         self.ideal_throughput += ideal_throughput
 
@@ -165,7 +166,8 @@ class Pipeline:
     def initialize_pipeline(self, 
                             node_layer_mapping: List[Tuple[str, int]], 
                             config: Dict,
-                            ideal_throughput: float):
+                            ideal_throughput: float,
+                            ray_init_lock: threading.Lock = None):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
 
         cluster_logger.info(f"Initializing pipeline with {node_layer_mapping}")
@@ -202,7 +204,7 @@ class Pipeline:
         
         # Now start Ray cluster with all vnodes
         ray_port = self.get_alternate_ray_port()
-        self.start_ray_cluster(ray_port)
+        self.start_ray_cluster(ray_port, ray_init_lock)
         
         # Update VNode GPU counts from Ray cluster information
         for vnode in self.vnodes:
@@ -275,7 +277,7 @@ class Pipeline:
         else:
             return 6379
     
-    def start_ray_cluster(self, ray_port: int):
+    def start_ray_cluster(self, ray_port: int, ray_init_lock: threading.Lock = None):
         """Start Ray cluster and ensure all vnodes are connected.
         
         Args:
@@ -289,16 +291,25 @@ class Pipeline:
         
         cluster_logger.info(f"Starting Ray cluster on port {ray_port}")
         
-        # Initialize or connect to Ray cluster
+        # Initialize or connect to Ray cluster with lock if provided
         ray_address = f"{self.ray_head_ip}:{ray_port}"
-        try:
-            if ray.is_initialized():
-                ray.shutdown()
-            ray.init(address=ray_address, ignore_reinit_error=True)
-            cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
-        except Exception as e:
-            cluster_logger.error(f"Failed to connect to Ray cluster: {e}")
-            raise
+        
+        def init_ray():
+            try:
+                if ray.is_initialized():
+                    ray.shutdown()
+                cluster_logger.info(f"Connecting to Ray cluster at {ray_address}")
+                ray.init(address=ray_address, ignore_reinit_error=True)
+                cluster_logger.info(f"Connected to Ray cluster on {ray_address}")
+            except Exception as e:
+                cluster_logger.error(f"Failed to connect to Ray cluster: {e}")
+                raise
+        
+        if ray_init_lock:
+            with ray_init_lock:
+                init_ray()
+        else:
+            init_ray()
         
         # Get currently connected nodes
         ray_nodes = ray.nodes()
@@ -313,16 +324,30 @@ class Pipeline:
             cluster_logger.info(f"Need to connect nodes: {nodes_to_connect}")
             ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
             
+            # Prepare all commands
+            connection_tasks = []
             for node_ip in nodes_to_connect:
-                # Join the Ray cluster
                 ray_command = get_ray_start_worker_command(f"{self.ray_head_ip}:{self.ray_port}")
                 join_cmd = f"ssh {ssh_options} {node_ip} '{ray_command}'"
                 cluster_logger.info(f"Connecting {node_ip} to Ray cluster with command: {join_cmd}")
                 
-                result = subprocess.run(join_cmd, shell=True, capture_output=True, text=True)
-                if result.returncode != 0:
-                    cluster_logger.error(f"Failed to connect {node_ip}: {result.stderr}")
-                    raise RuntimeError(f"Failed to connect {node_ip} to Ray cluster")
+                # Start subprocess asynchronously
+                proc = subprocess.Popen(join_cmd, shell=True, stdout=subprocess.PIPE, 
+                                       stderr=subprocess.PIPE, text=True)
+                connection_tasks.append((node_ip, proc))
+            
+            # Wait for all tasks to complete and collect results
+            failed_nodes = []
+            for node_ip, proc in connection_tasks:
+                stdout, stderr = proc.communicate()
+                if proc.returncode != 0:
+                    cluster_logger.error(f"Failed to connect {node_ip}: {stderr}")
+                    failed_nodes.append(node_ip)
+                else:
+                    cluster_logger.info(f"Successfully connected {node_ip}")
+            
+            if failed_nodes:
+                raise RuntimeError(f"Failed to connect nodes to Ray cluster: {failed_nodes}")
             
             # Wait for all nodes to be connected with retry logic
             max_attempts = 30  # 30 attempts with 1 second interval = 30 seconds timeout
@@ -730,7 +755,8 @@ class VNode:
             ray_address=ray_address,
             gpu_memory_utilization=config.get("gpu_memory_utilization"),
             max_num_batched_tokens=config.get("max_num_batched_tokens"),
-            max_num_seqs=config.get("max_num_seqs")
+            max_num_seqs=config.get("max_num_seqs"),
+            num_gpu_blocks_override=config.get("num_gpu_blocks"),
         )
         
         # Prepare log file - save directly to local remote logs directory

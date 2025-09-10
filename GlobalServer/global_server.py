@@ -103,12 +103,13 @@ class GlobalServer:
         # Set API URL for the request
         request.input.api_url = f"http://{api_server_host}:{api_server_port}/v1/completions"
         
-        # Mark when request was sent
-        request.sended_at = time.time()
+        # Mark when request was firstly sent
+        if request.sended_at is None:
+            request.sended_at = time.time()
         
         return await async_request(request, logger=logger)
     
-    async def run_global_server(self, check_interval: float = 0.1):
+    async def run_global_server(self, check_interval: float = 0.01):
         """Main server loop that processes requests from the waiting queue.
         
         Args:
@@ -181,6 +182,10 @@ class GlobalServer:
                 raise ValueError(f"{output.error}")
                 
             logger.info(f"Request {request.request_id} completed successfully with {request.output.output_tokens} tokens")
+            
+            # Signal completion
+            if hasattr(request, '_completion_event') and request._completion_event:
+                request._completion_event.set()
         except Exception as e:
             logger.error(f"Request {request.request_id} failed: {e}")
             # Mark when request was halted
@@ -205,6 +210,12 @@ class GlobalServer:
         
         for request_id in completed_ids:
             del self.inflight_requests[request_id]
+    
+    async def add_request_and_wait(self, request_input: RequestInput, urgent: bool = False) -> Request:
+        """Add a request and wait for its completion."""
+        request = await self.add_request(request_input, urgent)
+        await request.wait_for_completion()
+        return request
     
     async def add_request(self, request_input: RequestInput, urgent: bool = False) -> Request:
         """Add a new request to the appropriate queue.
