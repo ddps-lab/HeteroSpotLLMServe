@@ -64,7 +64,7 @@ TENSOR_INITIALIZE_COMPLETE = False
 SHUTDOWN_EVENT = threading.Event()
 
 # KV cache related global variables
-BLOCK_SIZE = -1 # BLOCK_SIZE 는 하나의 Block 에 몇 토큰이 들어가는지를 정의한다.
+BLOCK_SIZE = -1 # BLOCK_SIZE defines how many tokens are contained in one block.
 GPU_MEMORY_UTILIZATION = -1.0
 SWAP_SPACE_BYTES = -1
 CACHE_DTYPE = None  # Will be set based on model dtype
