@@ -151,7 +151,9 @@ def evaluate(individual):
         group_mem_list.append(sub_group_mem_list)
         group_pp_partition_list.append(sub_group_pp_partition_list)
         group_batch_list.append(sub_batch_list)
-    
+
+    # print(f"group_pp_partition_list: {group_pp_partition_list}")
+
     # Calculate fitness
     summation_group_cost = sum(sum(inner_list) for inner_list in group_cost_list)
     
@@ -166,15 +168,16 @@ def evaluate(individual):
         flattened_plan_list = [sublist for inner_list in group_plan_list for sublist in inner_list]
         simulator = Simulator(flattened_plan_list, individual.bias, individual.batch, slo=0.05) # In current impl, slo can be of any value.
         goodput = simulator.exec()
-        print(goodput)
+        # print(goodput)
         individual.goodput_store = goodput
         fitness = 1 / goodput
+        print(f"Goodput of Simulator : {goodput:10.10f} / Fitness : {fitness:10.10f}")
     else:
         # # Local optimal strategy search
         # fitness =  1 / sum(len(inner_list) for inner_list in individual.genes)
         flattened_cost_list = [sublist for inner_list in group_cost_list for sublist in inner_list] 
         fitness = 1 / (sum(flattened_cost_list) / len(flattened_cost_list))
-    return fitness, individual.genes # Return the average cost as fitness
+    return fitness, individual.genes, group_pp_partition_list # Return the average cost as fitness
 
 def is_group_valid(group, gpu_mem_list):
     """Check if the given group is valid based on the multiplication criterion"""
@@ -387,6 +390,7 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     best_individual = None
     best_fitness = float('inf')
     best_gen_iteration = 0
+    best_gen_pp_partition = None
     
     # Run genetic algorithm (exactly like original)
     for gen in range(generations):
@@ -394,7 +398,7 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
         
         eval_data = list(map(toolbox.evaluate, offspring))
         for ind, data in zip(offspring, eval_data):
-            fit, plan = data
+            fit, plan, pp_partition = data
             ind.fitness.values = fit,
             ind.plan = [fit, plan]
             ind.iter = gen + 1
@@ -404,6 +408,7 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
                 best_fitness = fit
                 best_individual = copy.deepcopy(ind)
                 best_gen_iteration = ind.iter
+                best_gen_pp_partition = pp_partition
 
         population = toolbox.select(offspring, k=3)
         
@@ -424,10 +429,11 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     print("\n" + "=" * 80)
     print(f"Optimization Complete! Final Min: {min_[-1]:.6f}")
     print(f"Best Iteration of Generation : {best_gen_iteration}")
+    print(f"PP Partition list : {best_gen_pp_partition}")
     print("=" * 80)
     
     # Return statistics and best individual
-    return gen, avg, min_, max_, best_individual
+    return gen, avg, min_, max_, best_individual, best_gen_pp_partition
 
 
 def main():
@@ -446,8 +452,16 @@ def main():
     cluster = [
         {
             "instance_type": "g6e.xlarge",
-            "num_instances": 10,
+            "num_instances": 3,
             "num_gpu_per_instance": 1,
+            "memory_limit": 44,
+            "computation_ability": 1.0,
+            "communication_ability": 1.0
+        },
+        {
+            "instance_type": "g6e.12xlarge",
+            "num_instances": 1,
+            "num_gpu_per_instance": 4,
             "memory_limit": 44,
             "computation_ability": 1.0,
             "communication_ability": 1.0
@@ -458,14 +472,6 @@ def main():
             "num_gpu_per_instance": 4,
             "memory_limit": 22,
             "computation_ability": 0.5,
-            "communication_ability": 1.0
-        },
-        {
-            "instance_type": "g4dn.xlarge",
-            "num_instances": 7,
-            "num_gpu_per_instance": 1,
-            "memory_limit": 15,
-            "computation_ability": 0.25,
             "communication_ability": 1.0
         }
     ]
@@ -498,16 +504,17 @@ def main():
         population_size=100,
         generations=300
     )
-    gen1, avg1, min1, max1, best_ind1 = result1
-    
+    gen1, avg1, min1, max1, best_ind1, best_gen_pp_partition = result1
+
     # Display best individual from Test 1
     print("\n" + "=" * 80)
     print("Best Individual from Single Group:")
     print("=" * 80)
-    print(f"  Fitness: {best_ind1.fitness.values[0]:.6f}")
-    print(f"  Genes: {best_ind1.genes}")
-    print(f"  Bias: {best_ind1.bias}")
-    print(f"  Batch: {best_ind1.batch}")
+    print(f"  Fitness:   {best_ind1.fitness.values[0]:.6f}")
+    print(f"  Genes:     {best_ind1.genes}")
+    print(f"  PP layers: {best_gen_pp_partition}")
+    print(f"  Bias:      {best_ind1.bias}")
+    print(f"  Batch:     {best_ind1.batch}")
 
     for i, node_group in enumerate(best_ind1.genes[0]):
         group_config = {} # instance_type : [PP_strategy]
@@ -525,6 +532,7 @@ def main():
         print(f"Pipeline {i + 1}")
         for instance_type, PP_strategy in group_config.items():
             print(f"  {instance_type}: {PP_strategy}")
+        print(f"  PP Layers: {best_gen_pp_partition[0][i]}")
         print(f"  Bias: {best_ind1.bias[i]}")
 
 if __name__ == "__main__":

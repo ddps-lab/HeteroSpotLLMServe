@@ -12,11 +12,11 @@ GPU_SPEC = {
 }
 
 INTERCONNECT_SPEC = {
-    "PCIe Gen3x16":  {"bandwidth": 32 * 10**9},
-    "PCIe Gen4x16":  {"bandwidth": 64 * 10**9},
-    "NVSwitch 3.0":  {"bandwidth": 600 * 10**9},
-    "NVSwitch 4.0":  {"bandwidth": 900 * 10**9},
-    "NVSwitch 5.0":  {"bandwidth": 1800 * 10**9},
+    "PCIe Gen3x16":  {"bandwidth": 6 * 10**9}, # 하드웨어 스펙상 32GB/s 이지만 실제로 측정했을 경우 p2p 6GB/s (Unidirectional)
+    "PCIe Gen4x16":  {"bandwidth": 12 * 10**9}, # 하드웨어 스펙상 64GB/s 이지만 실제로 측정했을 경우 p2p 12GB/s (Unidirectional)
+    "NVSwitch 3.0":  {"bandwidth": 262 * 10**9}, # 하드웨어 스펙상 600 GB/s 이지만 실제로 측정했을 경우 262GB/s (Unidirectional)
+    "NVSwitch 4.0":  {"bandwidth": 393 * 10**9}, # 얘는 estimation (아직 프로파일링 안함)
+    "NVSwitch 5.0":  {"bandwidth": 786 * 10**9}, # 얘도 estimation (아직 프로파일링 안함)
 }
 
 INSTANCE_SPEC = {
@@ -59,4 +59,8 @@ INSTANCE_SPEC = {
     "(spot)p5e.48xlarge":    {"gpu_type": "H200",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
     "(spot)p5en.48xlarge":   {"gpu_type": "H200",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
     "(spot)p6-b200.48xlarge":{"gpu_type": "B200",       "gpu_count": 8, "interconnect": "NVSwitch 5.0"},
+    
+    # this is for hexgen
+    "g5.12xlarge(half)": {"gpu_type": "A10G", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+    "g6e.12xlarge(half)": {"gpu_type": "L40S", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
 }
