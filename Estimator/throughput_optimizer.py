@@ -8,6 +8,7 @@ from hardware_specs import INSTANCE_SPEC
 from cluster_pool import ClusterPool
 import sys
 import os
+import numpy as np
 # Add parent directory to path for protocols import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from protocols import OUT_OF_MEMORY
@@ -36,9 +37,6 @@ class Pipeline:
         if not self.stages:
             return "Pipeline(empty)"
         
-        # throughput/cost ratio 계산 (0으로 나누기 방지)
-        ratio = self.throughput / self.cost if self.cost > 0 else 0
-        
         # 각 스테이지 정보를 간단히 표현
         stage_info = []
         for instance, layers in zip(self.stages, self.layer_per_stage):
@@ -47,7 +45,6 @@ class Pipeline:
         return (f"Pipeline(stages=[{', '.join(stage_info)}], "
                 f"throughput={self.throughput:.3f}, "
                 f"cost=${self.cost:.3f}, "
-                f"ratio={ratio:.3f}, "
                 f"latency_per_global_batch={self.latency_per_global_batch:.0f}ms, "
                 f"single_request_latency={self.single_request_latency:.0f}ms, "
                 f"num_blocks={self.num_blocks})")
@@ -83,145 +80,28 @@ class Pipeline:
         self.global_batch_size = num_blocks * self.block_size // (config["expected_input_len"] + config["expected_output_len"])
         return self.throughput
 
-
-# 아래 인자는 Latency 계산을 미리 캐싱해두는 역할을 맡을 것이며, 나중에 Pipeline 의 latency 하한을 맡을 것
-instance_computation_latency_per_layer_cache = {} # instance 별로 캐시된 computation latency (Batch size 1 기준)
-
-def initialize_computation_latencies(config: Dict[str, Any]):
-    """
-    파이프라인의 각 stage 별로 computation latency를 초기화합니다.
-    """
-    # config에서 자주 사용되는 값들을 미리 추출
-    expected_input_len = config["expected_input_len"]
-    expected_output_len = config["expected_output_len"]
-    hidden_size = config["hidden_size"]
-    dtype = config["dtype"]
-    
-    for instance in INSTANCE_SPEC.keys():
-        gpu_type = INSTANCE_SPEC[instance]["gpu_type"]
-        gpu_count = INSTANCE_SPEC[instance]["gpu_count"]
-
-        prefill_computation_latency_per_layer = get_prefill_computation_latency_per_layer(
-            gpu_type=gpu_type,
-            gpu_count=gpu_count,
-            input_len=expected_input_len,
-            hidden_dim=hidden_size,
-            batch_size=1,
-            intermediate_dim=None,
-            dtype=dtype,
-        )
-
-        decode_computation_latency_per_layer = get_decoding_computation_latency_per_layer(
-            gpu_type=gpu_type,
-            gpu_count=gpu_count,
-            input_len=expected_input_len,
-            output_len=expected_output_len,
-            hidden_dim=hidden_size,
-            batch_size=1,
-            intermediate_dim=None,
-            dtype=dtype,
-        )
-
-        instance_computation_latency_per_layer_cache[instance] = {
-            "prefill": prefill_computation_latency_per_layer,
-            "decode": decode_computation_latency_per_layer
-        }
-
 def get_minimum_latency(pipeline: Pipeline, config: Dict[str, Any]):
     """
     파이프라인의 최소 지연 시간을 계산합니다.
     """
-    # config에서 자주 사용되는 값들을 미리 추출
-    expected_input_len = config["expected_input_len"]
-    expected_output_len = config["expected_output_len"]
-    hidden_size = config["hidden_size"]
-    dtype = config["dtype"]
-    
-    total_prefill_computation_latency = 0
-    total_decode_computation_latency = 0
-    total_pp_communication_latency = 0
-    total_tp_communication_latency = 0
-    
-    for stage_idx in range(len(pipeline.stages)):
-        instance = pipeline.stages[stage_idx]
-        layer_count = pipeline.layer_per_stage[stage_idx]
-        gpu_count = INSTANCE_SPEC[instance]["gpu_count"]
-        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[instance]["interconnect"]]["bandwidth"]
+    node_layer_comb = []
+    for i, (instance, layer_count) in enumerate(zip(pipeline.stages, pipeline.layer_per_stage)):
+        node_layer_comb.append((instance, pipeline.azs[i], layer_count))
 
-        prefill_computation_latency_per_layer = instance_computation_latency_per_layer_cache[instance]["prefill"]
-        decode_computation_latency_per_layer = instance_computation_latency_per_layer_cache[instance]["decode"]
+    latency = get_single_request_latency(
+        avg_input_len=config["expected_input_len"],
+        avg_output_len=config["expected_output_len"],
+        hidden_dim=config["hidden_size"],
+        num_attention_head=config["num_attention_heads"],
+        num_kv_cache_head=config["num_key_value_heads"],
+        total_num_layers=config["num_layers"],
+        intermediate_dim=config["intermediate_size"],
+        vocab_size=config["vocab_size"],
+        node_layer_comb=node_layer_comb,
+        dtype=config["dtype"]
+    )
 
-        if stage_idx != len(pipeline.stages) - 1:
-            # 마지막 stage 가 아니라면 다음 stage 에게 send 해야함
-            prefill_pp_communication_send_latency = get_pp_communication_latency_send_recv(
-                batch_size=1,
-                sequence_len=expected_input_len,
-                hidden_dim=hidden_size,
-                inter_node_latency_ms=None,  # intra region latency
-                inter_node_bandwidth=None,  # intra region bandwidth
-                dtype=dtype
-            )
-            decode_pp_communication_send_latency = get_pp_communication_latency_send_recv(
-                batch_size=1,
-                sequence_len=1,
-                hidden_dim=hidden_size,
-                inter_node_latency_ms=None,  # intra region latency
-                inter_node_bandwidth=None,  # intra region bandwidth
-                dtype=dtype
-            ) * expected_output_len
-        else:
-            # 마지막 stage 는 다음 stage 가 없으므로 통신 지연이 없음
-            prefill_pp_communication_send_latency = 0
-            decode_pp_communication_send_latency = 0
-
-        if stage_idx != 0 and gpu_count > 1:  # 첫 번째 Stage 가 아니고 tp size 가 1보다 크면 broadcast 를 해야함.
-            prefill_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                batch_size=1,
-                sequence_len=expected_input_len,
-                hidden_dim=hidden_size,
-                tp_size=gpu_count,
-                p2p_bandwidth=p2p_bandwidth,
-                p2p_latency_ms=None,
-                dtype=dtype
-            )
-            decode_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                batch_size=1,
-                sequence_len=1,
-                hidden_dim=hidden_size,
-                tp_size=gpu_count,
-                p2p_bandwidth=p2p_bandwidth,
-                p2p_latency_ms=None,
-                dtype=dtype
-            ) * expected_output_len
-        else:
-            prefill_pp_communication_broadcast_latency = 0
-            decode_pp_communication_broadcast_latency = 0
-        
-        prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
-            tp_size=gpu_count,
-            batch_size=1,
-            sequence_len=expected_input_len,
-            hidden_dim=hidden_size,
-            p2p_bandwidth=p2p_bandwidth,
-            dtype=dtype
-        ) * layer_count
-        decode_tp_communication_latency = get_tp_communication_latency_per_layer(
-            tp_size=gpu_count,
-            batch_size=1,
-            sequence_len=1,
-            hidden_dim=hidden_size,
-            p2p_bandwidth=p2p_bandwidth,
-            dtype=dtype
-        ) * layer_count * expected_output_len
-
-        total_prefill_computation_latency += prefill_computation_latency_per_layer * layer_count
-        total_decode_computation_latency += decode_computation_latency_per_layer * layer_count
-        total_pp_communication_latency += (prefill_pp_communication_send_latency + prefill_pp_communication_broadcast_latency)
-        total_pp_communication_latency += (decode_pp_communication_send_latency + decode_pp_communication_broadcast_latency)
-        total_tp_communication_latency += prefill_tp_communication_latency + decode_tp_communication_latency
-
-    total_latency = total_prefill_computation_latency + total_decode_computation_latency + total_pp_communication_latency + total_tp_communication_latency
-    return total_latency
+    return latency
 
 
 class BeamSearchDPOptimizer:
@@ -248,6 +128,7 @@ class BeamSearchDPOptimizer:
         self.num_layers = config["num_layers"]
         self.instance_types = list(INSTANCE_SPEC.keys())
         self.cluster_pool = cluster_pool
+        self.optimization_mode = "soft_slo"
         
         # 최대 스테이지 수 설정 (기본값: num_layers, 즉 제한 없음)
         # 실용적으로는 더 작은 값으로 제한하여 파이프라인 오버헤드를 줄임
@@ -262,8 +143,6 @@ class BeamSearchDPOptimizer:
         # 최대 stage 수를 num_layers로 설정 (최악의 경우 각 layer가 하나의 stage)
         # Beam 은 Dictionary 형태를 유지한다. (같은 인스턴스 구성이면 중복을 제거한다.)
         self.dp: List[List[Dict[Pipeline]]] = [[{} for _ in range(self.num_layers + 1)] for _ in range(self.num_layers + 1)]
-        # computation latency 초기화
-        initialize_computation_latencies(config)
     
     def _check_budget_constraint(self, pipeline: Pipeline) -> bool:
         """파이프라인이 예산 제약을 만족하는지 확인"""
@@ -322,13 +201,28 @@ class BeamSearchDPOptimizer:
         """파이프라인이 주어진 SLO 및 예산 제약을 만족하는지 확인"""
         if pipeline is None:
             return False
-        if pipeline.single_request_latency > slo:
-            return False
         if pipeline.cost > budget:
             return False
         if pipeline.throughput == OUT_OF_MEMORY:
             return False
+        if self.optimization_mode == "hard_slo" and pipeline.single_request_latency > slo:
+            return False
         return True
+
+    def _evaluate_pipeline(self, pipeline: Pipeline):
+        """mode 에 따라서, pipeline 의 objective function 을 다르게 설정"""
+        if pipeline.cost == 0:
+            return 0
+
+        if self.optimization_mode == "hard_slo":
+            return pipeline.throughput / pipeline.cost
+        elif self.optimization_mode == "soft_slo":
+            # exponential penalty 를 추가한다. (SLO 를 따로 설정하지 않고 latency 에 대한 panelty 를 둔다)
+            alpha = 0.2 # penalty 계수
+            baseline_latency = self.latency_slo
+            score = (pipeline.throughput / pipeline.cost) * np.exp(-alpha * (pipeline.single_request_latency / baseline_latency))
+            return score
+
     
     def optimize(self) -> Optional[Pipeline]:
         """
@@ -348,7 +242,14 @@ class BeamSearchDPOptimizer:
         """
         # Base case: 0개 레이어, 0개 스테이지로 시작
         self.dp[0][0][()] = self._create_pipeline([])
-        
+
+        # 알고리즘 overhead 측정
+        check_cluster_availability_time = 0
+        add_new_stage_time = 0
+        sort_pipeline_signature_time = 0
+        check_feasibility_time = 0
+        recalculate_throughput_time = 0
+
         # DP 수행: 1개부터 전체 레이어 수까지 순차적으로 최적해를 구함
         for pivot_layer in range(1, self.num_layers + 1):
             print(f"Populate DP table for {pivot_layer} pivot layer...")
@@ -362,21 +263,30 @@ class BeamSearchDPOptimizer:
 
                         # 새로운 스테이지 추가
                         for new_stage_instance in self.instance_types:
+                            start_time = time.time()
                             # 새로운 인스턴스 추가시 cluster 의 가용성을 체크
                             if not self.cluster_pool.check_cluster_availability(prev_pipeline.stages + [new_stage_instance]):
                                 continue
+                            check_cluster_availability_time += time.time() - start_time
 
+                            start_time = time.time()
                             new_pipeline = self._add_new_stage(prev_pipeline, new_stage_instance, new_num_layer)
+                            add_new_stage_time += time.time() - start_time
+                            start_time = time.time()
                             new_pipeline_signature = tuple(sorted(new_pipeline.stages))
+                            sort_pipeline_signature_time += time.time() - start_time
+                            start_time = time.time()
                             # 제약조건을 만족하지 못하면 건너뜀
                             if not self._check_feasibility_pipeline(new_pipeline, self.latency_slo, self.budget):
                                 continue
+                            check_feasibility_time += time.time() - start_time
+                            start_time = time.time()
                             new_pipeline = self._recalculate_pipeline_throughput(new_pipeline)
-                                
+                            recalculate_throughput_time += time.time() - start_time
                             # 이미 같은 signature 가 dp table 안에 존재하는 경우 더 좋은 것만 남김
                             if new_pipeline_signature in self.dp[pivot_layer][current_num_stage].keys():
                                 existing_pipeline = self.dp[pivot_layer][current_num_stage][new_pipeline_signature]
-                                if (new_pipeline.throughput / new_pipeline.cost) > (existing_pipeline.throughput / existing_pipeline.cost):
+                                if self._evaluate_pipeline(new_pipeline) > self._evaluate_pipeline(existing_pipeline):
                                     self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
                             # 해당 signature 가 dp table 에 존재하지 않는 경우 추가
                             # 단 beam search 를 고려하여 top-k 개수만 유지해야 함
@@ -384,31 +294,38 @@ class BeamSearchDPOptimizer:
                                 if len(self.dp[pivot_layer][current_num_stage].keys()) < self.top_k:
                                     self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
                                 else:
-                                    min_ratio = float('inf')
+                                    min_score = float('inf')
                                     min_signature = None
                                     for sig, pl in self.dp[pivot_layer][current_num_stage].items():
-                                        ratio = pl.throughput / pl.cost
-                                        if ratio < min_ratio:
-                                            min_ratio = ratio
+                                        score = self._evaluate_pipeline(pl)
+                                        if score < min_score:
+                                            min_score = score
                                             min_signature = sig
-                                    # 새로운 파이프라인이 기존의 최소 ratio 보다 크면 교체
-                                    if (new_pipeline.throughput / new_pipeline.cost) > min_ratio:
+                                    # 새로운 파이프라인이 기존의 최소 score 보다 크면 교체
+                                    if self._evaluate_pipeline(new_pipeline) > min_score:
                                         del self.dp[pivot_layer][current_num_stage][min_signature]
                                         self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
 
+        logger.info(f"✓ DP Table populated.")
+        logger.info(f"  - check_cluster_availability_time: {check_cluster_availability_time:.3f} seconds")
+        logger.info(f"  - add_new_stage_time: {add_new_stage_time:.3f} seconds")
+        logger.info(f"  - sort_pipeline_signature_time: {sort_pipeline_signature_time:.3f} seconds")
+        logger.info(f"  - check_feasibility_time: {check_feasibility_time:.3f} seconds")
+        logger.info(f"  - recalculate_throughput_time: {recalculate_throughput_time:.3f} seconds")
+        
+
         
         # 최종 결과 선택: 모든 레이어를 처리하는 파이프라인 중에서
-        # throughput/cost 비율이 가장 높은 것을 선택
         best_pipeline = None
-        best_ratio = 0
+        best_score = 0
         
         # 모든 가능한 스테이지 수에 대해 확인
         for num_stages in range(1, min(self.num_layers + 1, self.max_stages + 1)):
             pipelines = self.dp[self.num_layers][num_stages]
             for _, pipeline in pipelines.items():
-                ratio = pipeline.throughput / pipeline.cost
-                if ratio > best_ratio:
-                    best_ratio = ratio
+                score = self._evaluate_pipeline(pipeline)
+                if score > best_score:
+                    best_score = score
                     best_pipeline = pipeline
         
         return best_pipeline
@@ -420,16 +337,16 @@ class BeamSearchDPOptimizer:
         for stage in range(1, self.max_stages + 1):
             # search beam
             for _, pipeline in self.dp[self.num_layers][stage].items():
-                ratio = pipeline.throughput / pipeline.cost
+                score = self._evaluate_pipeline(pipeline)
                 if len(ranked_pipelines) < look_rank:
-                    heapq.heappush(ranked_pipelines, (ratio, pipeline))
+                    heapq.heappush(ranked_pipelines, (score, pipeline))
                 else:
-                    heapq.heapreplace(ranked_pipelines, (ratio, pipeline))
+                    heapq.heapreplace(ranked_pipelines, (score, pipeline))
 
-        sorted_by_ratio = sorted(ranked_pipelines, key=lambda x: x[0], reverse=True)
-        logger.info(f"Top-{look_rank} Pipelines in DP Table (by throughput/cost ratio):")
-        for rank, (ratio, pipeline) in enumerate(sorted_by_ratio, start=1):
-            logger.info(f"Rank {rank}: {pipeline} with ratio={ratio:.3f}")
+        sorted_by_score = sorted(ranked_pipelines, key=lambda x: x[0], reverse=True)
+        logger.info(f"Top-{look_rank} Pipelines in DP Table:")
+        for rank, (score, pipeline) in enumerate(sorted_by_score, start=1):
+            logger.info(f"Rank {rank}: {pipeline} with Score={score:.3f}")
 
 
 
@@ -508,48 +425,48 @@ if __name__ == "__main__":
     }
 
     available_spot_nodes = {
-        "(spot)g4dn.xlarge":      10,
-        "(spot)g4dn.12xlarge":    10,
-        "(spot)g4dn.metal":       10,
+        # "(spot)g4dn.xlarge":      10,
+        # "(spot)g4dn.12xlarge":    10,
+        # "(spot)g4dn.metal":       10,
         "(spot)g5.xlarge":        10,
         "(spot)g5.12xlarge":      10,
-        "(spot)g5.48xlarge":      10,
+        # "(spot)g5.48xlarge":      10,
         "(spot)g6.xlarge":        16,
         "(spot)g6.12xlarge":      4,
-        "(spot)g6.48xlarge":      2,
+        # "(spot)g6.48xlarge":      2,
         "(spot)g6e.xlarge":       10,
         "(spot)g6e.12xlarge":     4,
-        "(spot)g6e.48xlarge":     1,
+        # "(spot)g6e.48xlarge":     1,
         "(spot)p4d.24xlarge":     0,
-        "(spot)p4de.24xlarge":    0,
+        # "(spot)p4de.24xlarge":    0,
         "(spot)p5.4xlarge":       0,    
         "(spot)p5.48xlarge":      0,
-        "(spot)p5e.48xlarge":     0,
-        "(spot)p5en.48xlarge":    0,
-        "(spot)p6-b200.48xlarge": 0,
+        # "(spot)p5e.48xlarge":     0,
+        # "(spot)p5en.48xlarge":    0,
+        # "(spot)p6-b200.48xlarge": 0,
     }
     # us-west-2 의 2025-08-26 00:00 에서의 가격 기록
     # AZ 별로 가격이 약간씩 상이하나 인스턴스가 존재하는 첫 번째 AZ 기준으로 설정
     spot_prices = {
-        "(spot)g4dn.xlarge":      0.2523,
-        "(spot)g4dn.12xlarge":    1.4673,
-        "(spot)g4dn.metal":       3.4434,
+        # "(spot)g4dn.xlarge":      0.2523,
+        # "(spot)g4dn.12xlarge":    1.4673,
+        # "(spot)g4dn.metal":       3.4434,
         "(spot)g5.xlarge":        0.6424,
         "(spot)g5.12xlarge":      2.4761,
-        "(spot)g5.48xlarge":      6.3587,
+        # "(spot)g5.48xlarge":      6.3587,
         "(spot)g6.xlarge":        0.4207,
         "(spot)g6.12xlarge":      2.1210,
-        "(spot)g6.48xlarge":      5.3874,
+        # "(spot)g6.48xlarge":      5.3874,
         "(spot)g6e.xlarge":       0.9613,
         "(spot)g6e.12xlarge":     5.0399,
-        "(spot)g6e.48xlarge":     13.2044,
+        # "(spot)g6e.48xlarge":     13.2044,
         "(spot)p4d.24xlarge":     10.7828,
-        "(spot)p4de.24xlarge":    14.6877,
+        # "(spot)p4de.24xlarge":    14.6877,
         "(spot)p5.4xlarge":       9999, # no available spot on us-west-2
         "(spot)p5.48xlarge":      18.1301,
-        "(spot)p5e.48xlarge":     21.6759,
-        "(spot)p5en.48xlarge":    22.5218,
-        "(spot)p6-b200.48xlarge": 29.2084,
+        # "(spot)p5e.48xlarge":     21.6759,
+        # "(spot)p5en.48xlarge":    22.5218,
+        # "(spot)p6-b200.48xlarge": 29.2084,
     }
     cluster_pool = ClusterPool(available_spot_nodes=available_spot_nodes, spot_prices=spot_prices)
 
