@@ -48,13 +48,13 @@ class Cluster:
         self.ideal_throughput: float = 0.0
         self.ray_init_lock = threading.Lock()  # Lock for Ray initialization
         
-    def create_pipeline(self, 
-                       node_layer_mapping: List[Tuple[str, int]], 
+    def create_pipeline(self,
+                       node_layer_mapping: List[Tuple[str, int]],
                        config: Dict,
                        ideal_throughput: float):
         """
         Create a pipeline for distributed LLM inference.
-        
+
         Args:
             node_layer_mapping: List of (node_ip, num_layers) tuples
             config: Configuration dictionary containing:
@@ -74,6 +74,9 @@ class Cluster:
                 - gpu_memory_utilization (optional): GPU memory utilization ratio
                 - max_num_batched_tokens (optional): Maximum number of batched tokens
                 - max_num_seqs (optional): Maximum number of sequences
+                - max_batch_size (optional): Maximum number of concurrent requests for this pipeline.
+                                            None means unlimited (default: None).
+                                            Note: This is a soft limit, actual count may slightly exceed it.
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
         """
         # Validate required config parameters
@@ -81,7 +84,7 @@ class Cluster:
         for key in required_keys:
             if key not in config:
                 raise ValueError(f"config must contain '{key}'")
-            
+
         pipeline = Pipeline()
         pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
         self.pipelines.append(pipeline)
@@ -155,7 +158,7 @@ class Pipeline:
         self.node_rank_mapping: Dict[str, List[int]] = {}
         self.ideal_throughput: float = 0.0
         self.is_ready: bool = False  # Pipeline readiness status
-        
+
         # Ray cluster management for this pipeline
         self.ray_port = None  # Ray port for this pipeline's cluster
         self.ray_head_ip = None  # IP of the Ray head node (global server node)
@@ -163,31 +166,41 @@ class Pipeline:
         self.api_server_host: str = None
         self.api_server_port: int = None
 
-    def initialize_pipeline(self, 
-                            node_layer_mapping: List[Tuple[str, int]], 
+        # Request capacity management
+        self.max_batch_size: int = None  # Maximum concurrent requests (None = unlimited)
+        self.flying_requests: int = 0  # Current number of in-flight requests
+        self._flying_requests_lock: threading.Lock = threading.Lock()  # Lock for flying_requests counter
+
+    def initialize_pipeline(self,
+                            node_layer_mapping: List[Tuple[str, int]],
                             config: Dict,
                             ideal_throughput: float,
                             ray_init_lock: threading.Lock = None):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
 
         cluster_logger.info(f"Initializing pipeline with {node_layer_mapping}")
-        
+
         # Extract required config parameters
         model_name = config["model_name"]
         total_num_layers = config["total_num_layers"]
-        
+
         # Check layer validity
         total_assigned_layers = sum(layers for _, layers in node_layer_mapping)
         assert total_assigned_layers == total_num_layers, (
             f"Total assigned layers ({total_assigned_layers}) does not match "
             f"model total layers ({total_num_layers})"
         )
-        
+
         self.model_name = model_name
         self.total_layers = total_num_layers
         self.config = config
         self.ideal_throughput = ideal_throughput
-        
+
+        # Extract max_batch_size from config
+        self.max_batch_size = config.get("max_batch_size", None)
+        if self.max_batch_size is not None:
+            cluster_logger.info(f"Pipeline initialized with max_batch_size={self.max_batch_size}")
+
         # First, create VNode objects with placeholder GPU count
         start_layer_idx = 0
         for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
@@ -261,14 +274,38 @@ class Pipeline:
         """Generate node_rank_mapping based on current vnodes."""
         self.node_rank_mapping = {}
         current_rank = 0
-        
+
         for vnode in self.vnodes:
             ranks = list(range(current_rank, current_rank + vnode.num_gpu))
             self.node_rank_mapping[vnode.node_ip] = ranks
             current_rank += vnode.num_gpu
-        
+
         cluster_logger.info(f"Generated node_rank_mapping: {self.node_rank_mapping}")
-    
+
+    def has_capacity(self) -> bool:
+        """Check if this pipeline has available capacity.
+
+        Note: This is a lock-free read that may return slightly stale data.
+        This is acceptable as max_batch_size is a soft limit.
+
+        Returns:
+            True if pipeline can accept more requests, False otherwise
+        """
+        if self.max_batch_size is None:
+            return True  # Unlimited capacity
+        # Lock-free read (dirty read is acceptable for soft limit)
+        return self.flying_requests < self.max_batch_size
+
+    def add_flying_request(self):
+        """Increment the flying request count (thread-safe)."""
+        with self._flying_requests_lock:
+            self.flying_requests += 1
+
+    def remove_flying_request(self):
+        """Decrement the flying request count (thread-safe)."""
+        with self._flying_requests_lock:
+            self.flying_requests -= 1
+
     def get_alternate_ray_port(self):
         """Get the alternate Ray port (6379 or 6380) for this pipeline."""
         # If current port is 6379, return 6380, and vice versa

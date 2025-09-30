@@ -55,16 +55,22 @@ class GlobalServer:
     
     def select_pipeline_index(self) -> int:
         """Select a pipeline index using weighted round-robin scheduling.
-        Only considers pipelines that are ready.
-        
+        Only considers pipelines that are ready AND have available capacity.
+
+        Note: Uses lock-free reads of flying_requests, so there may be
+        slight race conditions. This is acceptable as max_batch_size is a soft limit.
+
         Returns:
             Pipeline index if a ready pipeline is available, -1 otherwise
         """
-        # Get ready pipelines with their indices
-        ready_pipelines = [(i, p) for i, p in enumerate(self.cluster.pipelines) if p.is_ready]
-        
+        # Get ready pipelines with available capacity (lock-free check)
+        ready_pipelines = [
+            (i, p) for i, p in enumerate(self.cluster.pipelines)
+            if p.is_ready and p.has_capacity()
+        ]
+
         if not ready_pipelines:
-            return -1  # No ready pipelines available
+            return -1  # No ready pipelines with available capacity
         
         # Extract weights for ready pipelines
         weights = [p.ideal_throughput for _, p in ready_pipelines]
@@ -168,21 +174,26 @@ class GlobalServer:
     
     async def _handle_request(self, request: Request, pipeline_index: int):
         """Handle a single request and update its output.
-        
+
         Args:
             request: The request to process
             pipeline_index: Which pipeline to send to
         """
+        pipeline = self.cluster.pipelines[pipeline_index]
+
+        # Increment flying request count before starting
+        pipeline.add_flying_request()
+
         try:
             output = await self.send_request(request, pipeline_index)
             request.output = output
-            
+
             # Check if request actually succeeded, if not raise exception
             if not output.success:
                 raise ValueError(f"{output.error}")
-                
+
             logger.info(f"Request {request.request_id} completed successfully with {request.output.output_tokens} tokens")
-            
+
             # Signal completion
             if hasattr(request, '_completion_event') and request._completion_event:
                 request._completion_event.set()
@@ -191,7 +202,7 @@ class GlobalServer:
             # Mark when request was halted
             request.halted_at = time.time()
             request.retry_count += 1
-            
+
             # Put back in urgent queue for retry (higher priority)
             await self.urgent_queue.put(request)
 
@@ -199,6 +210,9 @@ class GlobalServer:
             if request.output is not None:
                 log_msg += f", original input tokens: {request.input.prompt_len}, new input tokens: {request.output.output_tokens}"
             logger.info(log_msg)
+        finally:
+            # Always decrement flying request count when done
+            pipeline.remove_flying_request()
     
     async def _cleanup_completed_requests(self):
         """Remove completed requests from inflight tracking."""
@@ -238,21 +252,23 @@ class GlobalServer:
             
         return request
     
-    def create_pipeline(self, node_layer_mapping: List[Tuple[str, int]], 
-                       config: Dict, 
+    def create_pipeline(self, node_layer_mapping: List[Tuple[str, int]],
+                       config: Dict,
                        ideal_throughput: float):
         """Create a new pipeline in the cluster.
-        
+
         Args:
             node_layer_mapping: List of (node_ip, num_layers) tuples
-            config: Configuration dictionary for the pipeline
+            config: Configuration dictionary for the pipeline (can include 'max_batch_size')
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
         """
         # Create pipeline in the cluster
         self.cluster.create_pipeline(node_layer_mapping, config, ideal_throughput)
-        
-        logger.info(f"Created new pipeline with ideal throughput {ideal_throughput}. "
-                   f"Total pipelines: {len(self.cluster.pipelines)}")
+
+        # Format node_layer_mapping for logging
+        node_info = ", ".join([f"{ip}({layers} layers)" for ip, layers in node_layer_mapping])
+        logger.info(f"Created new pipeline: [{node_info}], "
+                   f"ideal throughput: {ideal_throughput} req/sec")
     
     
     def remove_pipeline(self, pipeline_index: int):
