@@ -680,6 +680,7 @@ def parse_args():
     parser.add_argument("--s3-path", type=str, required=True, 
                         help="S3 path where tensors are stored (e.g., s3://bucket-name/path/to/models)")
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
+    parser.add_argument("--tensor-parallel-rank", type=int, default=0)
     parser.add_argument("--local-rank", type=int, default=0)
     parser.add_argument("--start-layer-id", type=int, default=0)
     parser.add_argument("--end-layer-id", type=int, default=-1)
@@ -718,7 +719,7 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
     
     TENSOR_PARALLEL_SIZE = args.tensor_parallel_size
     LOCAL_RANK = args.local_rank
-    TENSOR_PARALLEL_RANK = args.local_rank
+    TENSOR_PARALLEL_RANK = args.tensor_parallel_rank
     DEVICE = f"cuda:{LOCAL_RANK}"
     START_LAYER_ID = args.start_layer_id
     END_LAYER_ID = args.end_layer_id
