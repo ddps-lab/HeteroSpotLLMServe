@@ -115,7 +115,7 @@ def get_prefill_compute_logit_memory_access_count(
     batch_size: int,
 ):
     prefill_logit_memory_access_count = (
-        batch_size * input_len * hidden_dim + vocab_size * (hidden_dim + batch_size * input_len) / tp_size
+        batch_size * input_len * hidden_dim + vocab_size * hidden_dim / tp_size
     )
 
     return prefill_logit_memory_access_count
@@ -128,7 +128,7 @@ def get_decoding_compute_logit_memory_access_count(
     batch_size: int,
 ):
     decoding_logit_memory_access_count = (
-        output_len * (batch_size * hidden_dim + vocab_size * (hidden_dim + batch_size) / tp_size)
+        output_len * (batch_size * hidden_dim + vocab_size * hidden_dim / tp_size)
     )
 
     return decoding_logit_memory_access_count
@@ -1143,7 +1143,7 @@ def get_throughput(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
     from transformers import AutoConfig
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
     look_rank = 5
@@ -1200,8 +1200,8 @@ if __name__ == "__main__":
 
     # Unit Test : Get Global Batch Size
     node_layer_comb = [
-        ("g6e.12xlarge", "dummy-az", 40),
-        ("g6e.12xlarge", "dummy-az", 40),
+        ("g6.xlarge", "dummy-az", 32),
+        # ("g6e.12xlarge", "dummy-az", 40),
     ]
 
     global_batch_size = get_global_batch_size(
