@@ -41,7 +41,7 @@ STATUS_HOST = '0.0.0.0'
 
 DTYPE = None  # Will be set based on loaded tensors
 
-NUM_TENSOR_WORKERS = 16
+NUM_TENSOR_WORKERS = 8
 
 # PP Parallelism variables
 START_LAYER_ID = -1

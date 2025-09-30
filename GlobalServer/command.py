@@ -11,6 +11,7 @@ RAY = "/home/ubuntu/.local/bin/ray"
 
 def get_tensor_store_command(model_name: str, 
                             tensor_parallel_size: int,
+                            tensor_parallel_rank: int,
                             local_rank: int, 
                             pipeline_parallel_size: int,
                             pipeline_parallel_rank: int,
@@ -56,49 +57,29 @@ def get_tensor_store_command(model_name: str,
     else:
         final_port = status_port + local_rank
     
-    # Use S3 tensor store server if s3_path is provided
-    if s3_path:
-        cmd = (
-            f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
-            f"--model-name {model_name} "
-            f"--s3-path {s3_path} "
-            f"--tensor-parallel-size {tensor_parallel_size} "
-            f"--local-rank {local_rank} "
-            f"--start-layer-id {start_layer_id} "
-            f"--end-layer-id {end_layer_id} "
-            f"--status-port {final_port} "
-            f"--pipeline-parallel-size {pipeline_parallel_size} "
-            f"--pipeline-parallel-rank {pipeline_parallel_rank} "
-            f"--block-size {block_size} "
-            f"--gpu-memory-utilization {gpu_memory_utilization} "
-            f"--swap-space {swap_space} "
-            f"--cache-dtype {cache_dtype} "
-            f"--max-model-len {max_model_len}"
-        )
-        if aws_profile:
-            cmd += f" --aws-profile {aws_profile}"
-        if dtype is not None:
-            cmd += f" --dtype {dtype}"
-    else:
-        # Use original tensor store server for HuggingFace
-        cmd = (
-            f"{PYTHON} {PROJECT_PATH}/TensorStore/mt_tensor_store_server.py "
-            f"--model-name {model_name} "
-            f"--tensor-parallel-size {tensor_parallel_size} "
-            f"--local-rank {local_rank} "
-            f"--start-layer-id {start_layer_id} "
-            f"--end-layer-id {end_layer_id} "
-            f"--status-port {final_port} "
-            f"--pipeline-parallel-size {pipeline_parallel_size} "
-            f"--pipeline-parallel-rank {pipeline_parallel_rank} "
-            f"--block-size {block_size} "
-            f"--gpu-memory-utilization {gpu_memory_utilization} "
-            f"--swap-space {swap_space} "
-            f"--cache-dtype {cache_dtype} "
-            f"--max-model-len {max_model_len}"
-        )
-        if dtype is not None:
-            cmd += f" --dtype {dtype}"
+    cmd = (
+        f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
+        f"--model-name {model_name} "
+        f"--s3-path {s3_path} "
+        f"--tensor-parallel-size {tensor_parallel_size} "
+        f"--tensor-parallel-rank {tensor_parallel_rank} "
+        f"--local-rank {local_rank} "
+        f"--start-layer-id {start_layer_id} "
+        f"--end-layer-id {end_layer_id} "
+        f"--status-port {final_port} "
+        f"--pipeline-parallel-size {pipeline_parallel_size} "
+        f"--pipeline-parallel-rank {pipeline_parallel_rank} "
+        f"--block-size {block_size} "
+        f"--gpu-memory-utilization {gpu_memory_utilization} "
+        f"--swap-space {swap_space} "
+        f"--cache-dtype {cache_dtype} "
+        f"--max-model-len {max_model_len}"
+    )
+    if aws_profile:
+        cmd += f" --aws-profile {aws_profile}"
+    if dtype is not None:
+        cmd += f" --dtype {dtype}"
+        
     return cmd
 
 
