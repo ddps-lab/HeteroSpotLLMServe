@@ -48,13 +48,13 @@ class Cluster:
         self.ideal_throughput: float = 0.0
         self.ray_init_lock = threading.Lock()  # Lock for Ray initialization
         
-    def create_pipeline(self, 
-                       node_layer_mapping: List[Tuple[str, int]], 
+    def create_pipeline(self,
+                       node_layer_mapping: List[Tuple[str, int]],
                        config: Dict,
                        ideal_throughput: float):
         """
         Create a pipeline for distributed LLM inference.
-        
+
         Args:
             node_layer_mapping: List of (node_ip, num_layers) tuples
             config: Configuration dictionary containing:
@@ -74,6 +74,9 @@ class Cluster:
                 - gpu_memory_utilization (optional): GPU memory utilization ratio
                 - max_num_batched_tokens (optional): Maximum number of batched tokens
                 - max_num_seqs (optional): Maximum number of sequences
+                - max_batch_size (optional): Maximum number of concurrent requests for this pipeline.
+                                            None means unlimited (default: None).
+                                            Note: This is a soft limit, actual count may slightly exceed it.
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
         """
         # Validate required config parameters
@@ -81,7 +84,7 @@ class Cluster:
         for key in required_keys:
             if key not in config:
                 raise ValueError(f"config must contain '{key}'")
-            
+
         pipeline = Pipeline()
         pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
         self.pipelines.append(pipeline)
@@ -155,7 +158,7 @@ class Pipeline:
         self.node_rank_mapping: Dict[str, List[int]] = {}
         self.ideal_throughput: float = 0.0
         self.is_ready: bool = False  # Pipeline readiness status
-        
+
         # Ray cluster management for this pipeline
         self.ray_port = None  # Ray port for this pipeline's cluster
         self.ray_head_ip = None  # IP of the Ray head node (global server node)
@@ -163,42 +166,63 @@ class Pipeline:
         self.api_server_host: str = None
         self.api_server_port: int = None
 
-    def initialize_pipeline(self, 
-                            node_layer_mapping: List[Tuple[str, int]], 
+        # Request capacity management
+        self.max_batch_size: int = None  # Maximum concurrent requests (None = unlimited)
+        self.flying_requests: int = 0  # Current number of in-flight requests
+        self._flying_requests_lock: threading.Lock = threading.Lock()  # Lock for flying_requests counter
+
+        self.node_layer_mapping: List[Tuple[str, int]] = []  # Store for reference
+        self.config: Dict = {}
+
+    def initialize_pipeline(self,
+                            node_layer_mapping: List[Tuple[str, int]],
                             config: Dict,
                             ideal_throughput: float,
                             ray_init_lock: threading.Lock = None):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
+        self.node_layer_mapping = node_layer_mapping  # Store for reference
+        self.config = config  # Store for reference
 
         cluster_logger.info(f"Initializing pipeline with {node_layer_mapping}")
-        
+
         # Extract required config parameters
         model_name = config["model_name"]
         total_num_layers = config["total_num_layers"]
-        
+
         # Check layer validity
         total_assigned_layers = sum(layers for _, layers in node_layer_mapping)
         assert total_assigned_layers == total_num_layers, (
             f"Total assigned layers ({total_assigned_layers}) does not match "
             f"model total layers ({total_num_layers})"
         )
-        
+
         self.model_name = model_name
         self.total_layers = total_num_layers
         self.config = config
         self.ideal_throughput = ideal_throughput
-        
+
+        # Extract max_batch_size from config
+        self.max_batch_size = config.get("max_batch_size", None)
+        if self.max_batch_size is not None:
+            cluster_logger.info(f"Pipeline initialized with max_batch_size={self.max_batch_size}")
+
         # First, create VNode objects with placeholder GPU count
         start_layer_idx = 0
+        start_local_ranks = {} # ip: start_local_rank 가 들어있음.
         for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
+            tp_size = config["parallel_strategy"][pipeline_rank]
+            if node_ip not in start_local_ranks:
+                start_local_ranks[node_ip] = 0
             vnode = VNode(
                 node_ip=node_ip, 
-                num_gpu=None,  # Placeholder, will be updated after Ray cluster is ready
+                tp_size=tp_size,
                 pipeline_rank=pipeline_rank,
+                start_local_rank=start_local_ranks[node_ip],
                 layer_start_id=start_layer_idx, 
                 layer_end_id=start_layer_idx + layer_partition,
                 total_layers=self.total_layers
             )
+            start_local_ranks[node_ip] += tp_size
             start_layer_idx += layer_partition
             self.vnodes.append(vnode)
         
@@ -207,6 +231,7 @@ class Pipeline:
         self.start_ray_cluster(ray_port, ray_init_lock)
         
         # Update VNode GPU counts from Ray cluster information
+        # 현재 아래 코드는 그냥 현재 클러스터에 참여여부만 확인하는 용도로 사용한다.
         for vnode in self.vnodes:
             num_gpu = None
             while True:
@@ -221,8 +246,10 @@ class Pipeline:
                 time.sleep(1)
             
             # Update the vnode's GPU count
-            vnode.num_gpu = num_gpu
-            cluster_logger.info(f"Updated VNode {vnode.node_ip} with {num_gpu} GPUs")
+            # 옛날에는 무조건 num_gpu 로 tp size 를 결정하였음.
+            # vnode.tp_size = num_gpu
+
+            cluster_logger.info(f"Updated VNode {vnode.node_ip} with {vnode.tp_size} GPUs")
         
         # Start tensor stores on all VNodes
         tensor_store_base_port = config.get("tensor_store_base_port")
@@ -261,14 +288,41 @@ class Pipeline:
         """Generate node_rank_mapping based on current vnodes."""
         self.node_rank_mapping = {}
         current_rank = 0
-        
+
         for vnode in self.vnodes:
-            ranks = list(range(current_rank, current_rank + vnode.num_gpu))
-            self.node_rank_mapping[vnode.node_ip] = ranks
-            current_rank += vnode.num_gpu
-        
+            ranks = list(range(current_rank, current_rank + vnode.tp_size))
+            if self.node_rank_mapping.get(vnode.node_ip) is None:
+                self.node_rank_mapping[vnode.node_ip] = ranks
+            else:
+                self.node_rank_mapping[vnode.node_ip].extend(ranks)
+            current_rank += vnode.tp_size
+
         cluster_logger.info(f"Generated node_rank_mapping: {self.node_rank_mapping}")
-    
+
+    def has_capacity(self) -> bool:
+        """Check if this pipeline has available capacity.
+
+        Note: This is a lock-free read that may return slightly stale data.
+        This is acceptable as max_batch_size is a soft limit.
+
+        Returns:
+            True if pipeline can accept more requests, False otherwise
+        """
+        if self.max_batch_size is None:
+            return True  # Unlimited capacity
+        # Lock-free read (dirty read is acceptable for soft limit)
+        return self.flying_requests < self.max_batch_size
+
+    def add_flying_request(self):
+        """Increment the flying request count (thread-safe)."""
+        with self._flying_requests_lock:
+            self.flying_requests += 1
+
+    def remove_flying_request(self):
+        """Decrement the flying request count (thread-safe)."""
+        with self._flying_requests_lock:
+            self.flying_requests -= 1
+
     def get_alternate_ray_port(self):
         """Get the alternate Ray port (6379 or 6380) for this pipeline."""
         # If current port is 6379, return 6380, and vice versa
@@ -469,7 +523,8 @@ class Pipeline:
         # 2. 새로운 노드를 관리할 VNode 객체를 생성한다 (placeholder GPU count)
         new_vnode = VNode(
             node_ip=new_node_ip,
-            num_gpu=None,  # Placeholder, will be updated after Ray cluster is ready
+            tp_size=target_vnode.tp_size, # 일단 기존꺼 사용하자.
+            start_local_rank=target_vnode.start_local_rank,
             pipeline_rank=target_vnode.pipeline_rank,
             layer_start_id=target_vnode.layer_start_id,
             layer_end_id=target_vnode.layer_end_id,
@@ -489,21 +544,21 @@ class Pipeline:
         self.start_ray_cluster(new_ray_port)
         
         # 5. Get GPU count for new node from Ray cluster
-        new_num_gpu = None
+        new_tp_size = None
         while True:
             for node_info in ray.nodes():
                 ray_node_ip = node_info.get("NodeManagerAddress")
                 if ray_node_ip == new_node_ip:
-                    new_num_gpu = int(node_info.get("Resources").get("GPU", 0))
+                    new_tp_size = int(node_info.get("Resources").get("GPU", 0))
                     break
-            if new_num_gpu is not None and new_num_gpu > 0:
+            if new_tp_size is not None and new_tp_size > 0:
                 break
             cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
             time.sleep(1)
         
         # Update the new vnode's GPU count
-        new_vnode.num_gpu = new_num_gpu
-        cluster_logger.info(f"Updated new VNode {new_node_ip} with {new_num_gpu} GPUs")
+        new_vnode.tp_size = new_tp_size
+        cluster_logger.info(f"Updated new VNode {new_node_ip} with {new_tp_size} GPUs")
         
         # 6. 새로운 노드에서 Tensor store 를 시작한다.
         tensor_store_port = target_vnode.tensor_store_port
@@ -601,15 +656,17 @@ class VNode:
     - Different VNodes use Pipeline Parallelism (PP)
     """
     def __init__(self, 
-                 node_ip: str, 
-                 num_gpu: int,
+                 node_ip: str,
+                 start_local_rank: int,
+                 tp_size: int,
                  pipeline_rank: int,
                  layer_start_id: int,
                  layer_end_id: int,
                  total_layers: int):
         # Node configuration
         self.node_ip = node_ip
-        self.num_gpu = num_gpu
+        self.tp_size = tp_size
+        self.start_local_rank = start_local_rank
         self.pipeline_rank = pipeline_rank
         
         # Layer assignment for Pipeline Parallelism
@@ -641,9 +698,9 @@ class VNode:
         cluster_logger.info(f"VNode created: {self}")
     
     def __repr__(self):
-        return (f"VNode(ip={self.node_ip}, gpus={self.num_gpu}, "
+        return (f"VNode(ip={self.node_ip}, gpus={self.tp_size}, "
                 f"rank={self.pipeline_rank}, layers=[{self.layer_start_id}, {self.layer_end_id}), "
-                f"TP={self.num_gpu})")
+                f"TP={self.tp_size})")
 
     def start_tensor_store(self, tensor_store_port: int, config: Dict, pipeline_parallel_size: int):
         """Start tensor store server on this VNode."""
@@ -668,11 +725,13 @@ class VNode:
         max_model_len = config.get("max_model_len", 4096)
         
         # Start tensor store processes for each GPU (for TP)
-        for local_rank in range(self.num_gpu):
+        for local_rank_idx in range(self.tp_size):
+            local_rank = self.start_local_rank + local_rank_idx
             try:
                 command = get_tensor_store_command(
                     model_name=model_name,
-                    tensor_parallel_size=self.num_gpu,
+                    tensor_parallel_size=self.tp_size,
+                    tensor_parallel_rank=local_rank_idx,
                     local_rank=local_rank,
                     pipeline_parallel_size=pipeline_parallel_size,
                     pipeline_parallel_rank=self.pipeline_rank,
@@ -730,7 +789,7 @@ class VNode:
             except Exception as e:
                 cluster_logger.error(f"Failed to start tensor store on {self.node_ip}: {e}")
                 
-        cluster_logger.info(f"Started {self.num_gpu} tensor store processes on {self.node_ip}")
+        cluster_logger.info(f"Started {self.tp_size} tensor store processes on {self.node_ip}")
         
         # Log streaming is no longer needed since logs are directly saved locally
     
@@ -799,7 +858,7 @@ class VNode:
             
         all_ready = True
         
-        for i in range(self.num_gpu):
+        for i in range(self.tp_size):
             port = base_port + i
             try:
                 with socket.create_connection((self.node_ip, port), timeout=timeout) as sock:
@@ -841,7 +900,7 @@ class VNode:
         logs = {}
         
         # Get tensor store logs
-        for i in range(self.num_gpu):
+        for i in range(self.tp_size):
             log_filename = f"tensorstore_{self.node_ip}_{i}.log"
             remote_log_path = f"~/logs/{log_filename}"
             
@@ -889,7 +948,7 @@ class VNode:
             while True:
                 try:
                     tensor_store_logs = {}
-                    for i in range(self.num_gpu):
+                    for i in range(self.tp_size):
                         log_filename = f"tensorstore_{self.node_ip}_{i}.log"
                         remote_log_path = f"~/logs/{log_filename}"
                         ssh_command = f"ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {self.node_ip} 'cat {remote_log_path} 2>/dev/null || echo \"\"'"
@@ -990,10 +1049,10 @@ class VNode:
         """Get resource information for this node."""
         return {
             "node_ip": self.node_ip,
-            "num_gpu": self.num_gpu,
+            "tp_size": self.tp_size,
             "pipeline_rank": self.pipeline_rank,
             "layers": f"[{self.layer_start_id}, {self.layer_end_id})",
-            "tensor_parallel_size": self.num_gpu,
+            "tensor_parallel_size": self.tp_size,
             "is_first_stage": self.is_first_stage,
             "is_last_stage": self.is_last_stage,
             "tensor_store_ready": self.is_tensor_store_ready,
@@ -1010,7 +1069,7 @@ class VNode:
         
         def stop_single_tensor_store(local_rank):
             """Stop a single tensor store process."""
-            status_port = self.tensor_store_port + local_rank
+            status_port = self.tensor_store_port + self.start_local_rank + local_rank
             try:
                 # Send shutdown command via TCP
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -1031,9 +1090,9 @@ class VNode:
                 return False
         
         # Stop all tensor store processes in parallel
-        with ThreadPoolExecutor(max_workers=self.num_gpu) as executor:
+        with ThreadPoolExecutor(max_workers=self.tp_size) as executor:
             futures = []
-            for local_rank in range(self.num_gpu):
+            for local_rank in range(self.tp_size):
                 future = executor.submit(stop_single_tensor_store, local_rank)
                 futures.append(future)
             
@@ -1043,7 +1102,7 @@ class VNode:
                 if future.result():
                     success_count += 1
             
-            cluster_logger.info(f"TensorStore shutdown: {success_count}/{self.num_gpu} processes stopped successfully")
+            cluster_logger.info(f"TensorStore shutdown: {success_count}/{self.tp_size} processes stopped successfully")
         
         self.is_tensor_store_ready = False
         cluster_logger.info(f"TensorStore shutdown completed on {self.node_ip}")
