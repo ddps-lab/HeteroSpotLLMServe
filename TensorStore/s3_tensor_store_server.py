@@ -691,7 +691,7 @@ def parse_args():
     parser.add_argument("--aws-profile", type=str, default=None,
                         help="AWS profile to use for S3 access")
     parser.add_argument("--local-storage-path", type=str, default=None,
-                        help="Local path to cache model weights (default: /opt/dlami/nvme/models/{model_name})")
+                        help="Local path to cache model weights (default: None)")
     
     # KV cache related arguments
     parser.add_argument("--block-size", type=int, default=16, choices=[8, 16, 32],
@@ -889,7 +889,8 @@ def main():
         local_storage_path = args.local_storage_path
     else:
         # Use default path with model name
-        local_storage_path = f"/opt/dlami/nvme/models/{args.model_name}"
+        # local_storage_path = f"/opt/dlami/nvme/models/{args.model_name}"
+        local_storage_path = None  # No local caching by default
     
     logging.info(f"Local storage path: {local_storage_path}")
     
