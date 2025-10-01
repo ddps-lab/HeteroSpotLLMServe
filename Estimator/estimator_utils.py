@@ -56,6 +56,32 @@ def get_decoding_computation_ops_per_layer(
 
     return attention_ops_per_layer + ffn_ops_per_layer
 
+def get_prefill_compute_logit_ops(
+    input_len: int,
+    hidden_dim: int,
+    vocab_size: int,
+    tp_size: int,
+    batch_size: int,
+):
+    compute_logit_ops = (
+        2 * batch_size * input_len * hidden_dim * vocab_size / tp_size
+    )
+
+    return compute_logit_ops
+
+def get_decocding_compute_logit_ops(
+    output_len: int,
+    hidden_dim: int,
+    vocab_size: int,
+    tp_size: int,
+    batch_size: int,
+):
+    compute_logit_ops = (
+        2 * batch_size * output_len * hidden_dim * vocab_size / tp_size
+    )
+
+    return compute_logit_ops
+
 def get_prefill_memory_access_count_per_layer(
     input_len: int,
     hidden_dim: int,
@@ -80,6 +106,32 @@ def get_prefill_memory_access_count_per_layer(
     )
 
     return attention_memory_access_count_per_layer + ffn_memory_access_count_per_layer
+
+def get_prefill_compute_logit_memory_access_count(
+    input_len: int,
+    hidden_dim: int,
+    vocab_size: int,
+    tp_size: int,
+    batch_size: int,
+):
+    prefill_logit_memory_access_count = (
+        batch_size * input_len * hidden_dim + vocab_size * hidden_dim / tp_size
+    )
+
+    return prefill_logit_memory_access_count
+
+def get_decoding_compute_logit_memory_access_count(
+    output_len: int,
+    hidden_dim: int,
+    vocab_size: int,
+    tp_size: int,
+    batch_size: int,
+):
+    decoding_logit_memory_access_count = (
+        output_len * (batch_size * hidden_dim + vocab_size * hidden_dim / tp_size)
+    )
+
+    return decoding_logit_memory_access_count
 
 def get_decoding_memory_access_count_per_layer(
     input_len: int,
@@ -108,7 +160,6 @@ def get_decoding_memory_access_count_per_layer(
 
     return attention_memory_access_count_per_layer + ffn_memory_access_count_per_layer
 
-
 def get_tp_communication_latency_per_layer(
     tp_size: int,
     batch_size: int,
@@ -131,6 +182,31 @@ def get_tp_communication_latency_per_layer(
     latency_per_layer_ms *= 4 * (tp_size - 1)
 
     return latency_per_layer_ms
+
+def get_tp_communication_latency_compute_logit(
+    tp_size: int,
+    batch_size: int,
+    sequence_len: int,
+    hidden_dim: int,
+    vocab_size: int,
+    p2p_bandwidth: float, # 단위는 Bytes/s
+    dtype: torch.dtype = torch.float16,
+    p2p_latency_ms: Optional[float] = None,
+):
+    if tp_size == 1:
+        return 0
+
+    if p2p_latency_ms is None:
+        p2p_latency_ms = 0
+    
+    element_size = dtype.itemsize  # dtype 의 item size
+    # logit 계산후 output 을 all gather 해야한다.
+    # output 의 크기는 batch_size * sequence length * vocab size
+    latency_compute_logit_ms = (batch_size * sequence_len * vocab_size * element_size) / (tp_size * p2p_bandwidth / 1000)  # Bytes/s to ms
+    latency_compute_logit_ms += p2p_latency_ms
+    latency_compute_logit_ms *= 2*(tp_size - 1)
+
+    return latency_compute_logit_ms
 
 
 def get_pp_communication_latency(
@@ -179,8 +255,8 @@ def get_pp_communication_latency_send_recv(
 ):
     
     if inter_node_latency_ms is None:
-        # inter node latency 는 기본적으로 (intra region) 2ms 라고 가정
-        inter_node_latency_ms = 2
+        # inter node latency 는 기본적으로 (intra region) 1ms 라고 가정
+        inter_node_latency_ms = 1
     if inter_node_bandwidth is None:
         # inter node bandwidth 는 기본적으로 (intra region) 5GB/s 라고 가정
         inter_node_bandwidth = 5 * 10**9  # 5GB/s
@@ -254,6 +330,73 @@ def get_prefill_computation_latency_per_layer(
         latency_per_layer = computation_ops_per_layer / (flops / 1000)  # FLOPS to ms
 
     return latency_per_layer
+
+def get_prefill_compute_logit_latency(
+    gpu_type: str,
+    gpu_count: int,
+    input_len: int,
+    hidden_dim: int,
+    batch_size: int,
+    vocab_size: int,
+    dtype: torch.dtype = torch.float16,
+):
+    if batch_size <= 0:
+        return 0
+
+    compute_logit_ops = get_prefill_compute_logit_ops(
+        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+    )
+    compute_logit_memory_access = get_prefill_compute_logit_memory_access_count(
+        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+    ) * dtype.itemsize  # Bytes 단위로 변환
+
+    GPU_SPEC_info = GPU_SPEC[gpu_type]
+    flops = GPU_SPEC_info["FLOPS"]
+    memory_bandwidth = GPU_SPEC_info["memory_bandwidth"]
+    arithmetic_intensity = compute_logit_ops / compute_logit_memory_access
+    device_arithmetic_intensity = flops / memory_bandwidth
+
+    if arithmetic_intensity < device_arithmetic_intensity:
+        # Memory bound
+        latency = compute_logit_memory_access / (memory_bandwidth / 1000) # Bytes/s to ms
+    else:
+        # Compute bound
+        latency = compute_logit_ops / (flops / 1000)  # FLOPS to ms
+
+    return latency
+
+def get_decoding_compute_logit_latency(
+    gpu_type: str,
+    gpu_count: int,
+    output_len: int,
+    hidden_dim: int,
+    batch_size: int,
+    vocab_size: int,
+    dtype: torch.dtype = torch.float16,
+):
+    if batch_size <= 0:
+        return 0
+
+    compute_logit_ops = get_decocding_compute_logit_ops(
+        output_len, hidden_dim, vocab_size, gpu_count, batch_size
+    )
+    compute_logit_memory_access = get_decoding_compute_logit_memory_access_count(
+        output_len, hidden_dim, vocab_size, gpu_count, batch_size
+    ) * dtype.itemsize  # Bytes 단위로 변환
+
+    GPU_SPEC_info = GPU_SPEC[gpu_type]
+    flops = GPU_SPEC_info["FLOPS"]
+    memory_bandwidth = GPU_SPEC_info["memory_bandwidth"]
+    arithmetic_intensity = compute_logit_ops / compute_logit_memory_access
+    device_arithmetic_intensity = flops / memory_bandwidth
+
+    if arithmetic_intensity < device_arithmetic_intensity:
+        # Memory bound
+        latency = compute_logit_memory_access / (memory_bandwidth / 1000) # Bytes/s to ms
+    else:
+        # Compute bound
+        latency = compute_logit_ops / (flops / 1000)  # FLOPS to ms
+    return latency
 
 def get_decoding_computation_latency_per_layer(
     gpu_type: str,
@@ -364,6 +507,7 @@ def get_single_request_latency(
     num_kv_cache_head: int,
     total_num_layers: int,
     intermediate_dim: int,
+    vocab_size: int,
     node_layer_comb: List[tuple[str, str, int]],
     dtype: torch.dtype = torch.float16
 ):
@@ -378,12 +522,15 @@ def get_single_request_latency(
 
     total_stages = len(node_layer_comb)
 
+    processed_layers = 0
+
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
         num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
         p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
+        processed_layers += layer_count
 
-        prefill_computation_laytency_per_layer = get_prefill_computation_latency_per_layer(
+        prefill_computation_laytency = get_prefill_computation_latency_per_layer(
             gpu_type=gpu_type,
             gpu_count=num_gpu,
             input_len=avg_input_len,
@@ -393,7 +540,7 @@ def get_single_request_latency(
             dtype=dtype
         ) * layer_count
 
-        decoding_computation_latency_per_layer = get_decoding_computation_latency_per_layer(
+        decoding_computation_latency = get_decoding_computation_latency_per_layer(
             gpu_type=gpu_type,
             gpu_count=num_gpu,
             input_len=avg_input_len,
@@ -404,8 +551,31 @@ def get_single_request_latency(
             dtype=dtype
         ) * layer_count
 
-        prefill_latencies.append(prefill_computation_laytency_per_layer)
-        decoding_latencies.append(decoding_computation_latency_per_layer)
+        prefill_logit_latency = 0
+        decoding_logit_latency = 0
+        if processed_layers == total_num_layers:
+            # 마지막 stage 에는 lm head 가 포함되어 있음
+            prefill_logit_latency = get_prefill_compute_logit_latency(
+                gpu_type=gpu_type,
+                gpu_count=num_gpu,
+                input_len=avg_input_len,
+                hidden_dim=hidden_dim,
+                batch_size=batch_size,
+                vocab_size=vocab_size,
+                dtype=dtype
+            )
+            decoding_logit_latency = get_decoding_compute_logit_latency(
+                gpu_type=gpu_type,
+                gpu_count=num_gpu,
+                output_len=avg_output_len,
+                hidden_dim=hidden_dim,
+                batch_size=batch_size,
+                vocab_size=vocab_size,
+                dtype=dtype
+            )
+
+        prefill_latencies.append(prefill_computation_laytency + prefill_logit_latency)
+        decoding_latencies.append(decoding_computation_latency + decoding_logit_latency)
 
         # 마지막 stage 가 아니라면 send 해야함 (PP)
         if i < total_stages - 1:
@@ -462,8 +632,28 @@ def get_single_request_latency(
             p2p_bandwidth=p2p_bandwidth,
             dtype=dtype
         ) * avg_output_len
-        tp_communication_latency += prefill_tp_communication_latency
-        tp_communication_latency += decoding_tp_communication_latency
+
+        prefill_compute_logit_tp_communication_latency = get_tp_communication_latency_compute_logit(
+            tp_size=num_gpu,
+            batch_size=batch_size,
+            sequence_len=avg_input_len,
+            hidden_dim=hidden_dim,
+            vocab_size=vocab_size,
+            p2p_bandwidth=p2p_bandwidth,
+            dtype=dtype
+        ) if processed_layers == total_num_layers else 0
+        decoding_compute_logit_tp_communication_latency = get_tp_communication_latency_compute_logit(
+            tp_size=num_gpu,
+            batch_size=batch_size,
+            sequence_len=1,
+            hidden_dim=hidden_dim,
+            vocab_size=vocab_size,
+            p2p_bandwidth=p2p_bandwidth,
+            dtype=dtype
+        ) * avg_output_len if processed_layers == total_num_layers else 0
+
+        tp_communication_latency += prefill_tp_communication_latency + prefill_compute_logit_tp_communication_latency
+        tp_communication_latency += decoding_tp_communication_latency + decoding_compute_logit_tp_communication_latency
     
     total_computation_latency = sum(prefill_latencies)
     total_computation_latency += max(decoding_latencies) * total_stages
@@ -625,6 +815,8 @@ def get_throughput(
     prefill_latencies = []
     decoding_latencies = []
 
+    processed_layers = 0
+
     # prefill 에서의 batch size 는 model_len 이 constraint 로 작용한다.
     max_prefill_batch_size = max_model_len // avg_input_len
     pp_size = len(node_layer_comb)
@@ -634,6 +826,8 @@ def get_throughput(
         num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
         p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
 
+        processed_layers += layer_count
+
         # 아래 두 개는 Computation 과 Communication 연산을 포함한다.
         prefill_computation_latency = 0
         prefill_pp_communication_latency = 0
@@ -641,6 +835,9 @@ def get_throughput(
         decoding_computation_latency = 0
         decoding_pp_communication_latency = 0
         decoding_tp_communication_latency = 0
+
+        compute_logit_prefill_latency = 0 # 디버깅용
+        compute_logit_decoding_latency = 0 # 디버깅용
 
         # micro-batch 기법을 적용해야함.
         max_batch_iteration = global_batch_size // (max_prefill_batch_size * pp_size)
@@ -660,6 +857,20 @@ def get_throughput(
                 batch_size=max_prefill_batch_size,
                 dtype=dtype
             ) * layer_count
+
+            # 마지막 Stage 에 도달했을 때 logit 계산 latency 도 포함시켜야 함.
+            max_batch_prefill_compute_logit_latency = 0
+            if processed_layers == total_num_layers:
+                max_batch_prefill_compute_logit_latency = get_prefill_compute_logit_latency(
+                    gpu_type=gpu_type,
+                    gpu_count=num_gpu,
+                    input_len=avg_input_len,
+                    hidden_dim=hidden_dim,
+                    batch_size=max_prefill_batch_size,
+                    vocab_size=vocab_size,
+                    dtype=dtype
+                )
+                compute_logit_prefill_latency += (max_batch_prefill_compute_logit_latency * num_max_batch_prefill_inference)
             
             # PP Communication Latency of Prefill (max_batch)
             max_batch_prefill_pp_communication_latency = 0
@@ -695,13 +906,23 @@ def get_throughput(
                 dtype=dtype
             ) * layer_count
 
-            prefill_computation_latency += (max_batch_prefill_computation_latency * num_max_batch_prefill_inference)
-            prefill_pp_communication_latency += (max_batch_prefill_pp_communication_latency * num_max_batch_prefill_inference)
-            prefill_tp_communication_latency += (max_batch_prefill_tp_communication_latency * num_max_batch_prefill_inference)
+            max_batch_prefill_logit_allgather_latency = get_tp_communication_latency_compute_logit(
+                tp_size=num_gpu,
+                batch_size=max_prefill_batch_size,
+                sequence_len=avg_input_len,
+                hidden_dim=hidden_dim,
+                vocab_size=vocab_size,
+                p2p_bandwidth=p2p_bandwidth,
+                dtype=dtype
+            ) if processed_layers == total_num_layers else 0
 
-            logging.debug(f"  Prefill Computation Latency (max_batch): {max_batch_prefill_computation_latency * num_max_batch_prefill_inference:.2f} ms")
+            prefill_computation_latency += ((max_batch_prefill_computation_latency + max_batch_prefill_compute_logit_latency) * num_max_batch_prefill_inference)
+            prefill_pp_communication_latency += (max_batch_prefill_pp_communication_latency * num_max_batch_prefill_inference)
+            prefill_tp_communication_latency += ((max_batch_prefill_tp_communication_latency + max_batch_prefill_logit_allgather_latency) * num_max_batch_prefill_inference)
+
+            logging.debug(f"  Prefill Computation Latency (max_batch): {(max_batch_prefill_computation_latency + max_batch_prefill_compute_logit_latency) * num_max_batch_prefill_inference:.2f} ms")
             logging.debug(f"  Prefill PP Communication Latency (max_batch): {max_batch_prefill_pp_communication_latency * num_max_batch_prefill_inference:.2f} ms")
-            logging.debug(f"  Prefill TP Communication Latency (max_batch): {max_batch_prefill_tp_communication_latency * num_max_batch_prefill_inference:.2f} ms")
+            logging.debug(f"  Prefill TP Communication Latency (max_batch): {(max_batch_prefill_tp_communication_latency + max_batch_prefill_logit_allgather_latency) * num_max_batch_prefill_inference:.2f} ms")
 
         # 이제 나머지 처리해야 함.
         remaining_batch = global_batch_size - max_batch_iteration * max_prefill_batch_size * pp_size
@@ -731,6 +952,20 @@ def get_throughput(
                     batch_size=tmp_batch_size,
                     dtype=dtype
                 ) * layer_count
+
+
+                tmp_prefill_compute_logit_latency = 0
+                if processed_layers == total_num_layers:
+                    tmp_prefill_compute_logit_latency = get_prefill_compute_logit_latency(
+                        gpu_type=gpu_type,
+                        gpu_count=num_gpu,
+                        input_len=avg_input_len,
+                        hidden_dim=hidden_dim,
+                        batch_size=tmp_batch_size,
+                        vocab_size=vocab_size,
+                        dtype=dtype
+                    )
+                    compute_logit_prefill_latency += (tmp_prefill_compute_logit_latency * tmp_iteration)
 
                 tmp_prefill_pp_communication_latency = 0
                 if stage != len(node_layer_comb) - 1:  # 마지막 Stage 가 아니면 send 를 해야함.
@@ -764,14 +999,24 @@ def get_throughput(
                     dtype=dtype
                 ) * layer_count
 
-                prefill_computation_latency += (tmp_prefill_computation_latency * tmp_iteration)
+                tmp_prefill_logit_allgather_latency = get_tp_communication_latency_compute_logit(
+                    tp_size=num_gpu,
+                    batch_size=tmp_batch_size,
+                    sequence_len=avg_input_len,
+                    hidden_dim=hidden_dim,
+                    vocab_size=vocab_size,
+                    p2p_bandwidth=p2p_bandwidth,
+                    dtype=dtype
+                ) if processed_layers == total_num_layers else 0
+
+                prefill_computation_latency += ((tmp_prefill_computation_latency + tmp_prefill_compute_logit_latency) * tmp_iteration) # logit 계산 포함
                 prefill_pp_communication_latency += (tmp_prefill_pp_communication_latency * tmp_iteration)
-                prefill_tp_communication_latency += (tmp_prefill_tp_communication_latency * tmp_iteration)
+                prefill_tp_communication_latency += ((tmp_prefill_tp_communication_latency + tmp_prefill_logit_allgather_latency) * tmp_iteration)
 
                 # debugging 용 logging
-                logging.debug(f"  Prefill Computation Latency (remaining batch {i}): {tmp_prefill_computation_latency * tmp_iteration:.2f} ms")
+                logging.debug(f"  Prefill Computation Latency (remaining batch {i}): {(tmp_prefill_computation_latency + tmp_prefill_compute_logit_latency) * tmp_iteration:.2f} ms")
                 logging.debug(f"  Prefill PP Communication Latency (remaining batch {i}): {tmp_prefill_pp_communication_latency * tmp_iteration:.2f} ms")
-                logging.debug(f"  Prefill TP Communication Latency (remaining batch {i}): {tmp_prefill_tp_communication_latency * tmp_iteration:.2f} ms")
+                logging.debug(f"  Prefill TP Communication Latency (remaining batch {i}): {(tmp_prefill_tp_communication_latency + tmp_prefill_logit_allgather_latency) * tmp_iteration:.2f} ms")
 
 
         # 이제 디코딩 처리하자
@@ -797,6 +1042,19 @@ def get_throughput(
                 batch_size=decoding_batch_size,
                 dtype=dtype
             ) * layer_count
+
+            tmp_decoding_compute_logit_latency = 0
+            if processed_layers == total_num_layers:
+                tmp_decoding_compute_logit_latency = get_decoding_compute_logit_latency(
+                    gpu_type=gpu_type,
+                    gpu_count=num_gpu,
+                    output_len=avg_output_len,
+                    hidden_dim=hidden_dim,
+                    batch_size=decoding_batch_size,
+                    vocab_size=vocab_size,
+                    dtype=dtype
+                )
+                compute_logit_decoding_latency += (tmp_decoding_compute_logit_latency * num_iteration)
 
             tmp_decoding_pp_communication_latency = 0
             if stage != len(node_layer_comb) - 1:  # 마지막 Stage 가 아니면 send 를 해야함.
@@ -830,21 +1088,33 @@ def get_throughput(
                 dtype=dtype
             ) * layer_count * avg_output_len
 
-            decoding_computation_latency += (tmp_decoding_computation_latency * num_iteration)
-            decoding_pp_communication_latency += (tmp_decoding_pp_communication_latency * num_iteration)
-            decoding_tp_communication_latency += (tmp_decoding_tp_communication_latency * num_iteration)
+            tmp_decoding_logit_allgather_latency = get_tp_communication_latency_compute_logit(
+                tp_size=num_gpu,
+                batch_size=decoding_batch_size,
+                sequence_len=1,
+                hidden_dim=hidden_dim,
+                vocab_size=vocab_size,
+                p2p_bandwidth=p2p_bandwidth,
+                dtype=dtype
+            ) * avg_output_len if processed_layers == total_num_layers else 0
 
-            logging.debug(f"  Decoding Computation Latency (remaining batch {i}): {tmp_decoding_computation_latency * num_iteration:.2f} ms")
+            decoding_computation_latency += ((tmp_decoding_computation_latency + tmp_decoding_compute_logit_latency) * num_iteration)
+            decoding_pp_communication_latency += (tmp_decoding_pp_communication_latency * num_iteration)
+            decoding_tp_communication_latency += ((tmp_decoding_tp_communication_latency + tmp_decoding_logit_allgather_latency) * num_iteration)
+
+            logging.debug(f"  Decoding Computation Latency (remaining batch {i}): {(tmp_decoding_computation_latency + tmp_decoding_compute_logit_latency) * num_iteration:.2f} ms")
             logging.debug(f"  Decoding PP Communication Latency (remaining batch {i}): {tmp_decoding_pp_communication_latency * num_iteration:.2f} ms")
-            logging.debug(f"  Decoding TP Communication Latency (remaining batch {i}): {tmp_decoding_tp_communication_latency * num_iteration:.2f} ms")
+            logging.debug(f"  Decoding TP Communication Latency (remaining batch {i}): {(tmp_decoding_tp_communication_latency + tmp_decoding_logit_allgather_latency) * num_iteration:.2f} ms")
         
         # debugging 용 logging
         logging.debug(f"Stage {stage} ({node_type}, {az}, {layer_count}):")
         logging.debug(f"  Prefill Latency: {prefill_computation_latency + prefill_pp_communication_latency + prefill_tp_communication_latency:.2f} ms")
+        logging.debug(f"  Prefill Total Compute Logit Latency: {compute_logit_prefill_latency:.2f} ms") if compute_logit_prefill_latency != 0 else None
         logging.debug(f"    Prefill Computation Latency: {prefill_computation_latency:.2f} ms")
         logging.debug(f"    Prefill PP Communication Latency: {prefill_pp_communication_latency:.2f} ms")
         logging.debug(f"    Prefill TP Communication Latency: {prefill_tp_communication_latency:.2f} ms")
         logging.debug(f"  Decoding Latency: {decoding_computation_latency + decoding_pp_communication_latency + decoding_tp_communication_latency:.2f} ms")
+        logging.debug(f"  Decoding Total Compute Logit Latency: {compute_logit_decoding_latency:.2f} ms") if compute_logit_decoding_latency != 0 else None
         logging.debug(f"    Decoding Computation Latency: {decoding_computation_latency:.2f} ms")
         logging.debug(f"    Decoding PP Communication Latency: {decoding_pp_communication_latency:.2f} ms")
         logging.debug(f"    Decoding TP Communication Latency: {decoding_tp_communication_latency:.2f} ms")
@@ -930,9 +1200,8 @@ if __name__ == "__main__":
 
     # Unit Test : Get Global Batch Size
     node_layer_comb = [
-        ("g6.xlarge", "dummy-az", 16),
-        ("g6.xlarge", "dummy-az", 16),
-        # ("g6e.48xlarge", "dummy-az", 53)
+        ("g6.xlarge", "dummy-az", 32),
+        # ("g6e.12xlarge", "dummy-az", 40),
     ]
 
     global_batch_size = get_global_batch_size(
@@ -980,6 +1249,7 @@ if __name__ == "__main__":
         num_kv_cache_head=config["num_key_value_heads"],
         total_num_layers=config["num_layers"],
         intermediate_dim=config["intermediate_size"],
+        vocab_size=config["vocab_size"],
         node_layer_comb=node_layer_comb,
         dtype=config["dtype"]
     )
