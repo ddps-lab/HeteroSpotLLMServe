@@ -47,6 +47,7 @@ class Cluster:
         self.pipelines: List[Pipeline] = []
         self.ideal_throughput: float = 0.0
         self.ray_init_lock = threading.Lock()  # Lock for Ray initialization
+        self.mode: str = "default"  # default or hexgen
         
     def create_pipeline(self,
                        node_layer_mapping: List[Tuple[str, int]],
@@ -77,6 +78,7 @@ class Cluster:
                 - max_batch_size (optional): Maximum number of concurrent requests for this pipeline.
                                             None means unlimited (default: None).
                                             Note: This is a soft limit, actual count may slightly exceed it.
+                - mode (optional): "default" or "hexgen" (default: "default")
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
         """
         # Validate required config parameters
@@ -84,6 +86,9 @@ class Cluster:
         for key in required_keys:
             if key not in config:
                 raise ValueError(f"config must contain '{key}'")
+
+        if config.get("mode", "default") == "hexgen":
+            self.mode = "hexgen"
 
         pipeline = Pipeline()
         pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
@@ -173,6 +178,7 @@ class Pipeline:
 
         self.node_layer_mapping: List[Tuple[str, int]] = []  # Store for reference
         self.config: Dict = {}
+        self.mode = "default"  # default or hexgen
 
     def initialize_pipeline(self,
                             node_layer_mapping: List[Tuple[str, int]],
@@ -196,6 +202,7 @@ class Pipeline:
             f"model total layers ({total_num_layers})"
         )
 
+        self.mode = config.get("mode", "default")
         self.model_name = model_name
         self.total_layers = total_num_layers
         self.config = config
@@ -326,6 +333,11 @@ class Pipeline:
     def get_alternate_ray_port(self):
         """Get the alternate Ray port (6379 or 6380) for this pipeline."""
         # If current port is 6379, return 6380, and vice versa
+
+        # If mode hexgen, only return 6379
+        if self.mode == "hexgen":
+            return 6379
+
         if self.ray_port == 6379:
             return 6380
         else:
