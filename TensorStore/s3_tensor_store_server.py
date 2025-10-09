@@ -347,6 +347,17 @@ def process_tensor(tensor_name: str, full_tensor: torch.Tensor):
                 tensor = tensor.to(device=DEVICE)
             else:
                 tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
+        elif tensor_name.split('.')[0] == "lm_head":
+            vocab_size, hidden_size = full_tensor.shape
+            start_idx, end_idx, per_shard_dim_size = get_range_vocabulary_embedding_tensor(vocab_size)
+            if end_idx - start_idx > per_shard_dim_size:
+                raise ValueError(f"vocab_end_idx - vocab_start_idx > per_shard_vocab_size")
+            elif end_idx - start_idx < per_shard_dim_size:
+                tensor = torch.zeros(per_shard_dim_size, hidden_size, dtype=full_tensor.dtype, device="cpu")
+                tensor[:end_idx - start_idx, :] = full_tensor[start_idx:end_idx, :]
+                tensor = tensor.to(device=DEVICE)
+            else:
+                tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
         elif tensor_name.split('.')[-2] in DIV_COLUMN_WISE_LIST:
             output_dim, input_dim = full_tensor.shape
             start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(output_dim)
