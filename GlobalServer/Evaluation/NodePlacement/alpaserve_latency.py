@@ -1,24 +1,27 @@
 """
-Benchmark test for GlobalServer that measures throughput and latency metrics.
-Similar to benchmark_serving.py but using GlobalServer's internal add_request.
+Benchmark test for GlobalServer that measures single request latency.
+Uses fixed-length synthetic requests instead of trace data.
 """
 import asyncio
 import concurrent.futures
+import logging
 import sys
 import os
 from typing import Dict, List, Tuple
 
 # Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(parent_dir)
 
 from global_server import GlobalServer
 from request_handler import generate_random_requests
-from test_utils import setup_test_logger
 from benchmark_utils import (
-    calculate_benchmark_metrics, 
+    calculate_benchmark_metrics,
     print_benchmark_results,
     run_benchmark_requests
 )
+
+from nodes import *
 
 
 async def run_benchmark(
@@ -36,7 +39,7 @@ async def run_benchmark(
 ):
     """
     Run a benchmark test on the GlobalServer.
-    
+
     Args:
         global_server: The GlobalServer instance
         num_requests: Number of requests to send
@@ -49,7 +52,7 @@ async def run_benchmark(
         disable_tqdm: Whether to disable progress bar
         run_initial_test: Whether to run initial test requests
         test_requests_per_pipeline: Number of test requests per pipeline
-        
+
     Returns:
         BenchmarkMetrics object with results
     """
@@ -62,7 +65,7 @@ async def run_benchmark(
         print(f"  Request rate: {request_rate if request_rate != float('inf') else 'unlimited'} req/s")
         print(f"  Model: {model_name}")
         print("=" * 50 + "\n")
-    
+
     # Generate random requests
     if not disable_tqdm:
         print("Generating requests...")
@@ -73,12 +76,12 @@ async def run_benchmark(
         model_name=model_name,
         ignore_eos=True  # Ensure consistent output length
     )
-    
+
     # Run initial test if requested
     if run_initial_test:
         num_pipelines = len(global_server.cluster.pipelines)
         print(f"\nRunning initial test on {num_pipelines} pipeline(s)...")
-        
+
         # Generate test requests (2 per pipeline)
         test_count = test_requests_per_pipeline * num_pipelines
         test_inputs = request_inputs[:test_count] if test_count <= len(request_inputs) else generate_random_requests(
@@ -88,14 +91,14 @@ async def run_benchmark(
             model_name=model_name,
             ignore_eos=True
         )
-        
+
         # Send test requests
         print(f"Sending {test_count} test requests ({test_requests_per_pipeline} per pipeline)...")
         test_requests = []
         for test_input in test_inputs:
             request = await global_server.add_request_and_wait(test_input)
             test_requests.append(request)
-        
+
         # Check results
         failed_count = 0
         for i, request in enumerate(test_requests):
@@ -103,7 +106,7 @@ async def run_benchmark(
                 failed_count += 1
                 error_msg = request.output.error if request.output else "No output"
                 print(f"  Test request {i+1} failed: {error_msg}")
-        
+
         if failed_count > 0:
             raise ValueError(
                 f"Initial test failed - {failed_count}/{test_count} requests failed. "
@@ -112,50 +115,40 @@ async def run_benchmark(
         else:
             print(f"Initial test completed successfully - all {test_count} requests succeeded!")
             print("Starting main benchmark run...\n")
-    
+
     # Run benchmark (send requests and wait for completion)
     requests, actual_duration = await run_benchmark_requests(
         global_server, request_inputs, request_rate, max_concurrency, disable_tqdm
     )
-    
+
     # Calculate metrics
     if not disable_tqdm:
         print("\nCalculating metrics...")
     metrics = calculate_benchmark_metrics(
         requests, request_inputs, actual_duration, percentiles
     )
-    
+
     return metrics
 
 
 async def test_benchmark():
     """Test benchmark with a single node configuration."""
-    logger = setup_test_logger(__name__)
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
-    
+    # Setup logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s',
+                                  datefmt='%Y-%m-%d %H:%M:%S')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.propagate = False
+    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+
     # Create GlobalServer instance
     global_server = GlobalServer()
 
-    # Pipeline 1
-    pipeline_1_node_ip_1 = "172.31.9.212" # g6.xlarge
-    pipeline_1_config = {
-        "model_name": model_name,
-        "total_num_layers": 32,
-        "pp_layer_partition": "32",
-        "parallel_strategy": [1],  # Single GPU
-        "max_model_len": 8192,
-        "max_num_batched_tokens": 8192,
-        "max_num_seqs": 512,
-        "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 11264,
-        "max_batch_size": 352,
-    }
-    estimated_throughput_1 = 100
-    node_layer_mapping_1 = [
-        (pipeline_1_node_ip_1, 32)
-    ]
-    
     # Create pipeline in background
     async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
         loop = asyncio.get_event_loop()
@@ -168,41 +161,114 @@ async def test_benchmark():
                 throughput
             )
         logger.info("Pipeline creation completed")
-    
+
+    # Alpaserve Pipeline 1
+    pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
+    pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
+    pipeline_1_config = {
+        "model_name": model_name,
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.9,
+        "pp_layer_partition": "41,39",
+        "parallel_strategy": [4,4],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "num_gpu_blocks": 2860,
+        "max_batch_size": 46,
+    }
+    estimated_throughput_1 = 1.08
+    node_layer_mapping_1 = [
+        (pipeline_1_stage_0_node_ip, 41),
+        (pipeline_1_stage_1_node_ip, 39),
+    ]
+
+    # Pipeline 2
+    pipeline_2_stage_0_node_ip = g5_12xlarge_node_ip_1
+    pipeline_2_stage_1_node_ip = g5_12xlarge_node_ip_2
+    pipeline_2_config = {
+        "model_name": model_name,
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.9,
+        "pp_layer_partition": "41,39",
+        "parallel_strategy": [4,4],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "num_gpu_blocks": 2860,
+        "max_batch_size": 46,
+    }
+    estimated_throughput_2 = 1.62
+    node_layer_mapping_2 = [
+        (pipeline_2_stage_0_node_ip, 41),
+        (pipeline_2_stage_1_node_ip, 39),
+    ]
+
+    # Pipeline 3
+    pipeline_3_stage_0_node_ip = g6e_xlarge_node_ip_1
+    pipeline_3_stage_1_node_ip = g6e_xlarge_node_ip_2
+    pipeline_3_stage_2_node_ip = g6e_xlarge_node_ip_3
+    pipeline_3_stage_3_node_ip = g6e_xlarge_node_ip_4
+    pipeline_3_config = {
+        "model_name": model_name,
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.9,
+        "pp_layer_partition": "20,20,21,19",
+        "parallel_strategy": [1,1,1,1],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "num_gpu_blocks": 2425,
+        "max_batch_size": 39,
+    }
+    estimated_throughput_3 = 0.90
+    node_layer_mapping_3 = [
+        (pipeline_3_stage_0_node_ip, 20),
+        (pipeline_3_stage_1_node_ip, 20),
+        (pipeline_3_stage_2_node_ip, 21),
+        (pipeline_3_stage_3_node_ip, 19),
+    ]
+
     # Start pipeline creation
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
-    # pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_2, throughput_2))
-    # pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_3, throughput_3))
+    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
+    pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_3_config, node_layer_mapping_3, estimated_throughput_3))
 
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
-    
+
     try:
         # Wait for pipeline creation to complete
         logger.info("Waiting for pipeline creation to complete...")
         await pipeline_task_1
-        # await pipeline_task_2
-        # await pipeline_task_3
-        logger.info("Pipeline is ready!")
+        await pipeline_task_2
+        await pipeline_task_3
+        logger.info("Pipelines are ready!")
 
-        # Run benchmark
+        # Run benchmark - optimized for single request latency measurement
         metrics = await run_benchmark(
             global_server,
-            num_requests=20,  # Matching the example output
-            input_len=512,
-            output_len=128,
-            request_rate=float('inf'),  # No rate limit for max throughput test
+            num_requests=20,  # Small number of requests for latency measurement
+            input_len=763,
+            output_len=232,
+            request_rate=float('inf'),  # No rate limit
             model_name=model_name,
-            max_concurrency=1,  # Limit concurrent requests
-            percentiles=[25, 50, 75, 99],  # Custom percentiles
+            max_concurrency=None, 
+            percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,  # Show progress bars
             run_initial_test=True,  # Run test requests first
-            test_requests_per_pipeline=2  # 0 test requests per pipeline
+            test_requests_per_pipeline=2  # 2 test requests per pipeline
         )
-        
+
         # Print results
         print_benchmark_results(metrics)
-        
+
     except KeyboardInterrupt:
         logger.info("\nBenchmark interrupted by user")
     except Exception as e:
@@ -213,8 +279,8 @@ async def test_benchmark():
         logger.info("Cleaning up...")
         server_task.cancel()
         pipeline_task_1.cancel()
-        # pipeline_task_2.cancel()
-        # pipeline_task_3.cancel()
+        pipeline_task_2.cancel()
+        pipeline_task_3.cancel()
 
         try:
             await asyncio.gather(server_task, return_exceptions=True)
