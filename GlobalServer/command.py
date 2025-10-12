@@ -9,10 +9,10 @@ PYTHON = "/usr/bin/python"
 PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
 RAY = "/home/ubuntu/.local/bin/ray"
 
-def get_tensor_store_command(model_name: str, 
+def get_tensor_store_command(model_name: str,
                             tensor_parallel_size: int,
                             tensor_parallel_rank: int,
-                            local_rank: int, 
+                            local_rank: int,
                             pipeline_parallel_size: int,
                             pipeline_parallel_rank: int,
                             start_layer_id: int,
@@ -25,10 +25,11 @@ def get_tensor_store_command(model_name: str,
                             status_port: Optional[int] = None,
                             dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
-                            aws_profile: Optional[str] = None) -> str:
+                            aws_profile: Optional[str] = None,
+                            gpu_num_blocks: Optional[int] = None) -> str:
     """
     Generate command to start tensor store server.
-    
+
     Args:
         model_name: Name of the model (e.g., 'meta-llama/Llama-2-7b-hf')
         tensor_parallel_size: Number of GPUs for tensor parallelism
@@ -46,7 +47,8 @@ def get_tensor_store_command(model_name: str,
         pipeline_parallel_size: Pipeline parallel size for virtual engine allocation
         pipeline_parallel_rank: Pipeline parallel rank
         max_model_len: Maximum model sequence length
-    
+        gpu_num_blocks: Number of GPU blocks for KV cache (optional, overrides calculation)
+
     Returns:
         Command string to execute
     """
@@ -79,7 +81,9 @@ def get_tensor_store_command(model_name: str,
         cmd += f" --aws-profile {aws_profile}"
     if dtype is not None:
         cmd += f" --dtype {dtype}"
-        
+    if gpu_num_blocks is not None:
+        cmd += f" --gpu-num-blocks {gpu_num_blocks}"
+
     return cmd
 
 
