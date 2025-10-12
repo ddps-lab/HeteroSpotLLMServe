@@ -735,7 +735,8 @@ class VNode:
         swap_space = config.get("swap_space", 4.0)  # Default to 4GB swap space
         cache_dtype = config.get("cache_dtype", "auto")  # Default to auto-detect dtype
         max_model_len = config.get("max_model_len", 4096)
-        
+        num_gpu_blocks = config.get("num_gpu_blocks")  # Get num_gpu_blocks from config if present
+
         # Start tensor store processes for each GPU (for TP)
         for local_rank_idx in range(self.tp_size):
             local_rank = self.start_local_rank + local_rank_idx
@@ -757,7 +758,8 @@ class VNode:
                     gpu_memory_utilization=gpu_memory_utilization,
                     swap_space=swap_space,
                     cache_dtype=cache_dtype,
-                    max_model_len=max_model_len
+                    max_model_len=max_model_len,
+                    gpu_num_blocks=num_gpu_blocks
                 )
                 
                 # Prepare log files - save directly to local remote logs directory

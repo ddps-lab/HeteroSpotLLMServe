@@ -959,7 +959,9 @@ def main():
     logging.info("[KV Cache Allocation Phase Started]")
     num_gpu_blocks, num_cpu_blocks = determine_num_available_blocks(config_dict)
     if args.gpu_num_blocks is not None:
+        logging.info(f"[GPU Blocks Override] Overriding calculated num_gpu_blocks ({num_gpu_blocks}) with provided value: {args.gpu_num_blocks}")
         num_gpu_blocks = args.gpu_num_blocks
+        logging.info(f"[GPU Blocks Override] Using {num_gpu_blocks} GPU blocks as specified")
     kv_cache_info = allocate_kv_cache(config_dict, num_gpu_blocks)
     logging.info("[KV Cache Allocation Complete]")
     logging.info(f"  - Total GPU cache size: {kv_cache_info['total_gpu_cache_size_gb']:.2f} GiB")
