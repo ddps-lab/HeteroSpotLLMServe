@@ -196,7 +196,17 @@ class Pipeline:
         total_num_layers = config["total_num_layers"]
 
         # Check layer validity
-        total_assigned_layers = sum(layers for _, layers in node_layer_mapping)
+        total_assigned_layers = 0
+        # node layer mapping is composed of (ip, layers) or (ip, layers, start_local_rank)
+        for entry in node_layer_mapping:
+            if len(entry) == 2:
+                _, layers = entry
+                total_assigned_layers += layers
+            elif len(entry) == 3:
+                _, layers, _ = entry
+                total_assigned_layers += layers
+            else:
+                raise ValueError(f"Invalid node_layer_mapping entry: {entry}. Expected tuple of length 2 or 3")
         assert total_assigned_layers == total_num_layers, (
             f"Total assigned layers ({total_assigned_layers}) does not match "
             f"model total layers ({total_num_layers})"

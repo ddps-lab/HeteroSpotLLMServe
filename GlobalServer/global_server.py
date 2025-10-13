@@ -266,7 +266,15 @@ class GlobalServer:
         self.cluster.create_pipeline(node_layer_mapping, config, ideal_throughput)
 
         # Format node_layer_mapping for logging
-        node_info = ", ".join([f"{ip}({layers} layers)" for ip, layers in node_layer_mapping])
+        node_info = ""
+        for entry in node_layer_mapping:
+            if len(entry) == 3:
+                ip, layers, start_rank = entry
+                node_info += f"{ip}({layers} layers, start_rank={start_rank}), "
+            else:
+                ip, layers = entry
+                node_info += f"{ip}({layers} layers), "
+        node_info = node_info.rstrip(", ")
         logger.info(f"Created new pipeline: [{node_info}], "
                    f"ideal throughput: {ideal_throughput} req/sec")
     
