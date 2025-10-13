@@ -215,24 +215,57 @@ class Pipeline:
 
         # First, create VNode objects with placeholder GPU count
         start_layer_idx = 0
-        start_local_ranks = {} # ip: start_local_rank 가 들어있음.
-        for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
+        start_local_ranks = {}  # ip: current_local_rank for auto-calculation
+
+        for pipeline_rank, entry in enumerate(node_layer_mapping):
+            # Support both 2-tuple (auto) and 3-tuple (manual) formats
+            if len(entry) == 2:
+                # Auto-calculate start_local_rank
+                node_ip, layer_partition = entry
+                if node_ip not in start_local_ranks:
+                    start_local_ranks[node_ip] = 0
+                start_local_rank = start_local_ranks[node_ip]
+                mode = "auto"
+            elif len(entry) == 3:
+                # Use explicit start_local_rank
+                node_ip, layer_partition, start_local_rank = entry
+                if node_ip not in start_local_ranks:
+                    start_local_ranks[node_ip] = start_local_rank
+                mode = "manual"
+            else:
+                raise ValueError(
+                    f"Invalid node_layer_mapping entry at index {pipeline_rank}: {entry}. "
+                    f"Expected tuple of length 2 (node_ip, num_layers) or "
+                    f"3 (node_ip, num_layers, start_local_rank)"
+                )
+
             tp_size = config["parallel_strategy"][pipeline_rank]
-            if node_ip not in start_local_ranks:
-                start_local_ranks[node_ip] = 0
+
             vnode = VNode(
-                node_ip=node_ip, 
+                node_ip=node_ip,
                 tp_size=tp_size,
                 pipeline_rank=pipeline_rank,
-                start_local_rank=start_local_ranks[node_ip],
-                layer_start_id=start_layer_idx, 
+                start_local_rank=start_local_rank,
+                layer_start_id=start_layer_idx,
                 layer_end_id=start_layer_idx + layer_partition,
                 total_layers=self.total_layers
             )
-            start_local_ranks[node_ip] += tp_size
+
+            # Update the next auto-calculated start_local_rank for this IP
+            start_local_ranks[node_ip] = start_local_rank + tp_size
             start_layer_idx += layer_partition
+
+            cluster_logger.info(
+                f"Created VNode[{pipeline_rank}]: {node_ip} "
+                f"(layers [{vnode.layer_start_id}, {vnode.layer_end_id}), "
+                f"start_local_rank={start_local_rank}, tp_size={tp_size}, mode={mode})"
+            )
+
             self.vnodes.append(vnode)
-        
+
+        # Validate GPU allocation - check for conflicts
+        self._validate_gpu_allocation()
+
         # Now start Ray cluster with all vnodes
         ray_port = self.get_alternate_ray_port()
         self.start_ray_cluster(ray_port, ray_init_lock)
@@ -290,7 +323,56 @@ class Pipeline:
         # Mark pipeline as ready
         self.is_ready = True
         cluster_logger.info(f"Pipeline initialized and ready")
-    
+
+    def _validate_gpu_allocation(self):
+        """Validate that GPU allocations don't conflict within this pipeline.
+
+        Checks that no two VNodes on the same physical node use overlapping GPU ranges.
+        Raises ValueError if conflicts are detected.
+        """
+        # Track GPU usage per node: {node_ip: {local_rank: vnode_info}}
+        gpu_usage = {}
+
+        for vnode in self.vnodes:
+            if vnode.node_ip not in gpu_usage:
+                gpu_usage[vnode.node_ip] = {}
+
+            # Get the GPU range this vnode will use
+            gpu_range = range(vnode.start_local_rank, vnode.start_local_rank + vnode.tp_size)
+
+            # Check for conflicts
+            for local_rank in gpu_range:
+                if local_rank in gpu_usage[vnode.node_ip]:
+                    # Conflict detected!
+                    conflicting_vnode = gpu_usage[vnode.node_ip][local_rank]
+                    raise ValueError(
+                        f"GPU allocation conflict detected on node {vnode.node_ip}!\n"
+                        f"  GPU {local_rank} is used by multiple VNodes:\n"
+                        f"    - VNode (pipeline_rank={conflicting_vnode['pipeline_rank']}, "
+                        f"start_local_rank={conflicting_vnode['start_local_rank']}, "
+                        f"tp_size={conflicting_vnode['tp_size']}, "
+                        f"GPUs=[{conflicting_vnode['start_local_rank']}-"
+                        f"{conflicting_vnode['start_local_rank'] + conflicting_vnode['tp_size'] - 1}])\n"
+                        f"    - VNode (pipeline_rank={vnode.pipeline_rank}, "
+                        f"start_local_rank={vnode.start_local_rank}, "
+                        f"tp_size={vnode.tp_size}, "
+                        f"GPUs=[{vnode.start_local_rank}-{vnode.start_local_rank + vnode.tp_size - 1}])\n"
+                        f"  Please ensure each GPU is assigned to only one VNode."
+                    )
+
+                # Mark this GPU as used
+                gpu_usage[vnode.node_ip][local_rank] = {
+                    'pipeline_rank': vnode.pipeline_rank,
+                    'start_local_rank': vnode.start_local_rank,
+                    'tp_size': vnode.tp_size
+                }
+
+        # Log the validated allocation
+        cluster_logger.info("GPU allocation validation passed:")
+        for node_ip, gpus in gpu_usage.items():
+            gpu_list = sorted(gpus.keys())
+            cluster_logger.info(f"  {node_ip}: GPUs {gpu_list}")
+
     def _generate_node_rank_mapping(self):
         """Generate node_rank_mapping based on current vnodes."""
         self.node_rank_mapping = {}
