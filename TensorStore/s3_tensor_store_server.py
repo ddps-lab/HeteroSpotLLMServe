@@ -787,12 +787,17 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
 
 def main():
     args = parse_args()
-    
+
+    # Set CUDA device for this process BEFORE any CUDA operations
+    # This prevents all processes from defaulting to cuda:0
+    torch.cuda.set_device(args.local_rank)
+    logging.info(f"Set CUDA device to cuda:{args.local_rank} for this process")
+
     # Start status server
     threading.Thread(target=_status_server,
                      args=(args.status_host, args.status_port),
                      daemon=True).start()
-    
+
     logging.info(f"args: {args}")
     
     # Parse S3 path
