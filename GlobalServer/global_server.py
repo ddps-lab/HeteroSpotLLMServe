@@ -179,12 +179,11 @@ class GlobalServer:
             request: The request to process
             pipeline_index: Which pipeline to send to
         """
-        pipeline = self.cluster.pipelines[pipeline_index]
-
-        # Increment flying request count before starting
-        pipeline.add_flying_request()
-
         try:
+            pipeline = self.cluster.pipelines[pipeline_index]
+
+            # Increment flying request count before starting
+            pipeline.add_flying_request()
             output = await self.send_request(request, pipeline_index)
             request.output = output
 
