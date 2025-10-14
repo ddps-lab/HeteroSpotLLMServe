@@ -98,20 +98,20 @@ class Cluster:
     def stop_all_pipelines(self):
         """Stop all pipelines in the cluster."""
         cluster_logger.info(f"Stopping {len(self.pipelines)} pipelines...")
-        
+
         # Handle case when no pipelines exist
         if not self.pipelines:
             cluster_logger.info("No pipelines to stop.")
             return
-        
+
         # Stop all pipelines in parallel
         with ThreadPoolExecutor(max_workers=len(self.pipelines)) as executor:
             futures = []
-            
+
             for i, pipeline in enumerate(self.pipelines):
                 future = executor.submit(pipeline.stop_pipeline)
                 futures.append((i, future))
-            
+
             # Wait for all to complete
             for pipeline_idx, future in futures:
                 try:
@@ -119,8 +119,64 @@ class Cluster:
                     cluster_logger.info(f"Pipeline {pipeline_idx} stopped successfully")
                 except Exception as e:
                     cluster_logger.error(f"Failed to stop pipeline {pipeline_idx}: {e}")
-        
+
         cluster_logger.info("All pipelines stopped")
+
+    def stop_pipeline_include_node_ip(self, node_ip: str):
+        """
+        Stop all pipelines that contain a node with the specified IP address.
+
+        Args:
+            node_ip: IP address of the node to search for in pipelines
+        """
+        cluster_logger.info(f"Searching for pipelines containing node IP: {node_ip}")
+
+        # Find all pipelines containing the specified node IP
+        pipelines_to_stop = []
+        pipelines_indices = []
+
+        for i, pipeline in enumerate(self.pipelines):
+            for vnode in pipeline.vnodes:
+                if vnode.node_ip == node_ip:
+                    pipelines_to_stop.append(pipeline)
+                    pipelines_indices.append(i)
+                    cluster_logger.info(f"Found pipeline {i} containing node {node_ip}")
+                    break  # No need to check other vnodes in this pipeline
+
+        # Handle case when no pipelines contain the node IP
+        if not pipelines_to_stop:
+            cluster_logger.warning(f"No pipelines found containing node IP: {node_ip}")
+            return
+
+        cluster_logger.info(f"Stopping {len(pipelines_to_stop)} pipeline(s) containing node {node_ip}...")
+
+        # Stop all matching pipelines in parallel
+        with ThreadPoolExecutor(max_workers=len(pipelines_to_stop)) as executor:
+            futures = []
+
+            for i, pipeline in enumerate(pipelines_to_stop):
+                future = executor.submit(pipeline.stop_pipeline)
+                futures.append((pipelines_indices[i], pipeline, future))
+
+            # Wait for all to complete
+            stopped_pipelines = []
+            for pipeline_idx, pipeline, future in futures:
+                try:
+                    future.result(timeout=300)  # 5 minutes timeout per pipeline
+                    cluster_logger.info(f"Pipeline {pipeline_idx} stopped successfully")
+                    stopped_pipelines.append(pipeline)
+                except Exception as e:
+                    cluster_logger.error(f"Failed to stop pipeline {pipeline_idx}: {e}")
+                    stopped_pipelines.append(pipeline)  # Mark as stopped even if failed
+
+        # Remove stopped pipelines from the cluster and adjust ideal_throughput
+        for pipeline in stopped_pipelines:
+            if pipeline in self.pipelines:
+                self.ideal_throughput -= pipeline.ideal_throughput
+                self.pipelines.remove(pipeline)
+                cluster_logger.info(f"Removed pipeline from cluster. New ideal_throughput: {self.ideal_throughput}")
+
+        cluster_logger.info(f"Completed stopping {len(stopped_pipelines)} pipeline(s) containing node {node_ip}")
 
     def switch_node(self, old_node_ip: str, new_node_ip: str):
         """
@@ -420,7 +476,7 @@ class Pipeline:
     def remove_flying_request(self):
         """Decrement the flying request count (thread-safe)."""
         with self._flying_requests_lock:
-            self.flying_requests -= 1
+            self.flying_requests = max(0, self.flying_requests - 1)
 
     def get_alternate_ray_port(self):
         """Get the alternate Ray port (6379 or 6380) for this pipeline."""
