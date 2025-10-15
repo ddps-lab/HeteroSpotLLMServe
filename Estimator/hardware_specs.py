@@ -1,7 +1,7 @@
 # spec 은 float 16 기준
 GPU_SPEC = {
     "T4":         {"memory_size": 16000,  "FLOPS": 65 * 10**12,    "memory_bandwidth": 320 * 10**9},
-    "A10G":       {"memory_size": 22494,  "FLOPS": 125 * 10**12,   "memory_bandwidth": 600 * 10**9},
+    "A10G":       {"memory_size": 22494,  "FLOPS": 70 * 10**12,   "memory_bandwidth": 600 * 10**9},
     "L4":         {"memory_size": 22494,  "FLOPS": 121 * 10**12,   "memory_bandwidth": 300 * 10**9},
     "L40S":       {"memory_size": 44988,  "FLOPS": 362 * 10**12,   "memory_bandwidth": 864 * 10**9},
     "A100_40GB":  {"memory_size": 40000,  "FLOPS": 312 * 10**12,   "memory_bandwidth": 1555 * 10**9},
