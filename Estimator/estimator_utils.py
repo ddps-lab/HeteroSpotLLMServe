@@ -461,13 +461,15 @@ def get_prefill_computation_latency_per_layer(
     for key, computation_ops, computation_memory_access in zip(key_list, ops_list, memory_access_list):
         arithmetic_intensity = computation_ops / (computation_memory_access * dtype.itemsize)  # Bytes 단위로 변환
         if arithmetic_intensity < device_arithmetic_intensity:
+            latency = (computation_memory_access * dtype.itemsize) / (memory_bandwidth / 1000) # Bytes/s to ms
             # Memory bound
-            logging.debug(f"{key} layer is memory bound in prefill with device {gpu_type}")
-            latency_per_layer += (computation_memory_access * dtype.itemsize) / (memory_bandwidth / 1000) # Bytes/s to ms
+            logging.debug(f"{key} layer is memory bound in prefill with device {gpu_type}x{gpu_count} with {latency:.2f}ms (per layer)")
+            latency_per_layer += latency
         else:
+            latency = computation_ops / (flops / 1000)  # FLOPS to ms
             # Compute bound
-            logging.debug(f"{key} layer is compute bound in prefill with device {gpu_type}")
-            latency_per_layer += computation_ops / (flops / 1000)  # FLOPS to ms
+            logging.debug(f"{key} layer is compute bound in prefill with device {gpu_type}x{gpu_count} with {latency:.2f}ms (per layer)")
+            latency_per_layer += latency
 
     return latency_per_layer
 
@@ -499,9 +501,11 @@ def get_prefill_compute_logit_latency(
     if arithmetic_intensity < device_arithmetic_intensity:
         # Memory bound
         latency = compute_logit_memory_access / (memory_bandwidth / 1000) # Bytes/s to ms
+        logging.debug(f"Prefill compute logit layer is memory bound with device {gpu_type}x{gpu_count} with {latency:.2f}ms")
     else:
         # Compute bound
         latency = compute_logit_ops / (flops / 1000)  # FLOPS to ms
+        logging.debug(f"Prefill compute logit layer is compute bound with device {gpu_type}x{gpu_count} with {latency:.2f}ms")
 
     return latency
 
@@ -578,13 +582,15 @@ def get_decoding_computation_latency_per_layer(
     for key, computation_ops_per_layer, computation_memory_access_per_layer in zip(key_list, ops_list, memory_access_list):
         arithmetic_intensity = computation_ops_per_layer / (computation_memory_access_per_layer * dtype.itemsize)  # Bytes 단위로 변환
         if arithmetic_intensity < device_arithmetic_intensity:
-            logging.debug(f"{key} layer is memory bound in decoding with device {gpu_type}")
+            latency = (computation_memory_access_per_layer * dtype.itemsize) / (memory_bandwidth / 1000) # Bytes/s to ms
+            logging.debug(f"{key} layer is memory bound in decoding with device {gpu_type}x{gpu_count} with {latency:.2f}ms (per layer)")
             # Memory bound
-            latency_per_layer += (computation_memory_access_per_layer * dtype.itemsize) / (memory_bandwidth / 1000) # Bytes/s to ms
+            latency_per_layer += latency
         else:
-            logging.debug(f"{key} layer is compute bound in decoding with device {gpu_type}")
+            latency = computation_ops_per_layer / (flops / 1000)  # FLOPS to ms
+            logging.debug(f"{key} layer is compute bound in decoding with device {gpu_type}x{gpu_count} with {latency:.2f}ms (per layer)")
             # Compute bound
-            latency_per_layer += computation_ops_per_layer / (flops / 1000)  # FLOPS to ms
+            latency_per_layer += latency
     return latency_per_layer
 
 def get_decoding_compute_logit_latency(
@@ -615,9 +621,11 @@ def get_decoding_compute_logit_latency(
     if arithmetic_intensity < device_arithmetic_intensity:
         # Memory bound
         latency = compute_logit_memory_access / (memory_bandwidth / 1000) # Bytes/s to ms
+        logging.debug(f"Decoding compute logit layer is memory bound with device {gpu_type}x{gpu_count} with {latency:.2f}ms")
     else:
         # Compute bound
         latency = compute_logit_ops / (flops / 1000)  # FLOPS to ms
+        logging.debug(f"Decoding compute logit layer is compute bound with device {gpu_type}x{gpu_count} with {latency:.2f}ms")
     return latency
 
 def get_forwarding_memory(
@@ -630,7 +638,7 @@ def get_forwarding_memory(
         intermediate_dim = 4 * hidden_dim
 
     forwarding_memory = (
-        3 * # up / gate / output
+        2 * # up / gate / output
         max_model_len * # maximum input
         intermediate_dim * # intermediate dimension
         dtype.itemsize # element size
@@ -844,9 +852,12 @@ def get_single_request_latency(
 
         tp_communication_latency += prefill_tp_communication_latency + prefill_compute_logit_tp_communication_latency
         tp_communication_latency += decoding_tp_communication_latency + decoding_compute_logit_tp_communication_latency
+
+        logging.debug(f"Node Type: {node_type}, Layers: {layer_count}, Prefill Latency: {prefill_latencies[-1]:.2f}ms, Decoding Latency: {decoding_latencies[-1]:.2f}ms")
+        logging.debug(f"    Logit Latency: Prefill {prefill_logit_latency:.2f}ms, Decoding {decoding_logit_latency:.2f}ms")
     
     total_computation_latency = sum(prefill_latencies)
-    total_computation_latency += max(decoding_latencies) * total_stages
+    total_computation_latency += sum(decoding_latencies)
     total_communication_latency = pp_communication_latency + tp_communication_latency
 
     return total_computation_latency + total_communication_latency
@@ -910,8 +921,9 @@ def get_global_batch_size(
 
 
         forwarding_memory = get_forwarding_memory(
-            max_model_len,
-            hidden_dim,
+            max_model_len=max_model_len,
+            hidden_dim=hidden_dim,
+            intermediate_dim=intermediate_dim,
             dtype=dtype
         )
         available_kv_cache_memory = total_memory_available - model_weight_memory - forwarding_memory
@@ -923,6 +935,7 @@ def get_global_batch_size(
             # 굳이 남은 for 문을 돌릴 필요가 없다.
             # 해당 파이프라인은 불가능한 파이프라인이기 때문에.
             logging.debug(f"Node Type {node_type} with {layer_count} layers cannot fit KV cache even for batch size 1.")
+            logging.debug(f"Required Minimum KV Cache memory : {kv_memory_needed_per_layer * layer_count / (1000**3):.2f} GB")
             logging.debug(f"Total Memory Available ({node_type}, {layer_count}): {total_memory_available / (1000**3):.2f} GB")
             logging.debug(f"Model Weight Memory ({node_type}, {layer_count}): {model_weight_memory / (1000**3):.2f} GB")
             logging.debug(f"Forwarding Memory ({node_type}, {layer_count}): {forwarding_memory / (1000**3):.2f} GB")
@@ -1050,6 +1063,9 @@ def get_throughput(
                 gpu_count=num_gpu,
                 input_len=avg_input_len,
                 hidden_dim=hidden_dim,
+                num_attention_head=num_attention_head,
+                num_kv_cache_head=num_kv_cache_head,
+                intermediate_dim=intermediate_dim,
                 batch_size=max_prefill_batch_size,
                 dtype=dtype
             ) * layer_count
@@ -1147,6 +1163,7 @@ def get_throughput(
                     hidden_dim=hidden_dim,
                     num_attention_head=num_attention_head,
                     num_kv_cache_head=num_kv_cache_head,
+                    intermediate_dim=intermediate_dim,
                     batch_size=tmp_batch_size,
                     dtype=dtype
                 ) * layer_count
@@ -1239,6 +1256,7 @@ def get_throughput(
                 hidden_dim=hidden_dim,
                 num_attention_head=num_attention_head,
                 num_kv_cache_head=num_kv_cache_head,
+                intermediate_dim=intermediate_dim,
                 batch_size=decoding_batch_size,
                 dtype=dtype
             ) * layer_count
@@ -1343,14 +1361,12 @@ def get_throughput(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
     from transformers import AutoConfig
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
-    look_rank = 5
-
     config = {
-        "expected_input_len": 512,  # 입력 시퀀스 길이
-        "expected_output_len": 128,  # 출력 시퀀스 길이
+        "expected_input_len": 763,  # 입력 시퀀스 길이
+        "expected_output_len": 232,  # 출력 시퀀스 길이
         "hidden_size": model_config.hidden_size,
         "num_layers": model_config.num_hidden_layers,
         "num_attention_heads": model_config.num_attention_heads,
@@ -1360,8 +1376,7 @@ if __name__ == "__main__":
         "max_position_embeddings": model_config.max_position_embeddings,
         "dtype": torch.float16,
         "max_model_len": 8192,
-        "gpu_mem_utilization": 0.9,
-        "mode": "hexgen"
+        "gpu_mem_utilization": 0.85,
     }
 
     # Unit test for model weights
@@ -1402,8 +1417,7 @@ if __name__ == "__main__":
     # Unit Test : Get Global Batch Size
     
     node_layer_comb = [
-        ("p5.4xlarge", "dummy-az", 40),
-        ("p5.4xlarge", "dummy-az", 40),
+        ("g6.xlarge", "dummy-az", 32),
     ]
 
     global_batch_size = get_global_batch_size(
