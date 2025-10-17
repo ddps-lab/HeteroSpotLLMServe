@@ -169,26 +169,19 @@ async def test_benchmark():
         "model_name": model_name,
         "total_num_layers": 32,
         "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "4,4,4,4,4,4,4,4",
-        "parallel_strategy": [1,1,1,1,1,1,1,1],
+        "pp_layer_partition": "32",
+        "parallel_strategy": [8],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 2048,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 64760,
-        "max_batch_size": 1619,
+        "num_gpu_blocks": 69320,
+        "max_batch_size": 1733,
     }
-    estimated_throughput_1 = 45.28
+    estimated_throughput_1 = 11.51
     node_layer_mapping_1 = [
-        (node_ip, 4),
-        (node_ip, 4),
-        (node_ip, 4),
-        (node_ip, 4),
-        (node_ip, 4),
-        (node_ip, 4),
-        (node_ip, 4),
-        (node_ip, 4),
+        (node_ip, 32),
     ]
 
     # Start pipeline creation
@@ -206,7 +199,7 @@ async def test_benchmark():
         # Run benchmark - optimized for single request latency measurement
         metrics = await run_benchmark(
             global_server,
-            num_requests=20,  # Small number of requests for latency measurement
+            num_requests=1733*5,  # Small number of requests for latency measurement
             input_len=763,
             output_len=232,
             request_rate=float('inf'),  # No rate limit
