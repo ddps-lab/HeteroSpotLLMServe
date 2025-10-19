@@ -6,6 +6,7 @@ import asyncio
 import concurrent.futures
 import sys
 import os
+from datetime import datetime
 from typing import Dict, List, Tuple
 
 # Add parent directories to path
@@ -38,8 +39,8 @@ async def test_trace_benchmark():
     )
 
     # Benchmark configuration
-    max_requests = 1000  # Start with a small number for testing
-    time_scale = 0  # 1.0 = original speed, 0.1 = 10x faster, 10.0 = 10x slower, 0 = offline
+    max_requests = 100  # Start with a small number for testing
+    time_scale = 1.0  # 1.0 = original speed, 0.1 = 10x faster, 10.0 = 10x slower, 0 = offline
     run_initial_test = True
     test_requests_per_pipeline = 2
 
@@ -47,7 +48,7 @@ async def test_trace_benchmark():
     global_server = GlobalServer()
 
     # Pipeline configuration
-    pipeline_node_ip = "172.31.30.165"  # g6.xlarge
+    pipeline_node_ip = "172.31.19.13"  # g6.xlarge
     pipeline_config = {
         "model_name": model_name,
         "total_num_layers": 32,
@@ -58,8 +59,8 @@ async def test_trace_benchmark():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 1741,
-        "max_batch_size": 28,
+        "num_gpu_blocks": 1181,
+        "max_batch_size": 19,
     }
     estimated_throughput = 100
     node_layer_mapping = [
@@ -151,13 +152,20 @@ async def test_trace_benchmark():
 
         print(f"Generated {len(trace_requests)} requests from trace\n")
 
+        # Prepare trace output path with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        trace_dir = os.path.join(current_dir, "Trace")
+        os.makedirs(trace_dir, exist_ok=True)
+        trace_output_path = os.path.join(trace_dir, f"test_trace_benchmark_{timestamp}.csv")
+
         # Run trace replay benchmark
         metrics = await run_trace_replay_benchmark(
             global_server=global_server,
             trace_requests=trace_requests,
             time_scale=time_scale,
             percentiles=[10, 25, 50, 75, 90, 99],
-            disable_tqdm=False
+            disable_tqdm=False,
+            save_trace_path=trace_output_path
         )
 
         # Print results
