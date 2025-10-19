@@ -7,6 +7,7 @@ import concurrent.futures
 import logging
 import sys
 import os
+from datetime import datetime
 from typing import Dict, List, Tuple
 
 # Add parent directory to path
@@ -97,8 +98,6 @@ async def run_benchmark(
     trace_data = load_azure_trace(
         csv_path=dataset_path,
         max_requests=num_requests,
-        max_context_tokens=2048,  # Filter out very long contexts
-        max_generated_tokens=None
     )
 
     if not trace_data:
@@ -115,13 +114,20 @@ async def run_benchmark(
 
     print(f"Generated {len(trace_requests)} requests from trace\n")
 
+    # Prepare trace output path with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    trace_dir = os.path.join(parent_dir, "Trace")
+    os.makedirs(trace_dir, exist_ok=True)
+    trace_output_path = os.path.join(trace_dir, f"alpaserve_throughput_{timestamp}.csv")
+
     # Run trace replay benchmark
     metrics = await run_trace_replay_benchmark(
         global_server=global_server,
         trace_requests=trace_requests,
         time_scale=time_scale,
         percentiles=percentiles,
-        disable_tqdm=disable_tqdm
+        disable_tqdm=disable_tqdm,
+        save_trace_path=trace_output_path
     )
 
     return metrics
@@ -158,27 +164,29 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
-    # Hexgen Pipeline 1
+    # AlpaServe Pipeline 1
     pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
     pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
+    pipeline_1_stage_2_node_ip = g6_12xlarge_node_ip_3
     pipeline_1_config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "41,39",
-        "parallel_strategy": [4,4],
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "27,27,26",
+        "parallel_strategy": [4,4,4],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 2860,
-        "max_batch_size": 46,
+        "num_gpu_blocks": 15360,
+        "max_batch_size": 247,
     }
-    estimated_throughput_1 = 1.08
+    estimated_throughput_1 = 2.89
     node_layer_mapping_1 = [
-        (pipeline_1_stage_0_node_ip, 41),
-        (pipeline_1_stage_1_node_ip, 39),
+        (pipeline_1_stage_0_node_ip, 27),
+        (pipeline_1_stage_1_node_ip, 27),
+        (pipeline_1_stage_2_node_ip, 26),
     ]
 
     # Pipeline 2
@@ -187,7 +195,7 @@ async def test_benchmark():
     pipeline_2_config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.9,
+        "gpu_memory_utilization": 0.85,
         "pp_layer_partition": "41,39",
         "parallel_strategy": [4,4],
         "max_model_len": 8192,
@@ -195,16 +203,16 @@ async def test_benchmark():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 2860,
-        "max_batch_size": 46,
+        "num_gpu_blocks": 1181,
+        "max_batch_size": 19,
     }
-    estimated_throughput_2 = 1.62
+    estimated_throughput_2 = 0.95
     node_layer_mapping_2 = [
         (pipeline_2_stage_0_node_ip, 41),
         (pipeline_2_stage_1_node_ip, 39),
     ]
 
-    # Pipeline 2
+    # Pipeline 3
     pipeline_3_stage_0_node_ip = g6e_xlarge_node_ip_1
     pipeline_3_stage_1_node_ip = g6e_xlarge_node_ip_2
     pipeline_3_stage_2_node_ip = g6e_xlarge_node_ip_3
@@ -220,10 +228,10 @@ async def test_benchmark():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 2425,
-        "max_batch_size": 39,
+        "num_gpu_blocks": 684,
+        "max_batch_size": 11,
     }
-    estimated_throughput_3 = 0.90
+    estimated_throughput_3 = 0.27
     node_layer_mapping_3 = [
         (pipeline_3_stage_0_node_ip, 20),
         (pipeline_3_stage_1_node_ip, 20),
@@ -257,13 +265,13 @@ async def test_benchmark():
         metrics = await run_benchmark(
             global_server,
             dataset_path=dataset_path,
-            num_requests=5000,  # Load first 5000 requests from dataset
-            time_scale=1.0,  # Original trace speed
+            num_requests=None,
+            time_scale=0.0,  # Original trace speed (0.0 = Offline)
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,  # Show progress bars
             run_initial_test=True,  # Run test requests first
-            test_requests_per_pipeline=2  # 2 test requests per pipeline
+            test_requests_per_pipeline=0  # 0 test requests per pipeline
         )
         
         # Print results
