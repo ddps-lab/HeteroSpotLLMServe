@@ -85,38 +85,6 @@ class DisabledTqdm(tqdm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, disable=True)
 
-temp_dir = tempfile.gettempdir()
-
-def get_lock(model_name_or_path: Union[str, Path], cache_dir: Optional[str] = None):
-    lock_dir = cache_dir or temp_dir
-    model_name_or_path = str(model_name_or_path)
-    os.makedirs(os.path.dirname(lock_dir), exist_ok=True)
-    model_name = model_name_or_path.replace("/", "-")
-    hash_name = hashlib.sha256(model_name.encode()).hexdigest()
-    lock_file_name = hash_name + model_name + ".lock"
-    lock = filelock.FileLock(os.path.join(lock_dir, lock_file_name), mode=0o666)
-    return lock
-
-def get_range_vocabulary_embedding_tensor(vocab_size: int) -> tuple[int, int, int]:
-    padding_size = VOCAB_PADDING_SIZE
-    
-    vocab_size_padded = ((vocab_size + padding_size - 1) // padding_size) * padding_size
-    assert vocab_size_padded % TENSOR_PARALLEL_SIZE == 0
-    per_shard_vocab_size = vocab_size_padded // TENSOR_PARALLEL_SIZE
-    padded_vocab_idx_start = TENSOR_PARALLEL_RANK * per_shard_vocab_size
-    padded_vocab_idx_end = padded_vocab_idx_start + per_shard_vocab_size
-    
-    vocab_start_idx = min(padded_vocab_idx_start, vocab_size)
-    vocab_end_idx = min(padded_vocab_idx_end, vocab_size)
-    
-    return vocab_start_idx, vocab_end_idx, per_shard_vocab_size
-
-def get_tensor_idx_range(dim: int) -> tuple[int, int, int]:
-    assert dim % TENSOR_PARALLEL_SIZE == 0
-    per_shard_dim_size = dim // TENSOR_PARALLEL_SIZE
-    shard_idx_start = TENSOR_PARALLEL_RANK * per_shard_dim_size
-    shard_idx_end = shard_idx_start + per_shard_dim_size
-    return shard_idx_start, shard_idx_end, per_shard_dim_size
 
 def should_load_tensor(tensor_name: str, tie_word_embeddings: bool) -> bool:
     """Check if tensor should be loaded based on layer partitioning logic (same as mt_tensor_store_server.py)"""
@@ -142,43 +110,42 @@ def should_load_tensor(tensor_name: str, tie_word_embeddings: bool) -> bool:
     return should_load
 
 def list_tensor_files_from_s3_with_boto3(s3_client, bucket_name: str, base_s3_path: str) -> List[str]:
-    """Get list of all tensor file names available in S3 using boto3"""
+    """Get list of all tensor file names available in S3 for this TP configuration"""
     tensor_names = []
-    
+
     try:
-        # Set up prefix for listing
-        prefix = f"{base_s3_path}/" if base_s3_path else ""
-        
+        # Set up prefix for listing with TP-specific path: TP{tp_size}/shard{tp_rank}/
+        if base_s3_path:
+            prefix = f"{base_s3_path}/TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/"
+        else:
+            prefix = f"TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/"
+
+        logging.info(f"Listing tensors from S3 with prefix: {prefix}")
+
         # List objects with pagination
         paginator = s3_client.get_paginator('list_objects_v2')
         pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
-        
+
         for page in pages:
             if 'Contents' in page:
                 for obj in page['Contents']:
                     key = obj['Key']
-                    
+
                     if key.endswith('.bin') and not key.endswith('config.json'):
-                        # Extract tensor name
-                        if base_s3_path:
-                            if key.startswith(prefix):
-                                tensor_name = key[len(prefix):][:-4]  # Remove .bin
-                            else:
-                                continue
-                        else:
-                            tensor_name = key[:-4]  # Remove .bin extension
-                        
-                        tensor_names.append(tensor_name)
-        
-        logging.info(f"Found {len(tensor_names)} tensor files in S3")
-        
+                        # Extract tensor name (remove prefix and .bin extension)
+                        if key.startswith(prefix):
+                            tensor_name = key[len(prefix):][:-4]  # Remove .bin
+                            tensor_names.append(tensor_name)
+
+        logging.info(f"Found {len(tensor_names)} tensor files in S3 for TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}")
+
     except ClientError as e:
         logging.error(f"Error listing tensors from S3: {e}")
         raise
     except Exception as e:
         logging.error(f"Unexpected error listing tensors from S3: {e}")
         raise
-    
+
     return tensor_names
 
 def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bool) -> List[str]:
@@ -191,47 +158,6 @@ def filter_required_tensors(all_tensor_names: List[str], tie_word_embeddings: bo
     
     logging.info(f"Filtered to {len(required_tensors)} required tensors out of {len(all_tensor_names)} total")
     return required_tensors
-
-def check_local_tensor_files(local_storage_path: str, required_tensor_names: List[str]) -> tuple[List[str], List[str]]:
-    """Check which tensor files exist locally and which need to be downloaded
-    
-    Returns:
-        tuple: (existing_tensors, missing_tensors)
-    """
-    existing_tensors = []
-    missing_tensors = []
-    
-    for tensor_name in required_tensor_names:
-        local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
-        if os.path.exists(local_file_path):
-            existing_tensors.append(tensor_name)
-        else:
-            missing_tensors.append(tensor_name)
-    
-    logging.info(f"[Local Cache Check] {len(existing_tensors)} tensors found locally, {len(missing_tensors)} need download")
-    return existing_tensors, missing_tensors
-
-def save_tensor_to_local(tensor: torch.Tensor, local_storage_path: str, tensor_name: str):
-    """Save a tensor to local storage"""
-    local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
-    
-    # Create directory if it doesn't exist
-    os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
-    
-    # Save tensor
-    torch.save(tensor, local_file_path)
-    logging.debug(f"Saved tensor to local: {local_file_path}")
-
-def load_tensor_from_local(local_storage_path: str, tensor_name: str) -> torch.Tensor:
-    """Load a tensor from local storage"""
-    local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
-    
-    if not os.path.exists(local_file_path):
-        raise FileNotFoundError(f"Local tensor file not found: {local_file_path}")
-    
-    logging.debug(f"Loading tensor from local: {local_file_path}")
-    tensor = torch.load(local_file_path, map_location="cpu")
-    return tensor
 
 def log_required_tensors_summary(required_tensor_names: List[str]):
     """Log required tensors in a formatted, readable way"""
@@ -325,68 +251,37 @@ def load_tensor_from_s3_direct(s3_client: boto3.client, bucket_name: str, s3_key
         logging.error(f"Unexpected error loading {s3_key}: {e}")
         raise
 
-def process_tensor(tensor_name: str, full_tensor: torch.Tensor):
-    """Process a tensor - use original dtype from tensor"""
+def load_tensor_to_gpu(tensor_name: str, partitioned_tensor: torch.Tensor):
+    """Load a pre-partitioned tensor to GPU (no processing needed)"""
     global DTYPE
-    
+
     try:
         # Set global DTYPE from first tensor if not set yet
         if DTYPE is None:
-            DTYPE = full_tensor.dtype
+            DTYPE = partitioned_tensor.dtype
             logging.info(f"Set global DTYPE to {DTYPE} from tensor")
-        
-        # Process tensor based on type and slice as needed
-        if tensor_name.split('.')[-2] == "embed_tokens":
-            vocab_size, hidden_size = full_tensor.shape
-            start_idx, end_idx, per_shard_dim_size = get_range_vocabulary_embedding_tensor(vocab_size)
-            if end_idx - start_idx > per_shard_dim_size:
-                raise ValueError(f"vocab_end_idx - vocab_start_idx > per_shard_vocab_size")
-            elif end_idx - start_idx < per_shard_dim_size:
-                tensor = torch.zeros(per_shard_dim_size, hidden_size, dtype=full_tensor.dtype, device="cpu")
-                tensor[:end_idx - start_idx, :] = full_tensor[start_idx:end_idx, :]
-                tensor = tensor.to(device=DEVICE)
-            else:
-                tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
-        elif tensor_name.split('.')[0] == "lm_head":
-            vocab_size, hidden_size = full_tensor.shape
-            start_idx, end_idx, per_shard_dim_size = get_range_vocabulary_embedding_tensor(vocab_size)
-            if end_idx - start_idx > per_shard_dim_size:
-                raise ValueError(f"vocab_end_idx - vocab_start_idx > per_shard_vocab_size")
-            elif end_idx - start_idx < per_shard_dim_size:
-                tensor = torch.zeros(per_shard_dim_size, hidden_size, dtype=full_tensor.dtype, device="cpu")
-                tensor[:end_idx - start_idx, :] = full_tensor[start_idx:end_idx, :]
-                tensor = tensor.to(device=DEVICE)
-            else:
-                tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
-        elif tensor_name.split('.')[-2] in DIV_COLUMN_WISE_LIST:
-            output_dim, input_dim = full_tensor.shape
-            start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(output_dim)
-            tensor = full_tensor[start_idx:end_idx, :].to(device=DEVICE)
-        elif tensor_name.split('.')[-2] in DIV_ROW_WISE_LIST:
-            output_dim, input_dim = full_tensor.shape
-            start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(input_dim)
-            tensor = full_tensor[:, start_idx:end_idx].to(device=DEVICE)
-        else:
-            tensor = full_tensor[:].to(device=DEVICE)
-        
+
+        # Move tensor to GPU (already partitioned for this TP rank)
+        tensor = partitioned_tensor.to(device=DEVICE)
+
         assert tensor is not None
         assert tensor.device.type == "cuda"
-        
+
         # Thread-safe add to TENSOR_DICT
         with TENSOR_DICT_LOCK:
             TENSOR_DICT[tensor_name] = tensor
-            
-        logging.info(f"Processed {tensor_name} / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
-        
+
+        logging.info(f"Loaded {tensor_name} to GPU / shape: {tensor.shape} / dtype: {tensor.dtype} / device: {tensor.device}")
+
         # Clean up CPU tensor
-        del full_tensor
+        del partitioned_tensor
         del tensor
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        
+
         return True
-        
+
     except Exception as e:
-        logging.error(f"Error processing tensor {tensor_name}: {e}")
+        logging.error(f"Error loading tensor {tensor_name} to GPU: {e}")
         raise e
 
 def get_kv_cache_shape(num_blocks: int, block_size: int, num_kv_heads: int, head_size: int) -> tuple:
@@ -529,73 +424,49 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
         "total_gpu_cache_size_gb": (num_gpu_blocks * cache_block_size) / (1024**3),
     }
 
-def load_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, tensor_name: str, local_storage_path: Optional[str] = None):
-    """Load a tensor from local cache or S3 and process it"""
-    full_tensor = None
-    
-    # Try to load from local storage first if path is provided
-    if local_storage_path:
-        local_file_path = os.path.join(local_storage_path, f"{tensor_name}.bin")
-        if os.path.exists(local_file_path):
-            logging.info(f"Loading {tensor_name} from local cache: {local_file_path}")
-            full_tensor = load_tensor_from_local(local_storage_path, tensor_name)
-        else:
-            # Load from S3 and save to local
-            logging.info(f"{tensor_name} not found locally, downloading from S3...")
-            if base_s3_path:
-                s3_key = f"{base_s3_path}/{tensor_name}.bin"
-            else:
-                s3_key = f"{tensor_name}.bin"
-            
-            full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
-            
-            # Save to local storage for future use
-            save_tensor_to_local(full_tensor, local_storage_path, tensor_name)
-            logging.info(f"Saved {tensor_name} to local cache: {local_file_path}")
+def load_and_process_tensor(s3_client, bucket_name: str, base_s3_path: str, tensor_name: str):
+    """Load a pre-partitioned tensor from S3 and load it directly to GPU"""
+    # Construct S3 key with TP-specific path: TP{tp_size}/shard{tp_rank}/{tensor_name}.bin
+    if base_s3_path:
+        s3_key = f"{base_s3_path}/TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/{tensor_name}.bin"
     else:
-        # No local storage path, load directly from S3
-        if base_s3_path:
-            s3_key = f"{base_s3_path}/{tensor_name}.bin"
-        else:
-            s3_key = f"{tensor_name}.bin"
-        
-        full_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
-    
-    # Process tensor
-    process_tensor(tensor_name, full_tensor)
+        s3_key = f"TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/{tensor_name}.bin"
 
-def load_required_tensors(s3_client, bucket_name: str, base_s3_path: str, required_tensor_names: List[str], local_storage_path: Optional[str] = None):
-    """Load required tensors from local cache or S3"""
+    # Load pre-partitioned tensor directly from S3 to CPU memory
+    partitioned_tensor = load_tensor_from_s3_direct(s3_client, bucket_name, s3_key)
+
+    # Load tensor to GPU (no processing needed - already partitioned)
+    load_tensor_to_gpu(tensor_name, partitioned_tensor)
+
+def load_required_tensors(s3_client, bucket_name: str, base_s3_path: str, required_tensor_names: List[str]):
+    """Load required tensors directly from S3"""
     if not required_tensor_names:
         logging.warning("No tensors to load")
         return
-    
-    if local_storage_path:
-        logging.info(f"Loading and processing {len(required_tensor_names)} required tensors (with local cache at {local_storage_path})")
-    else:
-        logging.info(f"Loading and processing {len(required_tensor_names)} required tensors directly from S3")
-    
-    # Use threading for parallel loading and processing
-    max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))  
+
+    logging.info(f"Loading {len(required_tensor_names)} pre-partitioned tensors directly from S3")
+
+    # Use threading for parallel loading
+    max_tensor_workers = min(NUM_TENSOR_WORKERS, len(required_tensor_names))
     logging.info(f"Using {max_tensor_workers} workers for tensor loading")
-    
+
     with ThreadPoolExecutor(max_workers=max_tensor_workers) as executor:
         futures = []
-        
+
         for tensor_name in required_tensor_names:
-            # Submit loading and processing task
+            # Submit loading task
             future = executor.submit(
                 load_and_process_tensor,
-                s3_client, bucket_name, base_s3_path, tensor_name, local_storage_path
+                s3_client, bucket_name, base_s3_path, tensor_name
             )
             futures.append(future)
-        
+
         # Wait for all tasks to complete
         for future in as_completed(futures):
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"Error in tensor loading/processing: {e}")
+                logging.error(f"Error in tensor loading: {e}")
 
 # Function removed - tensors are now processed directly after download
 
@@ -688,8 +559,8 @@ def _status_server(host: str, port: int):
 def parse_args():
     parser = argparse.ArgumentParser(description="S3 Tensor Store Server")
     parser.add_argument("--model-name", type=str, required=True, help="Model name")
-    parser.add_argument("--s3-path", type=str, required=True, 
-                        help="S3 path where tensors are stored (e.g., s3://bucket-name/path/to/models)")
+    parser.add_argument("--s3-path", type=str, required=True,
+                        help="S3 path where pre-partitioned tensors are stored (e.g., s3://bucket-name/path/to/models)")
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
     parser.add_argument("--tensor-parallel-rank", type=int, default=0)
     parser.add_argument("--local-rank", type=int, default=0)
@@ -701,8 +572,6 @@ def parse_args():
                         help="Port for readiness TCP server")
     parser.add_argument("--aws-profile", type=str, default=None,
                         help="AWS profile to use for S3 access")
-    parser.add_argument("--local-storage-path", type=str, default=None,
-                        help="Local path to cache model weights (default: None)")
     
     # KV cache related arguments
     parser.add_argument("--block-size", type=int, default=16, choices=[8, 16, 32],
@@ -853,30 +722,23 @@ def main():
     except RuntimeError:
         logging.warning("Could not set start method to 'spawn'. Using default.")
     
-    logging.info("Loading strategy: Direct S3 -> CPU -> GPU transfer (No disk I/O)")
-    
-    # Step 1: List all tensor files from S3 using boto3
-    logging.info("Step 1: Listing all tensor files from S3...")
-    all_tensor_names = list_tensor_files_from_s3_with_boto3(s3_client, bucket_name, base_s3_path)
-    
-    if not all_tensor_names:
-        logging.error("No tensor files found in S3")
-        return
-    
-    # Step 2: Load config.json from S3 to get model configuration
+    # Step 1: Load config.json from S3 to get model configuration
+    # Config is stored at the model root directory (not in TP-specific folders)
     logging.info("Step 2: Loading config.json from S3...")
-    
+
     try:
         if base_s3_path:
             config_s3_key = f"{base_s3_path}/config.json"
         else:
             config_s3_key = "config.json"
-        
+
+        logging.info(f"Loading config from S3 key: {config_s3_key}")
+
         # Load config directly from S3
         response = s3_client.get_object(Bucket=bucket_name, Key=config_s3_key)
         config_content = response['Body'].read()
         config_dict = json.loads(config_content)
-        
+
         tie_word_embeddings = config_dict["tie_word_embeddings"]
         logging.info(f"Loaded model config from S3")
         logging.debug(f"Config: {config_dict}")
@@ -888,6 +750,17 @@ def main():
         return
     
     set_global_variables(args, config_dict)
+
+    logging.info("Loading strategy: Direct S3 -> CPU -> GPU transfer (pre-partitioned tensors)")
+    logging.info(f"Loading pre-partitioned tensors for TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}")
+
+    # Step 2: List all tensor files from S3 for this TP configuration
+    logging.info("Step 1: Listing pre-partitioned tensor files from S3...")
+    all_tensor_names = list_tensor_files_from_s3_with_boto3(s3_client, bucket_name, base_s3_path)
+    
+    if not all_tensor_names:
+        logging.error("No tensor files found in S3")
+        return
     
     # Step 3: Filter to only required tensors
     logging.info("Step 3: Filtering to required tensors...")
@@ -899,34 +772,13 @@ def main():
     
     # Log the required tensors in a formatted way
     log_required_tensors_summary(required_tensor_names)
-    
-    # Determine local storage path
-    if args.local_storage_path:
-        local_storage_path = args.local_storage_path
-    else:
-        # Use default path with model name
-        # local_storage_path = f"/opt/dlami/nvme/models/{args.model_name}"
-        local_storage_path = None  # No local caching by default
-    
-    logging.info(f"Local storage path: {local_storage_path}")
-    
-    # Create local storage directory if it doesn't exist
-    if local_storage_path:
-        os.makedirs(local_storage_path, exist_ok=True)
-        
-        # Also save config.json locally if not already present
-        config_local_path = os.path.join(local_storage_path, "config.json")
-        if not os.path.exists(config_local_path):
-            with open(config_local_path, 'w') as f:
-                json.dump(config_dict, f, indent=2)
-            logging.info(f"Saved config.json to local storage: {config_local_path}")
-    
-    # Step 4: Load and process required tensors from local cache or S3
-    logging.info("Step 4: Loading and processing required tensors...")
+
+    # Step 4: Load pre-partitioned tensors directly from S3
+    logging.info("Step 4: Loading pre-partitioned tensors from S3...")
     load_start = time.perf_counter()
-    
+
     try:
-        load_required_tensors(s3_client, bucket_name, base_s3_path, required_tensor_names, local_storage_path)
+        load_required_tensors(s3_client, bucket_name, base_s3_path, required_tensor_names)
         
         load_end = time.perf_counter()
         logging.info(f"Loading and processing completed in {load_end - load_start:.2f} seconds")

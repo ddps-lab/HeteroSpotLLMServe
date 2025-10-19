@@ -31,6 +31,13 @@ UPLOAD_LOCK = threading.Lock()
 UPLOADED_COUNT = 0
 TOTAL_COUNT = 0
 
+# Tensor partitioning constants (from s3_tensor_store_server.py)
+INPUT_DIM = 0
+OUTPUT_DIM = 1
+DIV_COLUMN_WISE_LIST = ["q_proj", "k_proj", "v_proj", "gate_proj", "up_proj"]
+DIV_ROW_WISE_LIST = ["o_proj", "down_proj"]
+VOCAB_PADDING_SIZE = 64
+
 ### Utility functions from mt_tensor_store_server.py
 class DisabledTqdm(tqdm):
     def __init__(self, *args, **kwargs):
@@ -47,6 +54,49 @@ def get_lock(model_name_or_path: Union[str, Path], cache_dir: Optional[str] = No
     lock_file_name = hash_name + model_name + ".lock"
     lock = filelock.FileLock(os.path.join(lock_dir, lock_file_name), mode=0o666)
     return lock
+
+
+def get_range_vocabulary_embedding_tensor(vocab_size: int, tensor_parallel_size: int, tensor_parallel_rank: int) -> tuple[int, int, int]:
+    """Calculate vocabulary embedding tensor range for a given TP rank
+
+    Args:
+        vocab_size: Total vocabulary size
+        tensor_parallel_size: Number of tensor parallel shards
+        tensor_parallel_rank: Current tensor parallel rank
+
+    Returns:
+        tuple: (vocab_start_idx, vocab_end_idx, per_shard_vocab_size)
+    """
+    padding_size = VOCAB_PADDING_SIZE
+
+    vocab_size_padded = ((vocab_size + padding_size - 1) // padding_size) * padding_size
+    assert vocab_size_padded % tensor_parallel_size == 0
+    per_shard_vocab_size = vocab_size_padded // tensor_parallel_size
+    padded_vocab_idx_start = tensor_parallel_rank * per_shard_vocab_size
+    padded_vocab_idx_end = padded_vocab_idx_start + per_shard_vocab_size
+
+    vocab_start_idx = min(padded_vocab_idx_start, vocab_size)
+    vocab_end_idx = min(padded_vocab_idx_end, vocab_size)
+
+    return vocab_start_idx, vocab_end_idx, per_shard_vocab_size
+
+
+def get_tensor_idx_range(dim: int, tensor_parallel_size: int, tensor_parallel_rank: int) -> tuple[int, int, int]:
+    """Calculate tensor index range for a given TP rank
+
+    Args:
+        dim: Dimension size to partition
+        tensor_parallel_size: Number of tensor parallel shards
+        tensor_parallel_rank: Current tensor parallel rank
+
+    Returns:
+        tuple: (shard_idx_start, shard_idx_end, per_shard_dim_size)
+    """
+    assert dim % tensor_parallel_size == 0
+    per_shard_dim_size = dim // tensor_parallel_size
+    shard_idx_start = tensor_parallel_rank * per_shard_dim_size
+    shard_idx_end = shard_idx_start + per_shard_dim_size
+    return shard_idx_start, shard_idx_end, per_shard_dim_size
 
 def download_weights_from_hf(
     model_name_or_path: str,
@@ -84,6 +134,77 @@ def download_weights_from_hf(
         if time_taken > 0.5:
             logging.info("Time spent downloading weights for %s: %.6f seconds", model_name_or_path, time_taken)
     return hf_folder
+
+
+def partition_tensor_for_tp(tensor_name: str, full_tensor: torch.Tensor,
+                           tensor_parallel_size: int, tensor_parallel_rank: int,
+                           vocab_size: int) -> torch.Tensor:
+    """Partition a tensor for a specific TP rank using the same logic as s3_tensor_store_server.py
+
+    Args:
+        tensor_name: Name of the tensor
+        full_tensor: The full unpartitioned tensor
+        tensor_parallel_size: Number of tensor parallel shards
+        tensor_parallel_rank: Current tensor parallel rank
+        vocab_size: Vocabulary size (for embedding/lm_head partitioning)
+
+    Returns:
+        torch.Tensor: Partitioned tensor for the given TP rank
+    """
+    # Process tensor based on type and slice as needed (same logic as s3_tensor_store_server.py)
+    if tensor_name.split('.')[-2] == "embed_tokens":
+        # Embedding tensor - partition by vocabulary dimension
+        vocab_dim, hidden_size = full_tensor.shape
+        start_idx, end_idx, per_shard_dim_size = get_range_vocabulary_embedding_tensor(
+            vocab_size, tensor_parallel_size, tensor_parallel_rank
+        )
+
+        if end_idx - start_idx > per_shard_dim_size:
+            raise ValueError(f"vocab_end_idx - vocab_start_idx > per_shard_vocab_size")
+        elif end_idx - start_idx < per_shard_dim_size:
+            # Need padding
+            tensor = torch.zeros(per_shard_dim_size, hidden_size, dtype=full_tensor.dtype, device="cpu")
+            tensor[:end_idx - start_idx, :] = full_tensor[start_idx:end_idx, :]
+        else:
+            tensor = full_tensor[start_idx:end_idx, :]
+
+    elif tensor_name.split('.')[0] == "lm_head":
+        # LM head tensor - partition by vocabulary dimension
+        vocab_dim, hidden_size = full_tensor.shape
+        start_idx, end_idx, per_shard_dim_size = get_range_vocabulary_embedding_tensor(
+            vocab_size, tensor_parallel_size, tensor_parallel_rank
+        )
+
+        if end_idx - start_idx > per_shard_dim_size:
+            raise ValueError(f"vocab_end_idx - vocab_start_idx > per_shard_vocab_size")
+        elif end_idx - start_idx < per_shard_dim_size:
+            # Need padding
+            tensor = torch.zeros(per_shard_dim_size, hidden_size, dtype=full_tensor.dtype, device="cpu")
+            tensor[:end_idx - start_idx, :] = full_tensor[start_idx:end_idx, :]
+        else:
+            tensor = full_tensor[start_idx:end_idx, :]
+
+    elif tensor_name.split('.')[-2] in DIV_COLUMN_WISE_LIST:
+        # Column-wise partitioning (q_proj, k_proj, v_proj, gate_proj, up_proj)
+        output_dim, input_dim = full_tensor.shape
+        start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(
+            output_dim, tensor_parallel_size, tensor_parallel_rank
+        )
+        tensor = full_tensor[start_idx:end_idx, :]
+
+    elif tensor_name.split('.')[-2] in DIV_ROW_WISE_LIST:
+        # Row-wise partitioning (o_proj, down_proj)
+        output_dim, input_dim = full_tensor.shape
+        start_idx, end_idx, per_shard_dim_size = get_tensor_idx_range(
+            input_dim, tensor_parallel_size, tensor_parallel_rank
+        )
+        tensor = full_tensor[:, start_idx:end_idx]
+
+    else:
+        # No partitioning needed - replicate across all ranks
+        tensor = full_tensor[:]
+
+    return tensor
 
 
 def save_tensor_to_file(tensor_name: str, tensor_data: torch.Tensor, output_dir: str, target_dtype: Optional[torch.dtype] = None) -> str:
@@ -129,54 +250,100 @@ def upload_file_to_s3(file_path: str, s3_client, bucket_name: str, s3_key: str):
         raise
 
 
-def process_and_upload_tensor(args, s3_client, bucket_name: str, base_s3_path: str, 
-                            tensor_name: str, tensor_slice, output_dir: str, target_dtype: Optional[torch.dtype] = None):
-    """Process a single tensor: save to file and upload to S3"""
+def process_and_upload_tensor(args, s3_client, bucket_name: str, base_s3_path: str,
+                            tensor_name: str, tensor_slice, output_dir: str,
+                            target_dtype: Optional[torch.dtype] = None,
+                            tp_sizes: List[int] = None, vocab_size: int = None):
+    """Process a single tensor: partition for all TP sizes, save to file and upload to S3
+
+    Args:
+        args: Command line arguments
+        s3_client: Boto3 S3 client
+        bucket_name: S3 bucket name
+        base_s3_path: Base S3 path
+        tensor_name: Name of the tensor
+        tensor_slice: SafeTensor slice
+        output_dir: Temporary directory for tensor files
+        target_dtype: Target dtype for conversion
+        tp_sizes: List of tensor parallel sizes to create partitions for
+        vocab_size: Vocabulary size (needed for embedding/lm_head partitioning)
+    """
     try:
-        # Get tensor data (preserve original dtype from safetensor)
-        tensor_data = tensor_slice[:].cpu()
-        
-        # Save tensor to local file
-        local_file_path = save_tensor_to_file(tensor_name, tensor_data, output_dir, target_dtype)
-        
-        # Use original tensor name for S3 key
-        if base_s3_path:
-            s3_key = f"{base_s3_path}/{args.model_name}/{tensor_name}.bin"
-        else:
-            s3_key = f"{args.model_name}/{tensor_name}.bin"
-        
-        # Upload to S3
-        upload_file_to_s3(local_file_path, s3_client, bucket_name, s3_key)
-        
+        # Get full tensor data (preserve original dtype from safetensor)
+        full_tensor = tensor_slice[:].cpu()
+
+        # Convert dtype if specified
+        if target_dtype is not None:
+            full_tensor = full_tensor.to(dtype=target_dtype)
+
+        # Process for each TP size
+        for tp_size in tp_sizes:
+            for tp_rank in range(tp_size):
+                # Partition tensor for this TP configuration
+                partitioned_tensor = partition_tensor_for_tp(
+                    tensor_name, full_tensor, tp_size, tp_rank, vocab_size
+                )
+
+                # Save to local file
+                local_file_path = save_tensor_to_file(
+                    f"tp{tp_size}_shard{tp_rank}_{tensor_name}",
+                    partitioned_tensor,
+                    output_dir,
+                    target_dtype=None  # Already converted above
+                )
+
+                # Create S3 key with new structure: TP{tp_size}/shard{tp_rank}/{tensor_name}.bin
+                if base_s3_path:
+                    s3_key = f"{base_s3_path}/{args.model_name}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin"
+                else:
+                    s3_key = f"{args.model_name}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin"
+
+                # Upload to S3
+                upload_file_to_s3(local_file_path, s3_client, bucket_name, s3_key)
+
+                # Cleanup
+                del partitioned_tensor
+                gc.collect()
+
+        # Cleanup full tensor
+        del full_tensor
+        gc.collect()
+
     except Exception as e:
         logging.error(f"Error processing tensor {tensor_name}: {e}")
         raise
 
 
-def process_safetensor_file(args, s3_client, bucket_name: str, base_s3_path: str, 
-                          st_file: str, output_dir: str, executor: ThreadPoolExecutor, target_dtype: Optional[torch.dtype] = None):
+def process_safetensor_file(args, s3_client, bucket_name: str, base_s3_path: str,
+                          st_file: str, output_dir: str, executor: ThreadPoolExecutor,
+                          target_dtype: Optional[torch.dtype] = None,
+                          tp_sizes: List[int] = None, vocab_size: int = None):
     """Process a single safetensor file"""
     logging.info(f"Processing file: {st_file}")
-    
+
     futures = []
-    
+
     with safe_open(st_file, framework="pt", device="cpu") as f:
         tensor_names = list(f.keys())
-        
+
         global TOTAL_COUNT
-        TOTAL_COUNT += len(tensor_names)
-        
+        # Each tensor will be uploaded tp_sizes times (once for each TP configuration)
+        total_uploads_per_tensor = sum(tp_size for tp_size in tp_sizes)
+        TOTAL_COUNT += len(tensor_names) * total_uploads_per_tensor
+
         logging.info(f"Found {len(tensor_names)} tensors in {st_file}")
-        
+        logging.info(f"Will create {total_uploads_per_tensor} partitions per tensor (TP sizes: {tp_sizes})")
+
         for tensor_name in tensor_names:
             # Submit tensor processing to thread pool
             future = executor.submit(
                 process_and_upload_tensor,
                 args, s3_client, bucket_name, base_s3_path,
-                tensor_name, f.get_slice(tensor_name), output_dir, target_dtype
+                tensor_name, f.get_slice(tensor_name), output_dir,
+                target_dtype, tp_sizes, vocab_size
             )
             futures.append(future)
-    
+
     # Wait for all tensors from this file to complete
     for future in as_completed(futures):
         try:
@@ -188,9 +355,9 @@ def process_safetensor_file(args, s3_client, bucket_name: str, base_s3_path: str
 def parse_args():
     parser = argparse.ArgumentParser(description="Download model from HuggingFace and upload to S3")
     parser.add_argument("--model-name", type=str, required=True, help="HuggingFace model name")
-    parser.add_argument("--s3-path", type=str, required=True, 
+    parser.add_argument("--s3-path", type=str, required=True,
                         help="S3 path (e.g., s3://bucket-name/path/to/models)")
-    parser.add_argument("--num-workers", type=int, default=8, 
+    parser.add_argument("--num-workers", type=int, default=8,
                         help="Number of worker threads for parallel processing (default: 8, max recommended: 16)")
     parser.add_argument("--aws-profile", type=str, default=None,
                         help="AWS profile to use for S3 access")
@@ -198,6 +365,8 @@ def parse_args():
                         help="Temporary directory for storing tensor files")
     parser.add_argument("--dtype", type=str, default=None,
                         help="Target dtype for tensors (float16, float32, bfloat16). If not specified, uses original dtype")
+    parser.add_argument("--tensor-parallel-sizes", type=str, default="1,2,4,8",
+                        help="Comma-separated list of tensor parallel sizes to pre-partition (default: 1,2,4,8)")
     return parser.parse_args()
 
 def get_dtype_from_string(dtype_str: Optional[str]) -> Optional[torch.dtype]:
@@ -223,7 +392,16 @@ def get_dtype_from_string(dtype_str: Optional[str]) -> Optional[torch.dtype]:
 
 def main():
     args = parse_args()
-    
+
+    # Parse tensor parallel sizes
+    try:
+        tp_sizes = [int(x.strip()) for x in args.tensor_parallel_sizes.split(',')]
+        logging.info(f"Will create partitions for TP sizes: {tp_sizes}")
+    except ValueError as e:
+        logging.error(f"Invalid tensor-parallel-sizes format: {args.tensor_parallel_sizes}")
+        logging.error(f"Expected comma-separated integers, e.g., '1,2,4,8'")
+        return
+
     # Convert dtype string to torch.dtype
     target_dtype = get_dtype_from_string(args.dtype)
     if target_dtype is not None:
@@ -284,9 +462,20 @@ def main():
     allow_patterns = ["*.safetensors", "*.bin"]
     hf_folder = download_weights_from_hf(args.model_name, None, allow_patterns)
     
-    # Also upload config.json
+    # Load config.json to extract vocab_size
     config_path = os.path.join(hf_folder, "config.json")
+    vocab_size = None
     if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                config_dict = json.load(f)
+            vocab_size = config_dict.get("vocab_size")
+            logging.info(f"Loaded config.json - vocab_size: {vocab_size}")
+        except Exception as e:
+            logging.error(f"Failed to load config.json: {e}")
+            return
+
+        # Upload config.json to S3 (only once in the model directory)
         if base_s3_path:
             config_s3_key = f"{base_s3_path}/{args.model_name}/config.json"
         else:
@@ -296,6 +485,13 @@ def main():
             logging.info(f"Uploaded config.json to s3://{bucket_name}/{config_s3_key}")
         except Exception as e:
             logging.error(f"Failed to upload config.json: {e}")
+    else:
+        logging.error("config.json not found in downloaded model")
+        return
+
+    if vocab_size is None:
+        logging.error("vocab_size not found in config.json")
+        return
     
     # Find weight files
     hf_weights_files: List[str] = []
@@ -319,12 +515,13 @@ def main():
     try:
         with ThreadPoolExecutor(max_workers=args.num_workers) as executor:
             for st_file in hf_weights_files:
-                process_safetensor_file(args, s3_client, bucket_name, base_s3_path, 
-                                      st_file, output_dir, executor, target_dtype)
-        
+                process_safetensor_file(args, s3_client, bucket_name, base_s3_path,
+                                      st_file, output_dir, executor, target_dtype,
+                                      tp_sizes, vocab_size)
+
         upload_end = time.perf_counter()
         logging.info(f"Upload completed in {upload_end - upload_start:.2f} seconds")
-        logging.info(f"Successfully uploaded {UPLOADED_COUNT} tensors to S3")
+        logging.info(f"Successfully uploaded {UPLOADED_COUNT} tensor partitions to S3")
         
         # Clean up temporary directory if it's empty
         if not os.listdir(output_dir):
