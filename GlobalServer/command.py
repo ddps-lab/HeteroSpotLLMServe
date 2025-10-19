@@ -26,7 +26,8 @@ def get_tensor_store_command(model_name: str,
                             dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
                             aws_profile: Optional[str] = None,
-                            gpu_num_blocks: Optional[int] = None) -> str:
+                            gpu_num_blocks: Optional[int] = None,
+                            num_workers: int = 16) -> str:
     """
     Generate command to start tensor store server.
 
@@ -75,7 +76,8 @@ def get_tensor_store_command(model_name: str,
         f"--gpu-memory-utilization {gpu_memory_utilization} "
         f"--swap-space {swap_space} "
         f"--cache-dtype {cache_dtype} "
-        f"--max-model-len {max_model_len}"
+        f"--max-model-len {max_model_len} "
+        f"--num-workers {num_workers}"
     )
     if aws_profile:
         cmd += f" --aws-profile {aws_profile}"
