@@ -133,7 +133,10 @@ def get_api_server_command(model_name: str,
     parallel_strategy_str = " ".join(map(str, parallel_strategy))
     
     cmd_parts = [
-        f"RAY_DEDUP_LOGS=0",
+        # f"RAY_DEDUP_LOGS=0", # if you want to see all logs from Ray
+        # f"RAY_BACKEND_LOG_LEVEL=debug", # if you want to see debug logs from Ray
+        # f"RAY_LOG_TO_STDERR=1", # if you want to see Ray logs in stderr
+        # f"RAY_LOG_LEVEL=debug", # if you want to see debug logs from Ray
         f"{PYTHON} {PROJECT_PATH}/InferenceServer/api_server.py",
         f"--model={model_name}",
         f"--host={host}",
