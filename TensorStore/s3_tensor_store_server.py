@@ -41,7 +41,7 @@ STATUS_HOST = '0.0.0.0'
 
 DTYPE = None  # Will be set based on loaded tensors
 
-NUM_TENSOR_WORKERS = 8
+NUM_TENSOR_WORKERS = -1
 
 # PP Parallelism variables
 START_LAYER_ID = -1
@@ -590,11 +590,13 @@ def parse_args():
                         help="Pipeline parallel rank (default: 0)")
     parser.add_argument("--max-model-len", type=int, default=None,
                         help="Maximum model sequence length (default: from model config)")
+    parser.add_argument("--num-workers", type=int, default=8,
+                        help="Number of parallel workers for tensor loading (default: 8)")
     
     return parser.parse_args()
 
 def set_global_variables(args: argparse.Namespace, config_dict: dict):
-    global TENSOR_PARALLEL_SIZE, LOCAL_RANK, START_LAYER_ID, END_LAYER_ID, TOTAL_LAYER_NUM, DEVICE, TENSOR_PARALLEL_RANK
+    global TENSOR_PARALLEL_SIZE, LOCAL_RANK, START_LAYER_ID, END_LAYER_ID, TOTAL_LAYER_NUM, DEVICE, TENSOR_PARALLEL_RANK, NUM_TENSOR_WORKERS
     global BLOCK_SIZE, GPU_MEMORY_UTILIZATION, SWAP_SPACE_BYTES, PIPELINE_PARALLEL_SIZE, PIPELINE_PARALLEL_RANK, MAX_MODEL_LEN
     
     TENSOR_PARALLEL_SIZE = args.tensor_parallel_size
@@ -604,6 +606,7 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
     START_LAYER_ID = args.start_layer_id
     END_LAYER_ID = args.end_layer_id
     TOTAL_LAYER_NUM = config_dict["num_hidden_layers"]
+    NUM_TENSOR_WORKERS = args.num_workers
     
     if END_LAYER_ID == -1:
         END_LAYER_ID = config_dict["num_hidden_layers"]
