@@ -165,24 +165,26 @@ async def test_benchmark():
     # Homogeneous Pipeline 1
     pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
     pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
+    pipeline_1_stage_2_node_ip = g6_12xlarge_node_ip_3
     pipeline_1_config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "40,40",
-        "parallel_strategy": [4,4],
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "26,27,27",
+        "parallel_strategy": [4,4,4],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 3606,
-        "max_batch_size": 58,
+        "num_gpu_blocks": 15360,
+        "max_batch_size": 247,
     }
-    estimated_throughput_1 = 1.23
+    estimated_throughput_1 = 2.80
     node_layer_mapping_1 = [
-        (pipeline_1_stage_0_node_ip, 40),
-        (pipeline_1_stage_1_node_ip, 40),
+        (pipeline_1_stage_0_node_ip, 26),
+        (pipeline_1_stage_1_node_ip, 27),
+        (pipeline_1_stage_2_node_ip, 27),
     ]
 
     # Pipeline 2
@@ -191,7 +193,7 @@ async def test_benchmark():
     pipeline_2_config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.9,
+        "gpu_memory_utilization": 0.85,
         "pp_layer_partition": "40,40",
         "parallel_strategy": [4,4],
         "max_model_len": 8192,
@@ -199,10 +201,10 @@ async def test_benchmark():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 3606,
-        "max_batch_size": 58,
+        "num_gpu_blocks": 1865,
+        "max_batch_size": 30,
     }
-    estimated_throughput_2 = 1.79
+    estimated_throughput_2 = 1.29
     node_layer_mapping_2 = [
         (pipeline_2_stage_0_node_ip, 40),
         (pipeline_2_stage_1_node_ip, 40),
@@ -224,10 +226,10 @@ async def test_benchmark():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 2425,
-        "max_batch_size": 39,
+        "num_gpu_blocks": 684,
+        "max_batch_size": 11,
     }
-    estimated_throughput_3 = 0.91
+    estimated_throughput_3 = 0.27
     node_layer_mapping_3 = [
         (pipeline_3_stage_0_node_ip, 20),
         (pipeline_3_stage_1_node_ip, 20),
@@ -237,8 +239,8 @@ async def test_benchmark():
 
     # Start pipeline creation
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
-    pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_3_config, node_layer_mapping_3, estimated_throughput_3))
+    # pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
+    # pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_3_config, node_layer_mapping_3, estimated_throughput_3))
 
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
@@ -247,23 +249,23 @@ async def test_benchmark():
         # Wait for pipeline creation to complete
         logger.info("Waiting for pipeline creation to complete...")
         await pipeline_task_1
-        await pipeline_task_2
-        await pipeline_task_3
+        # await pipeline_task_2
+        # await pipeline_task_3
         logger.info("Pipelines are ready!")
 
         # Run benchmark - optimized for single request latency measurement
         metrics = await run_benchmark(
             global_server,
-            num_requests=20,  # Small number of requests for latency measurement
+            num_requests=10,  # Small number of requests for latency measurement
             input_len=763,
             output_len=232,
             request_rate=float('inf'),  # No rate limit
             model_name=model_name,
-            max_concurrency=None, 
+            max_concurrency=1, 
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,  # Show progress bars
             run_initial_test=True,  # Run test requests first
-            test_requests_per_pipeline=2  # 2 test requests per pipeline
+            test_requests_per_pipeline=0  # 0 test requests per pipeline
         )
 
         # Print results
@@ -279,8 +281,8 @@ async def test_benchmark():
         logger.info("Cleaning up...")
         server_task.cancel()
         pipeline_task_1.cancel()
-        pipeline_task_2.cancel()
-        pipeline_task_3.cancel()
+        # pipeline_task_2.cancel()
+        # pipeline_task_3.cancel()
 
         try:
             await asyncio.gather(server_task, return_exceptions=True)

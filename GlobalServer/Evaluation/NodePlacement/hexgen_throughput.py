@@ -7,7 +7,9 @@ import concurrent.futures
 import logging
 import sys
 import os
+from datetime import datetime
 from typing import Dict, List, Tuple
+import time
 
 # Add parent directory to path
 parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -97,8 +99,6 @@ async def run_benchmark(
     trace_data = load_azure_trace(
         csv_path=dataset_path,
         max_requests=num_requests,
-        max_context_tokens=2048,  # Filter out very long contexts
-        max_generated_tokens=None
     )
 
     if not trace_data:
@@ -115,13 +115,20 @@ async def run_benchmark(
 
     print(f"Generated {len(trace_requests)} requests from trace\n")
 
+    # Prepare trace output path with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    trace_dir = os.path.join(parent_dir, "Trace")
+    os.makedirs(trace_dir, exist_ok=True)
+    trace_output_path = os.path.join(trace_dir, f"hexgen_throughput_{timestamp}.csv")
+
     # Run trace replay benchmark
     metrics = await run_trace_replay_benchmark(
         global_server=global_server,
         trace_requests=trace_requests,
         time_scale=time_scale,
         percentiles=percentiles,
-        disable_tqdm=disable_tqdm
+        disable_tqdm=disable_tqdm,
+        save_trace_path=trace_output_path
     )
 
     return metrics
@@ -159,80 +166,83 @@ async def test_benchmark():
         logger.info("Pipeline creation completed")
 
     # Hexgen Pipeline 1
-    pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
-    pipeline_1_stage_1_node_ip = g6e_xlarge_node_ip_1
-    pipeline_1_stage_2_node_ip = g6e_xlarge_node_ip_2
-    pipeline_1_stage_3_node_ip = g6e_xlarge_node_ip_3
-    pipeline_1_stage_4_node_ip = g6e_xlarge_node_ip_4
+    pipeline_1_stage_0_node_ip = g6e_xlarge_node_ip_1
+    pipeline_1_stage_1_node_ip = g6e_xlarge_node_ip_2
+    pipeline_1_stage_2_node_ip = g6e_xlarge_node_ip_3
+    pipeline_1_stage_3_node_ip = g5_12xlarge_node_ip_1
+    pipeline_1_stage_4_node_ip = g5_12xlarge_node_ip_1
+    pipeline_1_stage_5_node_ip = g5_12xlarge_node_ip_1
+    pipeline_1_stage_6_node_ip = g5_12xlarge_node_ip_2
+    pipeline_1_stage_7_node_ip = g5_12xlarge_node_ip_2
+    pipeline_1_stage_8_node_ip = g5_12xlarge_node_ip_2
     pipeline_1_config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "15,17,16,16,16",
-        "parallel_strategy": [4, 1, 1, 1, 1],
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "12,13,13,13,6,6,6,6,5",
+        "parallel_strategy": [1,1,1,2,1,1,1,1,1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 9328,
-        "max_batch_size": 150,
+        "num_gpu_blocks": 17661,
+        "max_batch_size": 283,
+        "mode": "hexgen",
     }
-    estimated_throughput_1 = 2.65
+    estimated_throughput_1 = 3.22
+    # {(ip, layers, start_local_rank), ...} or {(ip, layers), ...}
     node_layer_mapping_1 = [
-        (pipeline_1_stage_0_node_ip, 15),
-        (pipeline_1_stage_1_node_ip, 17),
-        (pipeline_1_stage_2_node_ip, 16),
-        (pipeline_1_stage_3_node_ip, 16),
-        (pipeline_1_stage_4_node_ip, 16),
+        (pipeline_1_stage_0_node_ip, 12),
+        (pipeline_1_stage_1_node_ip, 13),
+        (pipeline_1_stage_2_node_ip, 13),
+        (pipeline_1_stage_3_node_ip, 13),
+        (pipeline_1_stage_4_node_ip, 6),
+        (pipeline_1_stage_5_node_ip, 6),
+        (pipeline_1_stage_6_node_ip, 6),
+        (pipeline_1_stage_7_node_ip, 6),
+        (pipeline_1_stage_8_node_ip, 5),
     ]
-
+        
     # Pipeline 2
-    pipeline_2_stage_0_node_ip = g6_12xlarge_node_ip_2
-    pipeline_2_stage_1_node_ip = g6_12xlarge_node_ip_2
-    pipeline_2_stage_2_node_ip = g6_12xlarge_node_ip_2
+    pipeline_2_stage_0_node_ip = g6e_xlarge_node_ip_4
+    pipeline_2_stage_1_node_ip = g6_12xlarge_node_ip_1
+    pipeline_2_stage_2_node_ip = g6_12xlarge_node_ip_1
     pipeline_2_stage_3_node_ip = g6_12xlarge_node_ip_2
-    pipeline_2_stage_4_node_ip = g5_12xlarge_node_ip_1
-    pipeline_2_stage_5_node_ip = g5_12xlarge_node_ip_1
-    pipeline_2_stage_6_node_ip = g5_12xlarge_node_ip_1
-    pipeline_2_stage_7_node_ip = g5_12xlarge_node_ip_1
-    pipeline_2_stage_8_node_ip = g5_12xlarge_node_ip_2
-    pipeline_2_stage_9_node_ip = g5_12xlarge_node_ip_2
-    pipeline_2_stage_10_node_ip = g5_12xlarge_node_ip_2
-    pipeline_2_stage_11_node_ip = g5_12xlarge_node_ip_2
+    pipeline_2_stage_4_node_ip = g6_12xlarge_node_ip_2
+    pipeline_2_stage_5_node_ip = g6_12xlarge_node_ip_3
+    pipeline_2_stage_6_node_ip = g6_12xlarge_node_ip_3
+    pipeline_2_stage_7_node_ip = "172.31.34.108"
     pipeline_2_config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "6,6,6,6,7,7,7,7,7,8,7,6",
-        "parallel_strategy": [1,1,1,1,1,1,1,1,1,1,1,1],
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "13,9,11,11,11,11,11,3",
+        "parallel_strategy": [1,2,2,2,2,2,2,1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 10696,
-        "max_batch_size": 172,
+        "num_gpu_blocks": 15173,
+        "max_batch_size": 243,
+        "mode": "hexgen",
     }
-    estimated_throughput_2 = 1.48
+    estimated_throughput_2 = 2.797
     node_layer_mapping_2 = [
-        (pipeline_2_stage_0_node_ip, 6),
-        (pipeline_2_stage_1_node_ip, 6),
-        (pipeline_2_stage_2_node_ip, 6),
-        (pipeline_2_stage_3_node_ip, 6),
-        (pipeline_2_stage_4_node_ip, 7),
-        (pipeline_2_stage_5_node_ip, 7),
-        (pipeline_2_stage_6_node_ip, 7),
-        (pipeline_2_stage_7_node_ip, 7),
-        (pipeline_2_stage_8_node_ip, 7),
-        (pipeline_2_stage_9_node_ip, 8),
-        (pipeline_2_stage_10_node_ip, 7),
-        (pipeline_2_stage_11_node_ip, 6),
+        (pipeline_2_stage_0_node_ip, 13),
+        (pipeline_2_stage_1_node_ip, 9),
+        (pipeline_2_stage_2_node_ip, 11),
+        (pipeline_2_stage_3_node_ip, 11),
+        (pipeline_2_stage_4_node_ip, 11),
+        (pipeline_2_stage_5_node_ip, 11),
+        (pipeline_2_stage_6_node_ip, 11),
+        (pipeline_2_stage_7_node_ip, 3),
     ]
     
     # Start pipeline creation
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
-    # pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
+    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
 
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
@@ -241,7 +251,7 @@ async def test_benchmark():
         # Wait for pipeline creation to complete
         logger.info("Waiting for pipeline creation to complete...")
         await pipeline_task_1
-        # await pipeline_task_2
+        await pipeline_task_2
         logger.info("Pipelines are ready!")
 
         # Run benchmark
@@ -254,13 +264,13 @@ async def test_benchmark():
         metrics = await run_benchmark(
             global_server,
             dataset_path=dataset_path,
-            num_requests=5000,  # Load first 5000 requests from dataset
-            time_scale=1.0,  # Original trace speed
+            num_requests=None,
+            time_scale=0.0,  # Original trace speed. If you set 0.0 then it will behave like offline setting
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,  # Show progress bars
             run_initial_test=True,  # Run test requests first
-            test_requests_per_pipeline=2  # 2 test requests per pipeline
+            test_requests_per_pipeline=1  # 1 test requests per pipeline
         )
         
         # Print results
@@ -276,8 +286,7 @@ async def test_benchmark():
         logger.info("Cleaning up...")
         server_task.cancel()
         pipeline_task_1.cancel()
-        # pipeline_task_2.cancel()
-        # pipeline_task_3.cancel()
+        pipeline_task_2.cancel()
 
         try:
             await asyncio.gather(server_task, return_exceptions=True)
