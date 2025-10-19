@@ -44,7 +44,7 @@ gpu_mem_limit_list = []
 comp_abilities = []
 comm_abilities = []
 
-BATCH_SIZE=12
+BATCH_SIZE=1
 
 def set_cluster_config(config):
     """Set global variables for HEXGEN"""
@@ -233,7 +233,7 @@ def is_group_valid(group, gpu_mem_list):
     # HEXGEN 의 수식상 70B 모델의 weight 들의 크기를 120GB 로 설정한다.
     # 여기서 추가적인 batch 를 어느정도 쓸건지에 따라서 threshold 를 정해주어야 한다.
     # 우리는 여기서 batch 를 늘리기 위한 메모리 사용량을 weight 의 절반으로 둔다
-    VALID_THRESHOLD = 120 + 60
+    VALID_THRESHOLD = 120 + 120
     total = sum(a*b for a, b in zip(group, MULTIPLIER_ARRAY))
     return total >= VALID_THRESHOLD
 
@@ -536,9 +536,9 @@ def main():
 
     # comp_abilities, comm_abilities: Different computation and communication ability of different GPU types
     # This memory limit means that HEXGEN can use up to 00% of the GPU memory for model weights.
-    l4_memory_limit = 22 * 0.9
-    a10g_memory_limit = 22 * 0.9
-    l40s_memory_limit = 44 * 0.9
+    l4_memory_limit = 22 * 0.85
+    a10g_memory_limit = 22 * 0.85
+    l40s_memory_limit = 44 * 0.85
     
     cluster = [
         # {
@@ -551,7 +551,7 @@ def main():
         # },
         {
             "instance_type": "g6.12xlarge",
-            "num_instances": 2,
+            "num_instances": 3,
             "num_gpu_per_instance": 4,
             "memory_limit": l4_memory_limit,
             "computation_ability": 0.3471, 
@@ -559,7 +559,7 @@ def main():
         },
         {
             "instance_type": "g5.12xlarge",
-            "num_instances": 2,
+            "num_instances": 4,
             "num_gpu_per_instance": 4,
             "memory_limit": a10g_memory_limit,
             "computation_ability": 0.6890, 
@@ -567,7 +567,7 @@ def main():
         },
         {
             "instance_type": "g6e.xlarge",
-            "num_instances": 4,
+            "num_instances": 6,
             "num_gpu_per_instance": 1,
             "memory_limit": l40s_memory_limit,
             "computation_ability": 1.0, 
