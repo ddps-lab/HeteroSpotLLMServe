@@ -248,3 +248,87 @@ async def run_benchmark_requests(
     return requests, duration
 
 
+async def run_benchmark_requests_with_trace(
+    global_server,
+    request_inputs: List[RequestInput],
+    request_rate: float,
+    max_concurrency: Optional[int] = None,
+    disable_tqdm: bool = False,
+    save_trace_path: Optional[str] = None
+) -> Tuple[List[Request], float]:
+    """
+    Send requests and wait for completion with progress tracking and trace saving.
+
+    Args:
+        global_server: The GlobalServer instance
+        request_inputs: List of request inputs to send
+        request_rate: Requests per second (use float('inf') for no rate limit)
+        max_concurrency: Maximum number of concurrent requests (None for no limit)
+        disable_tqdm: Whether to disable progress bar
+        save_trace_path: Optional path to save request trace CSV
+
+    Returns:
+        Tuple of (List of Request objects, duration)
+    """
+    start_time = time.time()
+    pbar = None if disable_tqdm else tqdm(total=len(request_inputs), desc="Benchmark progress")
+
+    # Create semaphore if needed
+    semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else None
+
+    async def limited_request_func(req_input):
+        """Send request with optional concurrency limit and wait for completion."""
+        arrival_time_ts = time.time()  # Record arrival time
+
+        if semaphore is None:
+            request = await global_server.add_request_and_wait(req_input)
+        else:
+            async with semaphore:
+                request = await global_server.add_request_and_wait(req_input)
+
+        completion_time_ts = time.time()  # Record completion time
+
+        if pbar:
+            pbar.update(1)
+        return (request, arrival_time_ts, completion_time_ts)
+
+    # Create tasks based on request rate
+    tasks = []
+
+    if request_rate == float('inf'):
+        # No rate limit - create all tasks at once
+        for req_input in request_inputs:
+            task = asyncio.create_task(limited_request_func(req_input))
+            tasks.append(task)
+    else:
+        # Rate-limited - create tasks with delays
+        interval = 1.0 / request_rate
+        for i, req_input in enumerate(request_inputs):
+            task = asyncio.create_task(limited_request_func(req_input))
+            tasks.append(task)
+
+            # Wait before creating next task
+            if i < len(request_inputs) - 1:
+                await asyncio.sleep(interval)
+
+    # Wait for all tasks to complete
+    request_datas = await asyncio.gather(*tasks)
+
+    if pbar:
+        pbar.close()
+
+    duration = time.time() - start_time
+
+    # Save trace if path is provided
+    if save_trace_path:
+        from evaluation_utils import save_request_trace
+        save_request_trace(request_datas, save_trace_path)
+        if not disable_tqdm:
+            print(f"Request trace saved to: {save_trace_path}")
+
+    # Extract requests for return (maintain compatibility)
+    requests = [data[0] for data in request_datas]
+
+    return requests, duration
+
+

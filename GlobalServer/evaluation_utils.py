@@ -22,7 +22,9 @@ def load_azure_trace(
     csv_path: str,
     max_requests: Optional[int] = None,
     max_context_tokens: Optional[int] = None,
-    max_generated_tokens: Optional[int] = None
+    max_generated_tokens: Optional[int] = None,
+    start_time: Optional[float] = None,
+    end_time: Optional[float] = None
 ) -> List[Tuple[float, int, int]]:
     """
     Load Azure LLM Inference Conversation Trace dataset.
@@ -32,6 +34,8 @@ def load_azure_trace(
         max_requests: Maximum number of requests to load (None for all)
         max_context_tokens: Filter out requests with context tokens > this value
         max_generated_tokens: Filter out requests with generated tokens > this value
+        start_time: Start time in seconds from the first request (None for no lower bound)
+        end_time: End time in seconds from the first request (None for no upper bound)
 
     Returns:
         List of (arrival_time, prompt_tokens, output_tokens) tuples
@@ -72,6 +76,10 @@ def load_azure_trace(
             if max_context_tokens is not None and context_tokens > max_context_tokens:
                 continue
             if max_generated_tokens is not None and generated_tokens > max_generated_tokens:
+                continue
+            if start_time is not None and arrival_time < start_time:
+                continue
+            if end_time is not None and arrival_time > end_time:
                 continue
 
             trace_data.append((arrival_time, context_tokens, generated_tokens))
@@ -168,7 +176,8 @@ async def run_trace_replay_benchmark(
     trace_requests: List[Tuple[float, RequestInput]],
     time_scale: float = 1.0,
     percentiles: Optional[List[float]] = None,
-    disable_tqdm: bool = False
+    disable_tqdm: bool = False,
+    save_trace_path: Optional[str] = None
 ) -> BenchmarkMetrics:
     """
     Run trace replay benchmark by sending requests according to their arrival times.
@@ -179,6 +188,7 @@ async def run_trace_replay_benchmark(
         time_scale: Time scale multiplier (1.0 = original, 0.5 = 2x faster, 2.0 = 2x slower)
         percentiles: List of percentiles to calculate (default: [25, 50, 75, 99])
         disable_tqdm: Whether to disable progress bar
+        save_trace_path: Path to save detailed request trace CSV (optional)
 
     Returns:
         BenchmarkMetrics object with results
@@ -217,11 +227,15 @@ async def run_trace_replay_benchmark(
     async def send_request_at_time(req_input, delay):
         # Wait until the scheduled time
         await asyncio.sleep(delay)
+        # Record arrival time (when request is sent)
+        arrival_time_ts = time.time()
         # Send request and wait for completion
         request = await global_server.add_request_and_wait(req_input)
+        # Record completion time
+        completion_time_ts = time.time()
         if pbar:
             pbar.update(1)
-        return request
+        return (request, arrival_time_ts, completion_time_ts)
 
     # Schedule all requests based on their arrival times
     for arrival_time, request_input in trace_requests:
@@ -235,13 +249,16 @@ async def run_trace_replay_benchmark(
         tasks.append(task)
 
     # Wait for all requests to complete
-    requests = await asyncio.gather(*tasks)
+    request_datas = await asyncio.gather(*tasks)
 
     if pbar:
         pbar.close()
 
     # Calculate total duration
     benchmark_duration = time.time() - benchmark_start
+
+    # Extract requests for metrics calculation
+    requests = [data[0] for data in request_datas]
 
     # Calculate metrics
     if not disable_tqdm:
@@ -251,7 +268,105 @@ async def run_trace_replay_benchmark(
         requests, request_inputs, benchmark_duration, percentiles
     )
 
+    # Save request trace if path is provided
+    if save_trace_path:
+        save_request_trace(request_datas, save_trace_path)
+        if not disable_tqdm:
+            print(f"Request trace saved to: {save_trace_path}")
+
     return metrics
+
+
+def save_request_trace(
+    request_datas: List[Tuple[Request, float, float]],
+    output_path: str
+) -> None:
+    """
+    Save detailed request trace to CSV file for post-analysis.
+
+    Args:
+        request_datas: List of (request, arrival_time, completion_time) tuples
+        output_path: Path to save the CSV file
+
+    CSV Format:
+        RequestID,ArrivalTime,CompletionTime,InputTokens,OutputTokens,Latency,QueueingDelay,TTFT,TPOT,Success
+        - ArrivalTime, CompletionTime: Unix timestamps (float, seconds)
+        - QueueingDelay: (CompletionTime - ArrivalTime) - Latency
+        - TTFT: Time To First Token (seconds)
+        - TPOT: Time Per Output Token (seconds), calculated as (Latency - TTFT) / (OutputTokens - 1)
+              Excludes first token, same calculation as benchmark_utils.py
+    """
+    import csv as csv_module
+    from pathlib import Path
+
+    # Create output directory if it doesn't exist
+    output_dir = Path(output_path).parent
+    if output_dir and not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, 'w', newline='') as f:
+        writer = csv_module.writer(f)
+
+        # Write header (CamelCase for column names)
+        writer.writerow([
+            'RequestID',
+            'ArrivalTime',
+            'CompletionTime',
+            'InputTokens',
+            'OutputTokens',
+            'Latency',
+            'QueueingDelay',
+            'TTFT',
+            'TPOT',
+            'Success'
+        ])
+
+        # Write data rows
+        for request, arrival_time_ts, completion_time_ts in request_datas:
+            if request.output:
+                # Calculate queueing delay
+                total_time = completion_time_ts - arrival_time_ts
+                latency = request.output.latency
+                queueing_delay = total_time - latency
+
+                # Get TTFT
+                ttft = request.output.ttft
+
+                # Calculate TPOT (time per output token, excluding first token)
+                # Same calculation as in benchmark_utils.py
+                if request.output.output_tokens > 1:
+                    latency_minus_ttft = latency - ttft
+                    tpot = latency_minus_ttft / (request.output.output_tokens - 1)
+                else:
+                    tpot = 0.0
+
+                writer.writerow([
+                    request.request_id,
+                    f"{arrival_time_ts:.6f}",
+                    f"{completion_time_ts:.6f}",
+                    request.input.prompt_len,
+                    request.output.output_tokens,
+                    f"{latency:.6f}",
+                    f"{queueing_delay:.6f}",
+                    f"{ttft:.6f}",
+                    f"{tpot:.6f}",
+                    request.output.success
+                ])
+            else:
+                # Request failed before completion
+                total_time = completion_time_ts - arrival_time_ts
+                writer.writerow([
+                    request.request_id,
+                    f"{arrival_time_ts:.6f}",
+                    f"{completion_time_ts:.6f}",
+                    request.input.prompt_len,
+                    0,
+                    f"{total_time:.6f}",
+                    0.0,
+                    0.0,
+                    0.0,
+                    False
+                ])
 
 
 # Unittest
