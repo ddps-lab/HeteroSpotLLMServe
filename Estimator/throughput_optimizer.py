@@ -8,6 +8,7 @@ from hardware_specs import INSTANCE_SPEC
 from cluster_pool import ClusterPool
 import sys
 import os
+import heapq
 import numpy as np
 # Add parent directory to path for protocols import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,12 +41,13 @@ class Pipeline:
         for instance, layers in zip(self.stages, self.layer_per_stage):
             stage_info.append(f"{instance}:{layers}L")
 
-        return (f"Pipeline(stages=[{', '.join(stage_info)}], "
-                f"throughput={self.throughput:.3f}, "
-                f"cost=${self.cost:.3f}, "
-                f"latency_per_global_batch={self.latency_per_global_batch:.0f}ms, "
-                f"single_request_latency={self.single_request_latency:.0f}ms, "
-                f"num_blocks={self.num_blocks})")
+        return (f"Pipeline(stages=[{', '.join(stage_info)}],\n"
+                f"\tthroughput={self.throughput:.3f},\n"
+                f"\tcost=${self.cost:.3f},\n"
+                f"\tlatency_per_global_batch={self.latency_per_global_batch:.0f}ms,\n"
+                f"\tsingle_request_latency={self.single_request_latency:.0f}ms,\n"
+                f"\tnum_blocks={self.num_blocks},\n"
+                f"\tglobal_batch_size={self.global_batch_size})")
 
     def set_cost(self, cost: float):
         """파이프라인의 총 비용을 설정합니다 (hourly cost)."""
@@ -115,23 +117,24 @@ class BeamSearchDPOptimizer:
                  latency_slo: float,
                  cluster_pool: ClusterPool,
                  max_stages: Optional[int] = None,
-                 top_k: int = 5):
+                 top_k: int = 5,
+                 optimization_mode: str = "soft_slo"):
 
         self.config = config
         self.budget = budget
         self.latency_slo = latency_slo
         self.num_layers = config["num_layers"]
         self.cluster_pool = cluster_pool
-        self.optimization_mode = "soft_slo"
+        self.optimization_mode = optimization_mode
 
         # Pre-filter instances based on budget
         self.instance_types = []
-        for instance in INSTANCE_SPEC.keys():
+        for instance in cluster_pool.available_resources.keys():
             price = self.cluster_pool.get_instance_price(instance)
-            if price <= self.budget:  # Only consider affordable instances
+            if price <= self.budget and self.cluster_pool.available_resources[instance] > 0: # Only consider affordable instances
                 self.instance_types.append(instance)
 
-        logger.info(f"Filtered to {len(self.instance_types)} affordable instances from {len(INSTANCE_SPEC)}")
+        logger.info(f"Filtered to {len(self.instance_types)} affordable instances from {len(cluster_pool.available_resources)}")
 
         # Cache for expensive computations - use sorted key for better hit rate
         self._latency_cache = {}
@@ -265,13 +268,13 @@ class BeamSearchDPOptimizer:
             score = efficiency * (1 - penalty_term)
             return score
 
+        elif self.optimization_mode == "only_throughput":
+            return pipeline.throughput
+
         # Default fallback
         return efficiency
 
     def optimize(self) -> List[Pipeline]:
-        """Optimized DP with aggressive pruning - returns top 5 pipelines"""
-        import heapq
-
         # Base case
         self.dp[0][0][()] = self._create_pipeline([])
 
@@ -405,9 +408,11 @@ class BeamSearchDPOptimizer:
 
 
 def run_test_case(config: Dict, budget: float, latency_slo: float, cluster_pool: ClusterPool,
-                  top_k: int, look_rank: int = 5, max_stages: Optional[int] = None):
+                  top_k: int, look_rank: int = 5, max_stages: Optional[int] = None
+                  , optimization_mode: str = "soft_slo") -> Tuple[List[Pipeline], BeamSearchDPOptimizer, float]:
     optimizer = BeamSearchDPOptimizer(config, budget=budget, latency_slo=latency_slo,
-                                      cluster_pool=cluster_pool, max_stages=max_stages, top_k=top_k)
+                                      cluster_pool=cluster_pool, max_stages=max_stages, top_k=top_k,
+                                      optimization_mode=optimization_mode)
 
     start_time = time.time()
     results: List[Pipeline] = optimizer.optimize()
@@ -435,9 +440,12 @@ if __name__ == "__main__":
     model_name = "meta-llama/Llama-3.1-70B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)
 
+    # expected_input_len 은 763, expected_output_len 은 232 로 설정한다
+    # 이는 Splitwise 에서 제공한 Dataset (Microsoft Azure Conversation Dataset) 의 평균이며
+    # 여기서 input size 가 2048 이 초과하는 경우를 제거한 값이다.
     config = {
-        "expected_input_len": 512,
-        "expected_output_len": 128,
+        "expected_input_len": 763,
+        "expected_output_len": 232,
         "hidden_size": model_config.hidden_size,
         "num_layers": model_config.num_hidden_layers,
         "num_attention_heads": model_config.num_attention_heads,
@@ -447,32 +455,40 @@ if __name__ == "__main__":
         "max_position_embeddings": model_config.max_position_embeddings,
         "dtype": torch.float16,
         "max_model_len": 8192,
-        "gpu_mem_utilization": 0.9
+        "gpu_mem_utilization": 0.85
     }
 
-    available_spot_nodes = {
-        "(spot)g5.xlarge": 0,
-        "(spot)g5.12xlarge": 5,
-        "(spot)g6.xlarge": 10,
-        "(spot)g6.12xlarge": 5,
-        "(spot)g6e.xlarge": 10,
-        "(spot)g6e.12xlarge": 5,
+    optimization_mode = "soft_slo"
+
+    available_nodes = {
+        # "g5.xlarge": 1,
+        # "g5.12xlarge(half)": 1,
+        "g5.12xlarge": 2,
+        # "g6.xlarge": 12,
+        # "g6.12xlarge(half)": 6,
+        "g6.12xlarge": 3 - 3,
+        "g6e.xlarge": 4 - 2,
+        # "g6e.12xlarge": 1,
     }
 
-    spot_prices = {
-        "(spot)g5.xlarge": 0.6424,
-        "(spot)g5.12xlarge": 2.4761,
-        "(spot)g6.xlarge": 0.4207,
-        "(spot)g6.12xlarge": 2.1210,
-        "(spot)g6e.xlarge": 0.9613,
-        "(spot)g6e.12xlarge": 5.0399,
+    prices = {
+        # "g5.xlarge":   0.526,
+        # "g5.12xlarge(half)": 5.672 / 2,
+        "g5.12xlarge":  5.672,
+        # "g6.xlarge":    0.8048,
+        # "g6.12xlarge(half)":  4.6016 / 2,
+        "g6.12xlarge":  4.6016,
+        "g6e.xlarge":   1.861,
+        # "g6e.12xlarge": 10.49264,
     }
 
-    cluster_pool = ClusterPool(available_spot_nodes=available_spot_nodes, spot_prices=spot_prices)
+    cluster_pool = ClusterPool(available_spot_nodes=available_nodes, spot_prices=prices)
 
     logger.info("=" * 80)
     logger.info("Optimized Dynamic Programming Test")
     logger.info("=" * 80)
 
-    run_test_case(config, budget=20, latency_slo=5000, cluster_pool=cluster_pool,
-                  max_stages=10, top_k=1)
+    # 같은 구성을 p4d.24xlarge (A100 40GB x8) 으로 돌렸을 때의 latency 는 2656.6 ms
+    # 같은 구성을 p5.48xlarge (H100 80GB x8) 으로 돌렸을 때의 latency 는 1229.78 ms
+    run_test_case(config, budget=9999, latency_slo=99999999, cluster_pool=cluster_pool,
+                  max_stages=13, top_k=1, optimization_mode=optimization_mode)
