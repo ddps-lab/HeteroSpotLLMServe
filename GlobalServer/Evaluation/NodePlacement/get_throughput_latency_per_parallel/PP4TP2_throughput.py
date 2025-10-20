@@ -176,8 +176,8 @@ async def test_benchmark():
         "max_num_seqs": 2048,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 67640,
-        "max_batch_size": 1691,
+        "num_gpu_blocks": 63360,
+        "max_batch_size": 1584,
     }
     estimated_throughput_1 = 26.72
     node_layer_mapping_1 = [
