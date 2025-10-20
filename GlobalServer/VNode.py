@@ -1044,21 +1044,21 @@ class Pipeline:
             cleanup_cmd = get_ray_stop_command()
             ssh_cmd = f"ssh {ssh_options} {target_vnode.node_ip} '{cleanup_cmd}'"
             
-            try:
-                result = subprocess.run(ssh_cmd, shell=True, capture_output=True, text=True, timeout=5)
-                if result.returncode == 0:
-                    cluster_logger.info(f"Successfully cleaned up Ray workers on {target_vnode.node_ip}")
-                else:
-                    # Filter out harmless SSH messages
-                    stderr_filtered = result.stderr.strip()
-                    if stderr_filtered and not stderr_filtered.startswith("Warning: Permanently added"):
-                        cluster_logger.warning(f"Ray worker cleanup command failed on {target_vnode.node_ip}: {stderr_filtered}")
-                    else:
-                        cluster_logger.info(f"Ray worker cleanup completed on {target_vnode.node_ip} (with SSH host key warning)")
-            except subprocess.TimeoutExpired:
-                cluster_logger.warning(f"Ray worker cleanup timed out on {target_vnode.node_ip} (node may be unreachable)")
-            except Exception as e:
-                cluster_logger.warning(f"Error cleaning up Ray workers on {target_vnode.node_ip}: {e}")
+            # try:
+            #     result = subprocess.run(ssh_cmd, shell=True, capture_output=True, text=True, timeout=5)
+            #     if result.returncode == 0:
+            #         cluster_logger.info(f"Successfully cleaned up Ray workers on {target_vnode.node_ip}")
+            #     else:
+            #         # Filter out harmless SSH messages
+            #         stderr_filtered = result.stderr.strip()
+            #         if stderr_filtered and not stderr_filtered.startswith("Warning: Permanently added"):
+            #             cluster_logger.warning(f"Ray worker cleanup command failed on {target_vnode.node_ip}: {stderr_filtered}")
+            #         else:
+            #             cluster_logger.info(f"Ray worker cleanup completed on {target_vnode.node_ip} (with SSH host key warning)")
+            # except subprocess.TimeoutExpired:
+            #     cluster_logger.warning(f"Ray worker cleanup timed out on {target_vnode.node_ip} (node may be unreachable)")
+            # except Exception as e:
+            #     cluster_logger.warning(f"Error cleaning up Ray workers on {target_vnode.node_ip}: {e}")
             
             # Stop tensor store on old node (target_vnode == old_vnode)
             cluster_logger.info(f"Stopping tensor store on old node {target_vnode.node_ip}")

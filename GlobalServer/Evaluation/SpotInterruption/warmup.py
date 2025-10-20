@@ -288,7 +288,7 @@ async def main():
         )
 
         start_time = 0      # Start from beginning
-        end_time = 10 * 60  # Run for 10 minutes Just for test
+        end_time = 5 * 60  # Run for 10 minutes Just for test
 
         # Run benchmark using helper function
         metrics = await run_benchmark(
