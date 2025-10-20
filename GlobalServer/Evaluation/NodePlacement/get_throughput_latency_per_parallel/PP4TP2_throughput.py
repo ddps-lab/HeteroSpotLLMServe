@@ -169,15 +169,15 @@ async def test_benchmark():
         "model_name": model_name,
         "total_num_layers": 32,
         "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "32",
+        "pp_layer_partition": "8,8,8,8",
         "parallel_strategy": [2,2,2,2],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 2048,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 67640,
-        "max_batch_size": 1691,
+        "num_gpu_blocks": 63360,
+        "max_batch_size": 1584,
     }
     estimated_throughput_1 = 26.72
     node_layer_mapping_1 = [
