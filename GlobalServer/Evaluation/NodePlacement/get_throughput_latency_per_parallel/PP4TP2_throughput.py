@@ -169,7 +169,7 @@ async def test_benchmark():
         "model_name": model_name,
         "total_num_layers": 32,
         "gpu_memory_utilization": 0.9,
-        "pp_layer_partition": "32",
+        "pp_layer_partition": "8,8,8,8",
         "parallel_strategy": [2,2,2,2],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
