@@ -61,7 +61,8 @@ def get_tensor_store_command(model_name: str,
         final_port = status_port + local_rank
     
     cmd = (
-        f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
+        # f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
+        f"{PYTHON} {PROJECT_PATH}/TensorStore/raw_s3_tensor_store_server.py "
         f"--model-name {model_name} "
         f"--s3-path {s3_path} "
         f"--tensor-parallel-size {tensor_parallel_size} "

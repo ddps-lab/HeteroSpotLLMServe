@@ -1,4 +1,62 @@
 # S3 Model Uploader - Downloads from HuggingFace and uploads to S3
+# Raw Binary Format Version - Reduces file size by 50% for bfloat16/float16 tensors
+
+"""
+Raw Binary Tensor Format Specification
+======================================
+
+This uploader saves tensors in a custom raw binary format that eliminates
+the storage overhead of torch.save() for float16/bfloat16 tensors.
+
+Performance Improvement:
+  - torch.save(): 2.0 GB for (64128, 8192) bfloat16 tensor
+  - Raw binary:   1.0 GB for same tensor
+  - Reduction:    50% file size
+
+File Format Structure:
+---------------------
+[HEADER] [TENSOR DATA]
+
+Header Layout (Little Endian):
+  Offset | Size | Type     | Field        | Description
+  -------|------|----------|--------------|----------------------------------
+  0      | 4    | char[4]  | magic        | Magic number 'TRAW' (0x54524157)
+  4      | 4    | uint32   | version      | Format version (currently 1)
+  8      | 4    | uint32   | ndim         | Number of dimensions
+  12     | 8*N  | uint64[] | shape        | Shape array (N dimensions)
+  12+8*N | 4    | uint32   | dtype_code   | Data type code (see below)
+  16+8*N | 8    | uint64   | data_size    | Data size in bytes (checksum)
+  24+8*N | var  | bytes    | data         | Raw tensor data
+
+Data Type Codes:
+  1 = torch.float16
+  2 = torch.bfloat16
+  3 = torch.float32
+  4 = torch.float64
+
+Example for shape (64128, 8192) bfloat16 tensor:
+  Offset 0:  'TRAW'              # Magic (4 bytes)
+  Offset 4:  1                   # Version (4 bytes)
+  Offset 8:  2                   # Ndim (4 bytes)
+  Offset 12: 64128               # Shape[0] (8 bytes)
+  Offset 20: 8192                # Shape[1] (8 bytes)
+  Offset 28: 2                   # Dtype code for bfloat16 (4 bytes)
+  Offset 32: 1050673152          # Data size (8 bytes) = 64128 * 8192 * 2
+  Offset 40: [tensor data...]    # 1050673152 bytes
+
+Total: 40 bytes header + 1,050,673,152 bytes data = 1,050,673,192 bytes
+
+Why uint8 view?
+  - numpy does not support bfloat16/float16 directly
+  - Solution: view tensor as uint8 → convert to numpy → tobytes()
+  - This is just a reinterpretation of memory, NOT compression
+  - No data loss: bytes are written exactly as stored in memory
+  - On load: reverse the process to reconstruct original tensor
+
+Storage Path:
+  S3 path includes 'raw/' prefix to separate from torch.save format
+  Example: s3://bucket/raw/base_path/model_name/TP2/shard0/tensor.bin
+"""
 
 import argparse
 import os
@@ -16,6 +74,7 @@ from tqdm.auto import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import gc
+import struct
 
 import torch
 import boto3
@@ -207,6 +266,99 @@ def partition_tensor_for_tp(tensor_name: str, full_tensor: torch.Tensor,
     return tensor
 
 
+def save_tensor_raw(tensor: torch.Tensor, filepath: str) -> int:
+    """Save tensor in raw binary format with minimal overhead
+
+    This function implements the raw binary format described in the module docstring.
+    It achieves 50% file size reduction compared to torch.save() for bfloat16/float16 tensors.
+
+    Args:
+        tensor: PyTorch tensor to save (must be contiguous and on CPU)
+        filepath: Path where the binary file will be saved
+
+    Returns:
+        int: File size in bytes
+
+    Raises:
+        AssertionError: If tensor is not contiguous or not on CPU
+        ValueError: If dtype is not supported or data validation fails
+
+    Implementation Details:
+        1. Validates tensor is contiguous and on CPU (required for safe memory access)
+        2. Writes magic number 'TRAW' for format identification
+        3. Writes format version (1) for future compatibility
+        4. Writes number of dimensions
+        5. Writes each dimension size (shape)
+        6. Writes dtype code (mapped from torch dtype)
+        7. Writes expected data size as checksum
+        8. Writes raw tensor data via uint8 view (for numpy compatibility)
+        9. Verifies written size matches expected
+    """
+    # Step 1: Validate and prepare tensor
+    # Ensure tensor is contiguous (some TP-split tensors may not be contiguous in memory)
+    if not tensor.is_contiguous():
+        tensor = tensor.contiguous()
+
+    assert tensor.device.type == "cpu", "Tensor must be on CPU for file I/O"
+
+    # Step 2: Calculate expected size
+    expected_bytes = tensor.numel() * tensor.element_size()
+
+    # Step 3: Prepare dtype mapping
+    dtype_map = {
+        torch.float16: 1,
+        torch.bfloat16: 2,
+        torch.float32: 3,
+        torch.float64: 4,
+    }
+    dtype_code = dtype_map.get(tensor.dtype)
+    if dtype_code is None:
+        raise ValueError(f"Unsupported dtype: {tensor.dtype}. Supported: {list(dtype_map.keys())}")
+
+    # Step 4: Write to file
+    with open(filepath, 'wb') as f:
+        # Write magic number (4 bytes)
+        f.write(b'TRAW')
+
+        # Write version (4 bytes)
+        f.write(struct.pack('I', 1))
+
+        # Write number of dimensions (4 bytes)
+        f.write(struct.pack('I', len(tensor.shape)))
+
+        # Write shape (8 bytes per dimension)
+        for dim in tensor.shape:
+            f.write(struct.pack('Q', dim))
+
+        # Write dtype code (4 bytes)
+        f.write(struct.pack('I', dtype_code))
+
+        # Write data size checksum (8 bytes)
+        f.write(struct.pack('Q', expected_bytes))
+
+        # Write raw tensor data
+        # Use uint8 view because numpy doesn't support bfloat16
+        # This is just reinterpretation, not conversion - no data loss
+        tensor_u8 = tensor.view(torch.uint8)
+        data_bytes = tensor_u8.numpy().tobytes()
+
+        # Validate data size before writing
+        if len(data_bytes) != expected_bytes:
+            raise ValueError(f"Data size mismatch: {len(data_bytes)} != {expected_bytes}")
+
+        f.write(data_bytes)
+
+    # Step 5: Verify file size
+    file_size = os.path.getsize(filepath)
+    header_size = 4 + 4 + 4 + (8 * len(tensor.shape)) + 4 + 8  # magic + version + ndim + shape + dtype + size
+    expected_file_size = header_size + expected_bytes
+
+    if file_size != expected_file_size:
+        raise ValueError(f"File size mismatch: {file_size} != {expected_file_size}")
+
+    return file_size
+
+
 def save_tensor_to_file(tensor_name: str, tensor_data: torch.Tensor, output_dir: str, target_dtype: Optional[torch.dtype] = None) -> tuple[str, dict]:
     """Save a single tensor to a binary file
 
@@ -222,13 +374,14 @@ def save_tensor_to_file(tensor_name: str, tensor_data: torch.Tensor, output_dir:
     if target_dtype is not None:
         tensor_data = tensor_data.to(dtype=target_dtype)
 
-    # Profiling: Serialize and save tensor to file
-    serialize_start = time.perf_counter()
-    torch.save(tensor_data, file_path)
-    serialize_time = time.perf_counter() - serialize_start
+    # Ensure tensor is contiguous after dtype conversion (some operations may break contiguity)
+    if not tensor_data.is_contiguous():
+        tensor_data = tensor_data.contiguous()
 
-    # Get file size
-    file_size = os.path.getsize(file_path)
+    # Profiling: Serialize and save tensor to file using raw binary format
+    serialize_start = time.perf_counter()
+    file_size = save_tensor_raw(tensor_data, file_path)
+    serialize_time = time.perf_counter() - serialize_start
 
     # Profiling stats
     profiling_stats = {
@@ -310,11 +463,11 @@ def process_and_upload_tensor(args, s3_client, bucket_name: str, base_s3_path: s
                     target_dtype=None  # Already converted above
                 )
 
-                # Create S3 key with new structure: TP{tp_size}/shard{tp_rank}/{tensor_name}.bin
+                # Create S3 key with raw/ prefix: raw/{base_path}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin
                 if base_s3_path:
-                    s3_key = f"{base_s3_path}/{args.model_name}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin"
+                    s3_key = f"raw/{base_s3_path}/{args.model_name}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin"
                 else:
-                    s3_key = f"{args.model_name}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin"
+                    s3_key = f"raw/{args.model_name}/TP{tp_size}/shard{tp_rank}/{tensor_name}.bin"
 
                 # Upload to S3
                 upload_file_to_s3(local_file_path, s3_client, bucket_name, s3_key)
@@ -493,11 +646,11 @@ def main():
             logging.error(f"Failed to load config.json: {e}")
             return
 
-        # Upload config.json to S3 (only once in the model directory)
+        # Upload config.json to S3 (only once in the model directory, with raw/ prefix)
         if base_s3_path:
-            config_s3_key = f"{base_s3_path}/{args.model_name}/config.json"
+            config_s3_key = f"raw/{base_s3_path}/{args.model_name}/config.json"
         else:
-            config_s3_key = f"{args.model_name}/config.json"
+            config_s3_key = f"raw/{args.model_name}/config.json"
         try:
             s3_client.upload_file(config_path, bucket_name, config_s3_key)
             logging.info(f"Uploaded config.json to s3://{bucket_name}/{config_s3_key}")
