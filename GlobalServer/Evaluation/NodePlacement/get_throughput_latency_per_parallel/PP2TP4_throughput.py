@@ -200,7 +200,7 @@ async def test_benchmark():
         # Run benchmark - optimized for single request latency measurement
         metrics = await run_benchmark(
             global_server,
-            num_requests=1728*5,  # Small number of requests for latency measurement
+            num_requests=5000,  # Small number of requests for latency measurement
             input_len=763,
             output_len=232,
             request_rate=float('inf'),  # No rate limit
