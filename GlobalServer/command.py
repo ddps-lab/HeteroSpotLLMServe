@@ -136,7 +136,7 @@ def get_api_server_command(model_name: str,
     parallel_strategy_str = " ".join(map(str, parallel_strategy))
     
     cmd_parts = [
-        # f"RAY_DEDUP_LOGS=0", # if you want to see all logs from Ray
+        f"RAY_DEDUP_LOGS=0", # if you want to see all logs from Ray
         # f"RAY_BACKEND_LOG_LEVEL=debug", # if you want to see debug logs from Ray
         # f"RAY_LOG_TO_STDERR=1", # if you want to see Ray logs in stderr
         # f"RAY_LOG_LEVEL=debug", # if you want to see debug logs from Ray
@@ -189,6 +189,7 @@ def get_ray_start_worker_command(head_address: str) -> str:
     Returns:
         Command string to execute
     """
+    # return f"RAY_memory_monitor_refresh_ms=0 {RAY} start --address={head_address} --disable-usage-stats"
     return f"{RAY} start --address={head_address} --disable-usage-stats"
 
 

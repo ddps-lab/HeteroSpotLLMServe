@@ -217,10 +217,10 @@ async def main():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 15049,
-        "max_batch_size": 241,
+        "num_gpu_blocks": 13556,
+        "max_batch_size": 218,
     }
-    estimated_throughput_2 = 3.49
+    estimated_throughput_2 = 2.83
     node_layer_mapping_2 = [
         (pipeline_2_stage_0_node_ip, 13),
         (pipeline_2_stage_1_node_ip, 28),

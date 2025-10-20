@@ -217,10 +217,10 @@ async def main():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 15049,
-        "max_batch_size": 241,
+        "num_gpu_blocks": 12561,
+        "max_batch_size": 202,
     }
-    estimated_throughput_2 = 3.49
+    estimated_throughput_2 = 2.76
     node_layer_mapping_2 = [
         (pipeline_2_stage_0_node_ip, 13),
         (pipeline_2_stage_1_node_ip, 28),
@@ -383,7 +383,7 @@ async def main():
             global_server,
             dataset_path=dataset_path,
             num_requests=None,  # Use all requests from trace
-            time_scale=3,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
+            time_scale=3.0,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 95],
             disable_tqdm=False,  # Show progress bar
