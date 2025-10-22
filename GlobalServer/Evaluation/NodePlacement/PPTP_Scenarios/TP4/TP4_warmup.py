@@ -12,7 +12,7 @@ from typing import Dict, List, Tuple
 from nodes import *
 
 # Add parent directory to path
-parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 sys.path.append(parent_dir)
 
 from global_server import GlobalServer
