@@ -1,0 +1,29 @@
+variable "prefix" {
+  type = string
+  description = "The prefix to use for the infrastructure"
+  default = ""
+}
+
+variable "region" {
+  type = string
+  description = "The AWS region to deploy the infrastructure"
+  default = "us-west-2"
+}
+
+variable "awscli_profile" {
+  type = string
+  description = "The AWS CLI profile to use"
+  default = ""
+}
+
+variable "ami_id" {
+  type = string
+  description = "The AMI ID to use for the infrastructure"
+  default = ""
+}
+
+variable "key_name" {
+  type = string
+  description = "The key name to use for the infrastructure"
+  default = ""
+}
