@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
+import time
 import asyncio
 import atexit
 import gc
@@ -935,6 +936,8 @@ def create_server_socket(addr: tuple[str, int]) -> socket.socket:
 
 
 async def run_server(args, **uvicorn_kwargs) -> None:
+    run_server_start_time = time.time()
+    logger.info("run_server start time: %s", run_server_start_time)
     logger.info("vLLM API server version %s", VLLM_VERSION)
     logger.info("args: %s", args)
 
@@ -986,6 +989,9 @@ async def run_server(args, **uvicorn_kwargs) -> None:
                     "s" if is_ssl else "", _listen_addr(sock_addr[0]),
                     sock_addr[1])
 
+        run_server_end_time = time.time()
+        logger.info("run_server end time: %s", run_server_end_time)
+        logger.info("run_server duration: %s", run_server_end_time - run_server_start_time)
         shutdown_task = await serve_http(
             app,
             sock=sock,
