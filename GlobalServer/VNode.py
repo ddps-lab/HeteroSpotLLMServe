@@ -52,7 +52,8 @@ class Cluster:
     def create_pipeline(self,
                        node_layer_mapping: List[Tuple[str, int]],
                        config: Dict,
-                       ideal_throughput: float):
+                       ideal_throughput: float,
+                       pipeline_num: int = 1):
         """
         Create a pipeline for distributed LLM inference.
 
@@ -92,7 +93,7 @@ class Cluster:
             self.mode = "hexgen"
 
         pipeline = Pipeline()
-        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
+        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock, pipeline_num)
         self.pipelines.append(pipeline)
         end_time = time.time()
 
@@ -301,7 +302,8 @@ class Pipeline:
                             node_layer_mapping: List[Tuple[str, int]],
                             config: Dict,
                             ideal_throughput: float,
-                            ray_init_lock: threading.Lock = None):
+                            ray_init_lock: threading.Lock = None,
+                            pipeline_num: int = 1):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
         self.node_layer_mapping = node_layer_mapping  # Store for reference
         self.config = config  # Store for reference
@@ -395,8 +397,11 @@ class Pipeline:
 
         # Now start Ray cluster with all vnodes
         ray_port = self.get_alternate_ray_port()
+        ray_cluster_start_time = time.time()
         self.start_ray_cluster(ray_port, ray_init_lock)
-        
+        ray_cluster_end_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Ray Cluster Started at {ray_cluster_start_time} and Ended at {ray_cluster_end_time}")
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Ray Cluster Init Time: {ray_cluster_end_time - ray_cluster_start_time} seconds")
         # Update VNode GPU counts from Ray cluster information
         # 현재 아래 코드는 그냥 현재 클러스터에 참여여부만 확인하는 용도로 사용한다.
         for vnode in self.vnodes:
@@ -421,6 +426,8 @@ class Pipeline:
         # Start tensor stores on all VNodes
         tensor_store_base_port = config.get("tensor_store_base_port")
         parallel_strategy = config["parallel_strategy"]
+        tensor_store_start_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Tensor Store Started at {tensor_store_start_time}")
         for i, vnode in enumerate(self.vnodes):
             # Each VNode gets unique ports to avoid conflicts
             if tensor_store_base_port is not None:
@@ -429,7 +436,6 @@ class Pipeline:
                 tensor_store_port = DEFAULT_TENSOR_STORE_BASE_PORT # use global default in command.py
             cluster_logger.info(f"Starting tensor store on {vnode.node_ip} at port {tensor_store_port + i}")
             vnode.start_tensor_store(tensor_store_port, config, len(parallel_strategy))
-        
         # Generate node_rank_mapping based on vnodes
         self._generate_node_rank_mapping()
         
@@ -437,12 +443,17 @@ class Pipeline:
         first_vnode = self.vnodes[0]
         api_server_base_port = config.get("api_server_base_port", DEFAULT_API_SERVER_BASE_PORT)
         ray_address = f"{self.ray_head_ip}:{self.ray_port}"
+        api_server_start_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] API Server Started at {api_server_start_time}")
         first_vnode.start_api_server(api_server_base_port, config, self.node_rank_mapping, ray_address)
         self.api_server_host = first_vnode.node_ip
         self.api_server_port = first_vnode.api_server_port
         
         # Wait for all services to be ready
         self._wait_for_services()
+        wait_for_services_end_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] All services ready at {wait_for_services_end_time}")
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Wait for services Time: {wait_for_services_end_time - ray_cluster_start_time} seconds")
 
         self.api_server_host = first_vnode.node_ip
         self.api_server_port = first_vnode.api_server_port
