@@ -152,7 +152,7 @@ async def test_benchmark():
     global_server = GlobalServer()
 
     # Create pipeline in background
-    async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
+    async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int, pipeline_num: int = 1):
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor() as executor:
             await loop.run_in_executor(
@@ -160,11 +160,11 @@ async def test_benchmark():
                 global_server.create_pipeline,
                 node_layer_mapping,
                 config,
-                throughput
+                throughput,
+                pipeline_num
             )
         logger.info("Pipeline creation completed")
 
-    # Our Pipeline 1
     # Our Pipeline 1
     pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
     pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
@@ -222,8 +222,8 @@ async def test_benchmark():
     ]
 
     # Start pipeline creation
-    pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
+    pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1, pipeline_num=1))
+    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2, pipeline_num=2))
 
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
