@@ -1,26 +1,26 @@
 """
-Benchmark test for GlobalServer that measures throughput and latency metrics.
-Similar to benchmark_serving.py but using GlobalServer's internal add_request.
+Benchmark test for GlobalServer that measures single request latency.
+Uses fixed-length synthetic requests instead of trace data.
 """
 import asyncio
 import concurrent.futures
 import logging
 import sys
 import os
-from datetime import datetime
 from typing import Dict, List, Tuple
 
+from nodes import *
+
 # Add parent directory to path
-parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 sys.path.append(parent_dir)
 
 from global_server import GlobalServer
 from request_handler import generate_random_requests
-from benchmark_utils import print_benchmark_results
-from evaluation_utils import (
-    load_azure_trace,
-    generate_requests_from_trace,
-    run_trace_replay_benchmark
+from benchmark_utils import (
+    calculate_benchmark_metrics,
+    print_benchmark_results,
+    run_benchmark_requests
 )
 
 from nodes import *
@@ -28,24 +28,28 @@ from nodes import *
 
 async def run_benchmark(
     global_server: GlobalServer,
-    dataset_path: str,
-    num_requests: int = None,
-    time_scale: float = 1.0,
-    model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
+    num_requests: int = 100,
+    input_len: int = 512,
+    output_len: int = 128,
+    request_rate: float = float('inf'),
+    model_name: str = "meta-llama/Llama-3.1-70B-Instruct",
+    max_concurrency: int = None,
     percentiles: List[float] = None,
     disable_tqdm: bool = False,
-    run_initial_test: bool = True,
+    run_initial_test: bool = False,
     test_requests_per_pipeline: int = 2
 ):
     """
-    Run a trace-based benchmark test on the GlobalServer using Azure dataset.
+    Run a benchmark test on the GlobalServer.
 
     Args:
         global_server: The GlobalServer instance
-        dataset_path: Path to Azure trace dataset CSV file
-        num_requests: Maximum number of requests to load from dataset (None for all)
-        time_scale: Time scale multiplier (1.0 = original, 0.5 = 2x faster, 2.0 = 2x slower)
+        num_requests: Number of requests to send
+        input_len: Input token length
+        output_len: Expected output token length
+        request_rate: Requests per second (inf for no limit)
         model_name: Model name for generating requests
+        max_concurrency: Maximum number of concurrent requests (None for no limit)
         percentiles: List of percentiles to calculate (default: [25, 50, 75, 99])
         disable_tqdm: Whether to disable progress bar
         run_initial_test: Whether to run initial test requests
@@ -54,17 +58,38 @@ async def run_benchmark(
     Returns:
         BenchmarkMetrics object with results
     """
+    if not disable_tqdm:
+        print("\n" + "=" * 50)
+        print("Starting GlobalServer Benchmark")
+        print(f"  Requests: {num_requests}")
+        print(f"  Input length: {input_len} tokens")
+        print(f"  Output length: {output_len} tokens")
+        print(f"  Request rate: {request_rate if request_rate != float('inf') else 'unlimited'} req/s")
+        print(f"  Model: {model_name}")
+        print("=" * 50 + "\n")
+
+    # Generate random requests
+    if not disable_tqdm:
+        print("Generating requests...")
+    request_inputs = generate_random_requests(
+        num_prompts=num_requests,
+        input_len=input_len,
+        output_len=output_len,
+        model_name=model_name,
+        ignore_eos=True  # Ensure consistent output length
+    )
+
     # Run initial test if requested
     if run_initial_test:
         num_pipelines = len(global_server.cluster.pipelines)
         print(f"\nRunning initial test on {num_pipelines} pipeline(s)...")
 
-        # Generate test requests with fixed length for stability
+        # Generate test requests (2 per pipeline)
         test_count = test_requests_per_pipeline * num_pipelines
-        test_inputs = generate_random_requests(
+        test_inputs = request_inputs[:test_count] if test_count <= len(request_inputs) else generate_random_requests(
             num_prompts=test_count,
-            input_len=512,
-            output_len=128,
+            input_len=input_len,
+            output_len=output_len,
             model_name=model_name,
             ignore_eos=True
         )
@@ -91,43 +116,18 @@ async def run_benchmark(
             )
         else:
             print(f"Initial test completed successfully - all {test_count} requests succeeded!")
-            print("Starting trace benchmark...\n")
+            print("Starting main benchmark run...\n")
 
-    # Load Azure trace dataset
-    print(f"Loading trace dataset from: {dataset_path}")
-    trace_data = load_azure_trace(
-        csv_path=dataset_path,
-        max_requests=num_requests,
+    # Run benchmark (send requests and wait for completion)
+    requests, actual_duration = await run_benchmark_requests(
+        global_server, request_inputs, request_rate, max_concurrency, disable_tqdm
     )
 
-    if not trace_data:
-        raise ValueError("No trace data loaded. Check dataset path and filters.")
-
-    # Generate requests from trace
-    print("Generating requests from trace data...")
-    trace_requests = generate_requests_from_trace(
-        trace_data=trace_data,
-        model_name=model_name,
-        seed=0,
-        ignore_eos=True
-    )
-
-    print(f"Generated {len(trace_requests)} requests from trace\n")
-
-    # Prepare trace output path with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    trace_dir = os.path.join(parent_dir, "Trace")
-    os.makedirs(trace_dir, exist_ok=True)
-    trace_output_path = os.path.join(trace_dir, f"our_throughput_{timestamp}.csv")
-
-    # Run trace replay benchmark
-    metrics = await run_trace_replay_benchmark(
-        global_server=global_server,
-        trace_requests=trace_requests,
-        time_scale=time_scale,
-        percentiles=percentiles,
-        disable_tqdm=disable_tqdm,
-        save_trace_path=trace_output_path
+    # Calculate metrics
+    if not disable_tqdm:
+        print("\nCalculating metrics...")
+    metrics = calculate_benchmark_metrics(
+        requests, request_inputs, actual_duration, percentiles
     )
 
     return metrics
@@ -147,10 +147,10 @@ async def test_benchmark():
     logger.addHandler(console_handler)
     logger.propagate = False
     model_name = "meta-llama/Llama-3.1-70B-Instruct"
-    
+
     # Create GlobalServer instance
     global_server = GlobalServer()
-    
+
     # Create pipeline in background
     async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
         loop = asyncio.get_event_loop()
@@ -164,6 +164,7 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
+    # Our Pipeline 1
     # Our Pipeline 1
     pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
     pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
@@ -219,14 +220,14 @@ async def test_benchmark():
         (pipeline_2_stage_2_node_ip, 28),
         (pipeline_2_stage_3_node_ip, 11),
     ]
-    
+
     # Start pipeline creation
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
     pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
 
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
-    
+
     try:
         # Wait for pipeline creation to complete
         logger.info("Waiting for pipeline creation to complete...")
@@ -234,13 +235,7 @@ async def test_benchmark():
         await pipeline_task_2
         logger.info("Pipelines are ready!")
 
-        # Run benchmark
-        dataset_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "Datasets",
-            "AzureLLMInferenceConvTrace_pruned_2048.csv"
-        )
+        # Run benchmark - optimized for single request latency measurement
         metrics = await run_benchmark(
             global_server,
             num_requests=1,  # Small number of requests for latency measurement
@@ -254,10 +249,10 @@ async def test_benchmark():
             run_initial_test=False,  # Run test requests first
             test_requests_per_pipeline=2  # 2 test requests per pipeline
         )
-        
+
         # Print results
         print_benchmark_results(metrics)
-        
+
     except KeyboardInterrupt:
         logger.info("\nBenchmark interrupted by user")
     except Exception as e:
