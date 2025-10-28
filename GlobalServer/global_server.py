@@ -214,9 +214,9 @@ class GlobalServer:
 
             # Put back in urgent queue for retry (higher priority)
             await self.urgent_queue.put(request)
-
+            
             log_msg = f"Request {request.request_id} added to urgent queue for retry (attempt #{request.retry_count})"
-            if request.output is not None:
+            if request.output is not None and self.request_handler_mode == "migration":
                 log_msg += f", original input tokens: {request.input.prompt_len}, new input tokens: {request.output.output_tokens}"
             logger.info(log_msg)
         finally:
