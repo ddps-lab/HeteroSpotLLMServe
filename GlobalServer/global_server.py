@@ -263,16 +263,18 @@ class GlobalServer:
     
     def create_pipeline(self, node_layer_mapping: List[Tuple[str, int]],
                        config: Dict,
-                       ideal_throughput: float):
+                       ideal_throughput: float,
+                       pipeline_num: int = 1):
         """Create a new pipeline in the cluster.
 
         Args:
             node_layer_mapping: List of (node_ip, num_layers) tuples
             config: Configuration dictionary for the pipeline (can include 'max_batch_size')
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
+            pipeline_num: Pipeline number for logging
         """
         # Create pipeline in the cluster
-        self.cluster.create_pipeline(node_layer_mapping, config, ideal_throughput)
+        self.cluster.create_pipeline(node_layer_mapping, config, ideal_throughput, pipeline_num)
 
         # Format node_layer_mapping for logging
         node_info = ""

@@ -818,6 +818,8 @@ def set_global_variables(args: argparse.Namespace, config_dict: dict):
     logging.info("=" * 80)
 
 def main():
+    start_time = time.time()
+    logging.info(f"Raw S3 Tensor Store Server Started at {start_time}")
     args = parse_args()
 
     # Set CUDA device for this process BEFORE any CUDA operations
@@ -968,7 +970,10 @@ def main():
         logging.info(f"tensor_name: {tensor_name} / shape: {TENSOR_DICT[tensor_name].shape} / dtype: {TENSOR_DICT[tensor_name].dtype} / device: {TENSOR_DICT[tensor_name].device}")
     
     load_end = time.perf_counter()
+    start_end_time = time.time()
     logging.info(f"[Model Loading Complete] Total loading time: {load_end - load_start:.2f} seconds")
+    logging.info(f"[Model Loading Complete] Start time: {start_time} and End time: {start_end_time}")
+    logging.info(f"[Model Loading Complete] Loading time: {start_end_time - start_time:.2f} seconds")
     
     if not TENSOR_DICT:
         raise ValueError("Tensor loading failed: TENSOR_DICT is empty")
