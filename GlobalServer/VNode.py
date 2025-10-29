@@ -415,7 +415,6 @@ class Pipeline:
                 if num_gpu is not None and num_gpu > 0:
                     break
                 cluster_logger.info(f"Waiting for node {vnode.node_ip} to be entered into Ray cluster...")
-                time.sleep(1)
             
             # Update the vnode's GPU count
             # 옛날에는 무조건 num_gpu 로 tp size 를 결정하였음.
@@ -636,7 +635,7 @@ class Pipeline:
                 raise RuntimeError(f"Failed to connect nodes to Ray cluster: {failed_nodes}")
             
             # Wait for all nodes to be connected with retry logic
-            max_attempts = 30  # 30 attempts with 1 second interval = 30 seconds timeout
+            max_attempts = 10000  # 30 attempts with 1 second interval = 30 seconds timeout
             attempt = 0
             
             while attempt < max_attempts:
@@ -649,8 +648,9 @@ class Pipeline:
                 
                 missing = vnode_ips - connected_ips
                 attempt += 1
-                cluster_logger.info(f"Waiting for nodes to connect (attempt {attempt}/{max_attempts}). Missing: {missing}")
-                time.sleep(1)
+                if attempt % 100 == 0:
+                    cluster_logger.info(f"Waiting for nodes to connect (attempt {attempt}/{max_attempts}). Missing: {missing}")
+                time.sleep(0.01)
             
             # Final check
             if not vnode_ips.issubset(connected_ips):
@@ -664,8 +664,7 @@ class Pipeline:
         """Wait for all tensor stores and API server to be ready."""
         tensor_store_statuses = [False] * len(self.vnodes)
         api_server_ready = False
-        dots = 0
-        
+        attempt = 0
         while not (all(tensor_store_statuses) and api_server_ready):
             # Check tensor store status for all nodes
             for i, vnode in enumerate(self.vnodes):
@@ -679,16 +678,12 @@ class Pipeline:
             ready_ts = sum(tensor_store_statuses)
             api_status = "Ready" if api_server_ready else "Not ready"
             
-            # Create dynamic dots animation
-            dots = (dots + 1) % 4
-            dots_str = "." * dots + " " * (3 - dots)
-            
-            # Log status to file only
-            status_msg = f"Waiting for services{dots_str} Tensor stores - {ready_ts}/{len(self.vnodes)}, API server {(self.api_server_host)}:{self.api_server_port} - {api_status}"
-            cluster_logger.info(status_msg)
+            attempt += 1
+            if attempt % 100 == 0:
+                cluster_logger.info(f"Waiting for services (attempt {attempt}) Tensor stores - {ready_ts}/{len(self.vnodes)}, API server {(self.api_server_host)}:{self.api_server_port} - {api_status}")
             
             if not (all(tensor_store_statuses) and api_server_ready):
-                time.sleep(1)
+                time.sleep(0.01)
         
         # Print final status only once to console
         cluster_logger.info(f"✓ All services ready! Tensor stores: {len(self.vnodes)}/{len(self.vnodes)}, API server: Ready")
