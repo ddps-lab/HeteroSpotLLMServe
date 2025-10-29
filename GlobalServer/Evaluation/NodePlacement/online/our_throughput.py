@@ -242,7 +242,7 @@ async def test_benchmark():
 
         # Run benchmark
         dataset_path = os.path.join(
-            os.path.dirname(__file__),
+            os.path.dirname(os.path.dirname(__file__)),
             "..",
             "Datasets",
             "AzureLLMInferenceConvTrace_pruned_2048.csv"
