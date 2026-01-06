@@ -131,33 +131,30 @@ async def run_benchmark(
 async def test_benchmark():
     """Test benchmark with a single node configuration."""
     logger = setup_test_logger(__name__)
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     
     # Create GlobalServer instance
     global_server = GlobalServer()
-    
-    # Configuration for single node
-    node_ip_1 = "172.31.6.141"  # Update with your actual node IP
-    node_ip_2 = "172.31.8.240"
-    node_ip_3 = "172.31.4.224"
-    node_layer_mapping_1 = [(node_ip_1, 32)]
-    node_layer_mapping_2 = [(node_ip_2, 32)]
-    node_layer_mapping_3 = [(node_ip_3, 32)]
-    throughput_1 = 100
-    throughput_2 = 100
-    throughput_3 = 100
 
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
-    pipeline_config = {
+    # Pipeline 1
+    pipeline_1_node_ip_1 = "172.31.9.212" # g6.xlarge
+    pipeline_1_config = {
         "model_name": model_name,
         "total_num_layers": 32,
         "pp_layer_partition": "32",
         "parallel_strategy": [1],  # Single GPU
-        "max_model_len": 4096,
-        "max_num_batched_tokens": 4096,
-        "max_num_seqs": 256,
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "num_gpu_blocks": 11264,
+        "max_batch_size": 352,
     }
+    estimated_throughput_1 = 100
+    node_layer_mapping_1 = [
+        (pipeline_1_node_ip_1, 32)
+    ]
     
     # Create pipeline in background
     async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
@@ -173,9 +170,9 @@ async def test_benchmark():
         logger.info("Pipeline creation completed")
     
     # Start pipeline creation
-    pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_1, throughput_1))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_2, throughput_2))
-    pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_3, throughput_3))
+    pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
+    # pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_2, throughput_2))
+    # pipeline_task_3 = asyncio.create_task(create_pipeline_async(pipeline_config, node_layer_mapping_3, throughput_3))
 
     # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
@@ -184,23 +181,23 @@ async def test_benchmark():
         # Wait for pipeline creation to complete
         logger.info("Waiting for pipeline creation to complete...")
         await pipeline_task_1
-        await pipeline_task_2
-        await pipeline_task_3
+        # await pipeline_task_2
+        # await pipeline_task_3
         logger.info("Pipeline is ready!")
-        
+
         # Run benchmark
         metrics = await run_benchmark(
             global_server,
-            num_requests=1024,  # Matching the example output
-            input_len=1024,
+            num_requests=20,  # Matching the example output
+            input_len=512,
             output_len=128,
             request_rate=float('inf'),  # No rate limit for max throughput test
             model_name=model_name,
-            max_concurrency=None,  # Limit concurrent requests
+            max_concurrency=1,  # Limit concurrent requests
             percentiles=[25, 50, 75, 99],  # Custom percentiles
             disable_tqdm=False,  # Show progress bars
             run_initial_test=True,  # Run test requests first
-            test_requests_per_pipeline=2  # 2 test requests per pipeline
+            test_requests_per_pipeline=2  # 0 test requests per pipeline
         )
         
         # Print results
@@ -216,11 +213,11 @@ async def test_benchmark():
         logger.info("Cleaning up...")
         server_task.cancel()
         pipeline_task_1.cancel()
-        pipeline_task_2.cancel()
-        pipeline_task_3.cancel()
+        # pipeline_task_2.cancel()
+        # pipeline_task_3.cancel()
 
         try:
-            await asyncio.gather(server_task, pipeline_task_1, pipeline_task_2, pipeline_task_3, return_exceptions=True)
+            await asyncio.gather(server_task, return_exceptions=True)
         except:
             pass
 

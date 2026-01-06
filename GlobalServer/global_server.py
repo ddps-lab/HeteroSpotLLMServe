@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 
 from VNode import Cluster
-from request_handler import Request, RequestInput, RequestOutput, async_request
+from request_handler import Request, RequestInput, RequestOutput, async_request, async_request_without_migration
 
 # Configure logging for GlobalServer
 logger = logging.getLogger(__name__)
@@ -44,13 +44,16 @@ class InFlightRequest:
     task: asyncio.Task
     
 class GlobalServer:
-    def __init__(self, cluster: Optional[Cluster] = None):
+    def __init__(self, cluster: Optional[Cluster] = None, request_handler_mode: str = "migration"):
         self.cluster = cluster if cluster is not None else Cluster()
         
         # Request queues - urgent_queue for high priority requests (e.g., retries)
         self.urgent_queue: asyncio.Queue[Request] = asyncio.Queue()
         self.waiting_queue: asyncio.Queue[Request] = asyncio.Queue()
         self.inflight_requests: Dict[int, InFlightRequest] = {}  # request_id -> InFlightRequest
+
+        self.request_handler_mode = request_handler_mode # migration or re-routing
+        assert self.request_handler_mode in ["migration", "re-routing"], "Invalid request_handler_mode"
         
     
     def select_pipeline_index(self) -> int:
@@ -113,7 +116,10 @@ class GlobalServer:
         if request.sended_at is None:
             request.sended_at = time.time()
         
-        return await async_request(request, logger=logger)
+        if self.request_handler_mode == "re-routing":
+            return await async_request_without_migration(request, logger=logger)
+        elif self.request_handler_mode == "migration":
+            return await async_request(request, logger=logger)
     
     async def run_global_server(self, check_interval: float = 0.01):
         """Main server loop that processes requests from the waiting queue.
@@ -179,12 +185,15 @@ class GlobalServer:
             request: The request to process
             pipeline_index: Which pipeline to send to
         """
-        pipeline = self.cluster.pipelines[pipeline_index]
-
-        # Increment flying request count before starting
-        pipeline.add_flying_request()
-
         try:
+            pipeline = self.cluster.pipelines[pipeline_index]
+        except Exception as e:
+            logger.warning(f"Invalid pipeline index {pipeline_index} is not existing: {e}")
+            return
+        
+        try:
+            # Increment flying request count before starting
+            pipeline.add_flying_request()
             output = await self.send_request(request, pipeline_index)
             request.output = output
 
@@ -205,9 +214,9 @@ class GlobalServer:
 
             # Put back in urgent queue for retry (higher priority)
             await self.urgent_queue.put(request)
-
+            
             log_msg = f"Request {request.request_id} added to urgent queue for retry (attempt #{request.retry_count})"
-            if request.output is not None:
+            if request.output is not None and self.request_handler_mode == "migration":
                 log_msg += f", original input tokens: {request.input.prompt_len}, new input tokens: {request.output.output_tokens}"
             logger.info(log_msg)
         finally:
@@ -254,24 +263,34 @@ class GlobalServer:
     
     def create_pipeline(self, node_layer_mapping: List[Tuple[str, int]],
                        config: Dict,
-                       ideal_throughput: float):
+                       ideal_throughput: float,
+                       pipeline_num: int = 1):
         """Create a new pipeline in the cluster.
 
         Args:
             node_layer_mapping: List of (node_ip, num_layers) tuples
             config: Configuration dictionary for the pipeline (can include 'max_batch_size')
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
+            pipeline_num: Pipeline number for logging
         """
         # Create pipeline in the cluster
-        self.cluster.create_pipeline(node_layer_mapping, config, ideal_throughput)
+        self.cluster.create_pipeline(node_layer_mapping, config, ideal_throughput, pipeline_num)
 
         # Format node_layer_mapping for logging
-        node_info = ", ".join([f"{ip}({layers} layers)" for ip, layers in node_layer_mapping])
+        node_info = ""
+        for entry in node_layer_mapping:
+            if len(entry) == 3:
+                ip, layers, start_rank = entry
+                node_info += f"{ip}({layers} layers, start_rank={start_rank}), "
+            else:
+                ip, layers = entry
+                node_info += f"{ip}({layers} layers), "
+        node_info = node_info.rstrip(", ")
         logger.info(f"Created new pipeline: [{node_info}], "
                    f"ideal throughput: {ideal_throughput} req/sec")
     
     
-    def remove_pipeline(self, pipeline_index: int):
+    def stop_pipeline(self, pipeline_index: int):
         """Remove a pipeline from the cluster.
         
         Args:
@@ -281,18 +300,10 @@ class GlobalServer:
         
         # Stop the pipeline
         self.cluster.pipelines[pipeline_index].stop_pipeline()
-        
-        # Remove from cluster
-        removed_pipeline = self.cluster.pipelines.pop(pipeline_index)
-        
-        # Update cluster's total ideal throughput
-        self.cluster.ideal_throughput -= removed_pipeline.ideal_throughput
-        
-        logger.info(f"Removed pipeline {pipeline_index} with weight {removed_pipeline.ideal_throughput}")
     
     def switch_node(self, old_node_ip: str, new_node_ip: str):
         """Switch a node in the cluster by replacing old_node_ip with new_node_ip.
-        
+
         Args:
             old_node_ip: IP address of the node to be replaced
             new_node_ip: IP address of the new node
@@ -300,3 +311,90 @@ class GlobalServer:
         logger.info(f"Starting node switch through GlobalServer: {old_node_ip} -> {new_node_ip}")
         self.cluster.switch_node(old_node_ip, new_node_ip)
         logger.info(f"Node switch completed: {old_node_ip} -> {new_node_ip}")
+
+    def switch_nodes(self, old_node_ips: List[str], new_node_ips: List[str]):
+        """Switch multiple nodes in the cluster by replacing old_node_ips with new_node_ips.
+
+        Args:
+            old_node_ips: List of IP addresses of the nodes to be replaced
+            new_node_ips: List of IP addresses of the new nodes
+        """
+        if len(old_node_ips) != len(new_node_ips):
+            raise ValueError("old_node_ips and new_node_ips must have the same length")
+        
+        logger.info(f"Starting multiple node switch through GlobalServer: {old_node_ips} -> {new_node_ips}")
+        self.cluster.switch_nodes(old_node_ips, new_node_ips)
+        logger.info(f"Multiple node switch completed: {old_node_ips} -> {new_node_ips}")
+
+    def stop_node(self, node_ip: str) -> int:
+        """Stop and remove the pipeline containing the specified node.
+
+        This is useful for comparing stop-and-restart approach vs node switching.
+        After calling this, you can create a new pipeline with different nodes.
+
+        Args:
+            node_ip: IP address of the node to stop
+
+        Returns:
+            Index of the removed pipeline
+
+        Raises:
+            ValueError: If no pipeline contains the specified node
+        """
+        # Find the pipeline containing this node
+        pipeline_index = -1
+        for i, pipeline in enumerate(self.cluster.pipelines):
+            # Check each vnode in the pipeline
+            for vnode in pipeline.vnodes:
+                if vnode.node_ip == node_ip:
+                    pipeline_index = i
+                    break
+            if pipeline_index != -1:
+                break
+
+        # Raise error if node not found
+        if pipeline_index == -1:
+            logger.warning(f"Attempted to stop node {node_ip}, but it was not found in any pipeline")
+            return
+
+        # Log the operation
+        logger.info(f"Stopping pipeline {pipeline_index} containing node {node_ip}")
+
+        # Use existing stop_pipeline method
+        self.stop_pipeline(pipeline_index)
+
+        logger.info(f"Pipeline {pipeline_index} stopped successfully")
+        return pipeline_index
+
+    def stop_nodes(self, node_ips: List[str]) -> List[int]:
+        """Stop and remove pipelines containing the specified nodes.
+
+        This is useful for comparing stop-and-restart approach vs node switching.
+        After calling this, you can create new pipelines with different nodes.
+
+        Args:
+            node_ips: List of IP addresses of the nodes to stop
+
+        Returns:
+            List of indices of the removed pipelines
+        """
+        target_pipeline_indices = set()
+        for node_ip in node_ips:
+            for i, pipeline in enumerate(self.cluster.pipelines):
+                for vnode in pipeline.vnodes:
+                    if vnode.node_ip == node_ip:
+                        target_pipeline_indices.add(i)
+                        break
+        try:
+            for pipeline_idx in target_pipeline_indices:
+                logger.info(f"Stopping pipeline {pipeline_idx} containing one of the target nodes")
+                self.stop_pipeline(pipeline_idx)
+                logger.info(f"Pipeline {pipeline_idx} stopped successfully")
+
+            # remove pipelines in current pipeline indices
+            self.cluster.remove_pipelines(target_pipeline_indices)
+        except Exception as e:
+            logger.error(f"Error occurred while stopping pipelines: {e}")
+            return False
+        
+        return True

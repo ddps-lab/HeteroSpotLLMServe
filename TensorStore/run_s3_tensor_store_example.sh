@@ -5,6 +5,7 @@ python s3_tensor_store_server.py \
     --end-layer-id=32 \
     --status-port=10001 \
     --tensor-parallel-size=1 \
+    --tensor-parallel-rank=0 \
     --block-size=16 \
     --gpu-memory-utilization=0.9 \
     --swap-space=4.0 \
