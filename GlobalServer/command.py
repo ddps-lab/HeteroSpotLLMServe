@@ -9,10 +9,10 @@ PYTHON = "/usr/bin/python"
 PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
 RAY = "/home/ubuntu/.local/bin/ray"
 
-def get_tensor_store_command(model_name: str, 
+def get_tensor_store_command(model_name: str,
                             tensor_parallel_size: int,
                             tensor_parallel_rank: int,
-                            local_rank: int, 
+                            local_rank: int,
                             pipeline_parallel_size: int,
                             pipeline_parallel_rank: int,
                             start_layer_id: int,
@@ -25,10 +25,12 @@ def get_tensor_store_command(model_name: str,
                             status_port: Optional[int] = None,
                             dtype: Optional[str] = None,
                             s3_path: Optional[str] = None,
-                            aws_profile: Optional[str] = None) -> str:
+                            aws_profile: Optional[str] = None,
+                            gpu_num_blocks: Optional[int] = None,
+                            num_workers: int = 16) -> str:
     """
     Generate command to start tensor store server.
-    
+
     Args:
         model_name: Name of the model (e.g., 'meta-llama/Llama-2-7b-hf')
         tensor_parallel_size: Number of GPUs for tensor parallelism
@@ -46,7 +48,8 @@ def get_tensor_store_command(model_name: str,
         pipeline_parallel_size: Pipeline parallel size for virtual engine allocation
         pipeline_parallel_rank: Pipeline parallel rank
         max_model_len: Maximum model sequence length
-    
+        gpu_num_blocks: Number of GPU blocks for KV cache (optional, overrides calculation)
+
     Returns:
         Command string to execute
     """
@@ -58,7 +61,8 @@ def get_tensor_store_command(model_name: str,
         final_port = status_port + local_rank
     
     cmd = (
-        f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
+        # f"{PYTHON} {PROJECT_PATH}/TensorStore/s3_tensor_store_server.py "
+        f"{PYTHON} {PROJECT_PATH}/TensorStore/raw_s3_tensor_store_server.py "
         f"--model-name {model_name} "
         f"--s3-path {s3_path} "
         f"--tensor-parallel-size {tensor_parallel_size} "
@@ -73,13 +77,16 @@ def get_tensor_store_command(model_name: str,
         f"--gpu-memory-utilization {gpu_memory_utilization} "
         f"--swap-space {swap_space} "
         f"--cache-dtype {cache_dtype} "
-        f"--max-model-len {max_model_len}"
+        f"--max-model-len {max_model_len} "
+        f"--num-workers {num_workers}"
     )
     if aws_profile:
         cmd += f" --aws-profile {aws_profile}"
     if dtype is not None:
         cmd += f" --dtype {dtype}"
-        
+    if gpu_num_blocks is not None:
+        cmd += f" --gpu-num-blocks {gpu_num_blocks}"
+
     return cmd
 
 
@@ -129,7 +136,10 @@ def get_api_server_command(model_name: str,
     parallel_strategy_str = " ".join(map(str, parallel_strategy))
     
     cmd_parts = [
-        f"RAY_DEDUP_LOGS=0",
+        f"RAY_DEDUP_LOGS=0", # if you want to see all logs from Ray
+        # f"RAY_BACKEND_LOG_LEVEL=debug", # if you want to see debug logs from Ray
+        # f"RAY_LOG_TO_STDERR=1", # if you want to see Ray logs in stderr
+        # f"RAY_LOG_LEVEL=debug", # if you want to see debug logs from Ray
         f"{PYTHON} {PROJECT_PATH}/InferenceServer/api_server.py",
         f"--model={model_name}",
         f"--host={host}",
@@ -179,6 +189,7 @@ def get_ray_start_worker_command(head_address: str) -> str:
     Returns:
         Command string to execute
     """
+    # return f"RAY_memory_monitor_refresh_ms=0 {RAY} start --address={head_address} --disable-usage-stats"
     return f"{RAY} start --address={head_address} --disable-usage-stats"
 
 

@@ -45,13 +45,15 @@ cluster_logger.propagate = False
 class Cluster:
     def __init__(self):
         self.pipelines: List[Pipeline] = []
-        self.ideal_throughput: float = 0.0
+        self.pipelines_lock = threading.Lock()  # Lock for thread-safe pipeline operations
         self.ray_init_lock = threading.Lock()  # Lock for Ray initialization
+        self.mode: str = "default"  # default or hexgen
         
     def create_pipeline(self,
                        node_layer_mapping: List[Tuple[str, int]],
                        config: Dict,
-                       ideal_throughput: float):
+                       ideal_throughput: float,
+                       pipeline_num: int = 1):
         """
         Create a pipeline for distributed LLM inference.
 
@@ -77,36 +79,43 @@ class Cluster:
                 - max_batch_size (optional): Maximum number of concurrent requests for this pipeline.
                                             None means unlimited (default: None).
                                             Note: This is a soft limit, actual count may slightly exceed it.
+                - mode (optional): "default" or "hexgen" (default: "default")
             ideal_throughput: Expected throughput for this pipeline (requests/sec)
         """
+        start_time = time.time()
         # Validate required config parameters
         required_keys = ["model_name", "total_num_layers", "pp_layer_partition", "parallel_strategy"]
         for key in required_keys:
             if key not in config:
                 raise ValueError(f"config must contain '{key}'")
 
+        if config.get("mode", "default") == "hexgen":
+            self.mode = "hexgen"
+
         pipeline = Pipeline()
-        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock)
+        pipeline.initialize_pipeline(node_layer_mapping, config, ideal_throughput, self.ray_init_lock, pipeline_num)
         self.pipelines.append(pipeline)
-        self.ideal_throughput += ideal_throughput
+        end_time = time.time()
+
+        cluster_logger.info(f"Created new pipeline: [{', '.join(f'{ip}({layers} layers)' for ip, layers in node_layer_mapping)}], took {end_time - start_time:.2f} seconds")
 
     def stop_all_pipelines(self):
         """Stop all pipelines in the cluster."""
         cluster_logger.info(f"Stopping {len(self.pipelines)} pipelines...")
-        
+
         # Handle case when no pipelines exist
         if not self.pipelines:
             cluster_logger.info("No pipelines to stop.")
             return
-        
+
         # Stop all pipelines in parallel
         with ThreadPoolExecutor(max_workers=len(self.pipelines)) as executor:
             futures = []
-            
+
             for i, pipeline in enumerate(self.pipelines):
                 future = executor.submit(pipeline.stop_pipeline)
                 futures.append((i, future))
-            
+
             # Wait for all to complete
             for pipeline_idx, future in futures:
                 try:
@@ -114,8 +123,80 @@ class Cluster:
                     cluster_logger.info(f"Pipeline {pipeline_idx} stopped successfully")
                 except Exception as e:
                     cluster_logger.error(f"Failed to stop pipeline {pipeline_idx}: {e}")
-        
+
         cluster_logger.info("All pipelines stopped")
+
+    def remove_pipelines(self, remove_pipeline_indices: List[int]):
+        """Remove multiple pipelines from the cluster by their indices.
+
+        Args:
+            remove_pipeline_indices: List of pipeline indices to remove
+        """
+        with self.pipelines_lock:
+            new_pipelines = []
+            for i, pipeline in enumerate(self.pipelines):
+                if i not in remove_pipeline_indices:
+                    new_pipelines.append(pipeline)
+                else:
+                    cluster_logger.info(f"Removed pipeline {i} from cluster.")
+                    assert self.pipelines[i].is_ready == False, "Pipeline must be stopped before removal"
+
+            self.pipelines = new_pipelines
+
+    def stop_pipeline_include_node_ip(self, node_ip: str):
+        """
+        Stop all pipelines that contain a node with the specified IP address.
+
+        Args:
+            node_ip: IP address of the node to search for in pipelines
+        """
+        cluster_logger.info(f"Searching for pipelines containing node IP: {node_ip}")
+
+        # Find all pipelines containing the specified node IP
+        pipelines_to_stop = []
+        pipelines_indices = []
+
+        for i, pipeline in enumerate(self.pipelines):
+            for vnode in pipeline.vnodes:
+                if vnode.node_ip == node_ip:
+                    pipelines_to_stop.append(pipeline)
+                    pipelines_indices.append(i)
+                    cluster_logger.info(f"Found pipeline {i} containing node {node_ip}")
+                    break  # No need to check other vnodes in this pipeline
+
+        # Handle case when no pipelines contain the node IP
+        if not pipelines_to_stop:
+            cluster_logger.warning(f"No pipelines found containing node IP: {node_ip}")
+            return
+
+        cluster_logger.info(f"Stopping {len(pipelines_to_stop)} pipeline(s) containing node {node_ip}...")
+
+        # Stop all matching pipelines in parallel
+        with ThreadPoolExecutor(max_workers=len(pipelines_to_stop)) as executor:
+            futures = []
+
+            for i, pipeline in enumerate(pipelines_to_stop):
+                future = executor.submit(pipeline.stop_pipeline)
+                futures.append((pipelines_indices[i], pipeline, future))
+
+            # Wait for all to complete
+            stopped_pipelines = []
+            for pipeline_idx, pipeline, future in futures:
+                try:
+                    future.result(timeout=300)  # 5 minutes timeout per pipeline
+                    cluster_logger.info(f"Pipeline {pipeline_idx} stopped successfully")
+                    stopped_pipelines.append(pipeline)
+                except Exception as e:
+                    cluster_logger.error(f"Failed to stop pipeline {pipeline_idx}: {e}")
+                    stopped_pipelines.append(pipeline)  # Mark as stopped even if failed
+
+        # Remove stopped pipelines from the cluster 
+        for pipeline in stopped_pipelines:
+            if pipeline in self.pipelines:
+                self.pipelines.remove(pipeline)
+                cluster_logger.info(f"Removed pipeline which includes {node_ip} from cluster.")
+
+        cluster_logger.info(f"Completed stopping {len(stopped_pipelines)} pipeline(s) containing node {node_ip}")
 
     def switch_node(self, old_node_ip: str, new_node_ip: str):
         """
@@ -144,11 +225,53 @@ class Cluster:
             raise ValueError(f"No VNode found with IP {old_node_ip}")
         
         cluster_logger.info(f"Found VNode in pipeline: {target_vnode}")
-        
+
         # Delegate to the pipeline's switch_node method
-        target_pipeline.switch_node(old_node_ip, new_node_ip)
+        target_pipeline.switch_node(old_node_ip, new_node_ip, self.ray_init_lock)
 
         cluster_logger.info(f"Node switch completed successfully: {old_node_ip} -> {new_node_ip}")
+    
+    def switch_nodes(self, old_node_ips: List[str], new_node_ips: List[str]):
+        """
+        Switch multiple nodes in the cluster by replacing old_node_ips with new_node_ips.
+
+        Args:
+            old_node_ips: List of IP addresses of the nodes to be replaced
+            new_node_ips: List of IP addresses of the new nodes
+        """
+        if len(old_node_ips) != len(new_node_ips):
+            raise ValueError("old_node_ips and new_node_ips must have the same length")
+
+        # Group switches by pipeline (use pipeline index as key instead of pipeline object)
+        switch_map = list(zip(old_node_ips, new_node_ips))
+        pipeline_switch_map = {}  # pipeline_index -> [(old_ip, new_ip), ...]
+
+        for old_ip, new_ip in switch_map:
+            for pipeline_idx, pipeline in enumerate(self.pipelines):
+                for vnode in pipeline.vnodes:
+                    if vnode.node_ip == old_ip:
+                        if pipeline_idx not in pipeline_switch_map:
+                            pipeline_switch_map[pipeline_idx] = []
+                        pipeline_switch_map[pipeline_idx].append((old_ip, new_ip))
+                        break
+
+        cluster_logger.info(f"Prepared node switch map for pipelines: {pipeline_switch_map}")
+
+        # Switch nodes in each pipeline concurrently
+        with ThreadPoolExecutor(max_workers=len(pipeline_switch_map)) as executor:
+            futures = []
+            for pipeline_idx, switch_pairs in pipeline_switch_map.items():
+                pipeline = self.pipelines[pipeline_idx]
+                future = executor.submit(pipeline.switch_nodes, switch_pairs, self.ray_init_lock)
+                futures.append((pipeline_idx, future))
+
+            # Wait for all switches to complete
+            for pipeline_idx, future in futures:
+                try:
+                    future.result(timeout=600)  # 10 minutes timeout per pipeline
+                    cluster_logger.info(f"Pipeline {pipeline_idx} node switches completed successfully")
+                except Exception as e:
+                    cluster_logger.error(f"Failed to switch nodes in pipeline {pipeline_idx}: {e}")
 
 class Pipeline:
     def __init__(self):
@@ -173,12 +296,14 @@ class Pipeline:
 
         self.node_layer_mapping: List[Tuple[str, int]] = []  # Store for reference
         self.config: Dict = {}
+        self.mode = "default"  # default or hexgen
 
     def initialize_pipeline(self,
                             node_layer_mapping: List[Tuple[str, int]],
                             config: Dict,
                             ideal_throughput: float,
-                            ray_init_lock: threading.Lock = None):
+                            ray_init_lock: threading.Lock = None,
+                            pipeline_num: int = 1):
         assert len(node_layer_mapping) > 0, "node_layer_mapping is empty"
         self.node_layer_mapping = node_layer_mapping  # Store for reference
         self.config = config  # Store for reference
@@ -190,12 +315,23 @@ class Pipeline:
         total_num_layers = config["total_num_layers"]
 
         # Check layer validity
-        total_assigned_layers = sum(layers for _, layers in node_layer_mapping)
+        total_assigned_layers = 0
+        # node layer mapping is composed of (ip, layers) or (ip, layers, start_local_rank)
+        for entry in node_layer_mapping:
+            if len(entry) == 2:
+                _, layers = entry
+                total_assigned_layers += layers
+            elif len(entry) == 3:
+                _, layers, _ = entry
+                total_assigned_layers += layers
+            else:
+                raise ValueError(f"Invalid node_layer_mapping entry: {entry}. Expected tuple of length 2 or 3")
         assert total_assigned_layers == total_num_layers, (
             f"Total assigned layers ({total_assigned_layers}) does not match "
             f"model total layers ({total_num_layers})"
         )
 
+        self.mode = config.get("mode", "default")
         self.model_name = model_name
         self.total_layers = total_num_layers
         self.config = config
@@ -208,28 +344,64 @@ class Pipeline:
 
         # First, create VNode objects with placeholder GPU count
         start_layer_idx = 0
-        start_local_ranks = {} # ip: start_local_rank 가 들어있음.
-        for pipeline_rank, (node_ip, layer_partition) in enumerate(node_layer_mapping):
+        start_local_ranks = {}  # ip: current_local_rank for auto-calculation
+
+        for pipeline_rank, entry in enumerate(node_layer_mapping):
+            # Support both 2-tuple (auto) and 3-tuple (manual) formats
+            if len(entry) == 2:
+                # Auto-calculate start_local_rank
+                node_ip, layer_partition = entry
+                if node_ip not in start_local_ranks:
+                    start_local_ranks[node_ip] = 0
+                start_local_rank = start_local_ranks[node_ip]
+                mode = "auto"
+            elif len(entry) == 3:
+                # Use explicit start_local_rank
+                node_ip, layer_partition, start_local_rank = entry
+                if node_ip not in start_local_ranks:
+                    start_local_ranks[node_ip] = start_local_rank
+                mode = "manual"
+            else:
+                raise ValueError(
+                    f"Invalid node_layer_mapping entry at index {pipeline_rank}: {entry}. "
+                    f"Expected tuple of length 2 (node_ip, num_layers) or "
+                    f"3 (node_ip, num_layers, start_local_rank)"
+                )
+
             tp_size = config["parallel_strategy"][pipeline_rank]
-            if node_ip not in start_local_ranks:
-                start_local_ranks[node_ip] = 0
+
             vnode = VNode(
-                node_ip=node_ip, 
+                node_ip=node_ip,
                 tp_size=tp_size,
                 pipeline_rank=pipeline_rank,
-                start_local_rank=start_local_ranks[node_ip],
-                layer_start_id=start_layer_idx, 
+                start_local_rank=start_local_rank,
+                layer_start_id=start_layer_idx,
                 layer_end_id=start_layer_idx + layer_partition,
                 total_layers=self.total_layers
             )
-            start_local_ranks[node_ip] += tp_size
+
+            # Update the next auto-calculated start_local_rank for this IP
+            start_local_ranks[node_ip] = start_local_rank + tp_size
             start_layer_idx += layer_partition
+
+            cluster_logger.info(
+                f"Created VNode[{pipeline_rank}]: {node_ip} "
+                f"(layers [{vnode.layer_start_id}, {vnode.layer_end_id}), "
+                f"start_local_rank={start_local_rank}, tp_size={tp_size}, mode={mode})"
+            )
+
             self.vnodes.append(vnode)
-        
+
+        # Validate GPU allocation - check for conflicts
+        self._validate_gpu_allocation()
+
         # Now start Ray cluster with all vnodes
         ray_port = self.get_alternate_ray_port()
+        ray_cluster_start_time = time.time()
         self.start_ray_cluster(ray_port, ray_init_lock)
-        
+        ray_cluster_end_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Ray Cluster Started at {ray_cluster_start_time} and Ended at {ray_cluster_end_time}")
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Ray Cluster Init Time: {ray_cluster_end_time - ray_cluster_start_time} seconds")
         # Update VNode GPU counts from Ray cluster information
         # 현재 아래 코드는 그냥 현재 클러스터에 참여여부만 확인하는 용도로 사용한다.
         for vnode in self.vnodes:
@@ -243,7 +415,6 @@ class Pipeline:
                 if num_gpu is not None and num_gpu > 0:
                     break
                 cluster_logger.info(f"Waiting for node {vnode.node_ip} to be entered into Ray cluster...")
-                time.sleep(1)
             
             # Update the vnode's GPU count
             # 옛날에는 무조건 num_gpu 로 tp size 를 결정하였음.
@@ -254,6 +425,8 @@ class Pipeline:
         # Start tensor stores on all VNodes
         tensor_store_base_port = config.get("tensor_store_base_port")
         parallel_strategy = config["parallel_strategy"]
+        tensor_store_start_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Tensor Store Started at {tensor_store_start_time}")
         for i, vnode in enumerate(self.vnodes):
             # Each VNode gets unique ports to avoid conflicts
             if tensor_store_base_port is not None:
@@ -262,7 +435,6 @@ class Pipeline:
                 tensor_store_port = DEFAULT_TENSOR_STORE_BASE_PORT # use global default in command.py
             cluster_logger.info(f"Starting tensor store on {vnode.node_ip} at port {tensor_store_port + i}")
             vnode.start_tensor_store(tensor_store_port, config, len(parallel_strategy))
-        
         # Generate node_rank_mapping based on vnodes
         self._generate_node_rank_mapping()
         
@@ -270,12 +442,17 @@ class Pipeline:
         first_vnode = self.vnodes[0]
         api_server_base_port = config.get("api_server_base_port", DEFAULT_API_SERVER_BASE_PORT)
         ray_address = f"{self.ray_head_ip}:{self.ray_port}"
+        api_server_start_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] API Server Started at {api_server_start_time}")
         first_vnode.start_api_server(api_server_base_port, config, self.node_rank_mapping, ray_address)
         self.api_server_host = first_vnode.node_ip
         self.api_server_port = first_vnode.api_server_port
         
         # Wait for all services to be ready
         self._wait_for_services()
+        wait_for_services_end_time = time.time()
+        cluster_logger.info(f"[Pipeline {pipeline_num}] All services ready at {wait_for_services_end_time}")
+        cluster_logger.info(f"[Pipeline {pipeline_num}] Wait for services Time: {wait_for_services_end_time - ray_cluster_start_time} seconds")
 
         self.api_server_host = first_vnode.node_ip
         self.api_server_port = first_vnode.api_server_port
@@ -283,7 +460,56 @@ class Pipeline:
         # Mark pipeline as ready
         self.is_ready = True
         cluster_logger.info(f"Pipeline initialized and ready")
-    
+
+    def _validate_gpu_allocation(self):
+        """Validate that GPU allocations don't conflict within this pipeline.
+
+        Checks that no two VNodes on the same physical node use overlapping GPU ranges.
+        Raises ValueError if conflicts are detected.
+        """
+        # Track GPU usage per node: {node_ip: {local_rank: vnode_info}}
+        gpu_usage = {}
+
+        for vnode in self.vnodes:
+            if vnode.node_ip not in gpu_usage:
+                gpu_usage[vnode.node_ip] = {}
+
+            # Get the GPU range this vnode will use
+            gpu_range = range(vnode.start_local_rank, vnode.start_local_rank + vnode.tp_size)
+
+            # Check for conflicts
+            for local_rank in gpu_range:
+                if local_rank in gpu_usage[vnode.node_ip]:
+                    # Conflict detected!
+                    conflicting_vnode = gpu_usage[vnode.node_ip][local_rank]
+                    raise ValueError(
+                        f"GPU allocation conflict detected on node {vnode.node_ip}!\n"
+                        f"  GPU {local_rank} is used by multiple VNodes:\n"
+                        f"    - VNode (pipeline_rank={conflicting_vnode['pipeline_rank']}, "
+                        f"start_local_rank={conflicting_vnode['start_local_rank']}, "
+                        f"tp_size={conflicting_vnode['tp_size']}, "
+                        f"GPUs=[{conflicting_vnode['start_local_rank']}-"
+                        f"{conflicting_vnode['start_local_rank'] + conflicting_vnode['tp_size'] - 1}])\n"
+                        f"    - VNode (pipeline_rank={vnode.pipeline_rank}, "
+                        f"start_local_rank={vnode.start_local_rank}, "
+                        f"tp_size={vnode.tp_size}, "
+                        f"GPUs=[{vnode.start_local_rank}-{vnode.start_local_rank + vnode.tp_size - 1}])\n"
+                        f"  Please ensure each GPU is assigned to only one VNode."
+                    )
+
+                # Mark this GPU as used
+                gpu_usage[vnode.node_ip][local_rank] = {
+                    'pipeline_rank': vnode.pipeline_rank,
+                    'start_local_rank': vnode.start_local_rank,
+                    'tp_size': vnode.tp_size
+                }
+
+        # Log the validated allocation
+        cluster_logger.info("GPU allocation validation passed:")
+        for node_ip, gpus in gpu_usage.items():
+            gpu_list = sorted(gpus.keys())
+            cluster_logger.info(f"  {node_ip}: GPUs {gpu_list}")
+
     def _generate_node_rank_mapping(self):
         """Generate node_rank_mapping based on current vnodes."""
         self.node_rank_mapping = {}
@@ -321,11 +547,16 @@ class Pipeline:
     def remove_flying_request(self):
         """Decrement the flying request count (thread-safe)."""
         with self._flying_requests_lock:
-            self.flying_requests -= 1
+            self.flying_requests = max(0, self.flying_requests - 1)
 
     def get_alternate_ray_port(self):
         """Get the alternate Ray port (6379 or 6380) for this pipeline."""
         # If current port is 6379, return 6380, and vice versa
+
+        # If mode hexgen, only return 6379
+        if self.mode == "hexgen":
+            return 6379
+
         if self.ray_port == 6379:
             return 6380
         else:
@@ -404,7 +635,7 @@ class Pipeline:
                 raise RuntimeError(f"Failed to connect nodes to Ray cluster: {failed_nodes}")
             
             # Wait for all nodes to be connected with retry logic
-            max_attempts = 30  # 30 attempts with 1 second interval = 30 seconds timeout
+            max_attempts = 10000  # 30 attempts with 1 second interval = 30 seconds timeout
             attempt = 0
             
             while attempt < max_attempts:
@@ -417,8 +648,9 @@ class Pipeline:
                 
                 missing = vnode_ips - connected_ips
                 attempt += 1
-                cluster_logger.info(f"Waiting for nodes to connect (attempt {attempt}/{max_attempts}). Missing: {missing}")
-                time.sleep(1)
+                if attempt % 100 == 0:
+                    cluster_logger.info(f"Waiting for nodes to connect (attempt {attempt}/{max_attempts}). Missing: {missing}")
+                time.sleep(0.01)
             
             # Final check
             if not vnode_ips.issubset(connected_ips):
@@ -432,8 +664,7 @@ class Pipeline:
         """Wait for all tensor stores and API server to be ready."""
         tensor_store_statuses = [False] * len(self.vnodes)
         api_server_ready = False
-        dots = 0
-        
+        attempt = 0
         while not (all(tensor_store_statuses) and api_server_ready):
             # Check tensor store status for all nodes
             for i, vnode in enumerate(self.vnodes):
@@ -447,16 +678,12 @@ class Pipeline:
             ready_ts = sum(tensor_store_statuses)
             api_status = "Ready" if api_server_ready else "Not ready"
             
-            # Create dynamic dots animation
-            dots = (dots + 1) % 4
-            dots_str = "." * dots + " " * (3 - dots)
-            
-            # Log status to file only
-            status_msg = f"Waiting for services{dots_str} Tensor stores - {ready_ts}/{len(self.vnodes)}, API server {(self.api_server_host)}:{self.api_server_port} - {api_status}"
-            cluster_logger.info(status_msg)
+            attempt += 1
+            if attempt % 100 == 0:
+                cluster_logger.info(f"Waiting for services (attempt {attempt}) Tensor stores - {ready_ts}/{len(self.vnodes)}, API server {(self.api_server_host)}:{self.api_server_port} - {api_status}")
             
             if not (all(tensor_store_statuses) and api_server_ready):
-                time.sleep(1)
+                time.sleep(0.01)
         
         # Print final status only once to console
         cluster_logger.info(f"✓ All services ready! Tensor stores: {len(self.vnodes)}/{len(self.vnodes)}, API server: Ready")
@@ -466,21 +693,24 @@ class Pipeline:
     def stop_pipeline(self):
         """Stop all services in the pipeline."""
         cluster_logger.info(f"Stopping pipeline with {len(self.vnodes)} nodes...")
-        
+
+        # Mark pipeline as not ready to prevent new requests
+        self.is_ready = False
+
         # Stop all VNodes in parallel
         with ThreadPoolExecutor(max_workers=len(self.vnodes)) as executor:
             futures = []
-            
+
             # Stop tensor stores on all nodes
             for vnode in self.vnodes:
                 future = executor.submit(vnode.stop_tensor_store)
                 futures.append(("tensor_store", vnode.node_ip, future))
-            
+
             # Stop API server on first node only
             if self.vnodes:
                 future = executor.submit(self.vnodes[0].stop_api_server)
                 futures.append(("api_server", self.vnodes[0].node_ip, future))
-            
+
             # Wait for all to complete
             for service_type, node_ip, future in futures:
                 try:
@@ -488,16 +718,17 @@ class Pipeline:
                     cluster_logger.info(f"{service_type} stopped successfully on {node_ip}")
                 except Exception as e:
                     cluster_logger.error(f"Failed to stop {service_type} on {node_ip}: {e}")
-        
+
         cluster_logger.info("Pipeline shutdown completed")
 
-    def switch_node(self, old_node_ip: str, new_node_ip: str):
+    def switch_node(self, old_node_ip: str, new_node_ip: str, ray_init_lock: threading.Lock = None):
         """
         Switch a node in this pipeline by replacing old_node_ip with new_node_ip.
-        
+
         Args:
             old_node_ip: IP address of the node to be replaced
             new_node_ip: IP address of the new node
+            ray_init_lock: Lock for Ray initialization (optional)
         """
         cluster_logger.info(f"Switching node in pipeline: {old_node_ip} -> {new_node_ip}")
         switch_e2e_start = time.time()
@@ -541,8 +772,8 @@ class Pipeline:
         
         # 4. 새로운 Ray cluster를 시작한다.
         cluster_logger.info(f"Starting new Ray cluster on port {new_ray_port}")
-        self.start_ray_cluster(new_ray_port)
-        
+        self.start_ray_cluster(new_ray_port, ray_init_lock)
+
         # 5. Get GPU count for new node from Ray cluster
         new_tp_size = None
         while True:
@@ -578,7 +809,7 @@ class Pipeline:
         # Node Rank Mapping Dictionary 를 업데이트 한다.
         self._generate_node_rank_mapping()
 
-        # 4. 새로운 API server 동작
+        # 7. 새로운 API server 동작
         new_first_vnode = self.vnodes[0]
         new_api_server_host = new_first_vnode.node_ip
         new_api_server_port = old_api_server_port
@@ -603,7 +834,7 @@ class Pipeline:
 
         cluster_logger.info(f"API server ready on node {new_first_vnode.node_ip}")
 
-        # 5. Pipeline 전환
+        # 8. Pipeline 전환
         start_downtime = time.time()
         self.is_ready = False
         # 이제 기존의 api server 를 종료해야 한다.
@@ -645,6 +876,201 @@ class Pipeline:
         target_vnode.stop_tensor_store()
         
         cluster_logger.info(f"Node switch completed in pipeline: {old_node_ip} -> {new_node_ip}")
+
+    def switch_nodes(self, switch_pairs: List[Tuple[str, str]], ray_init_lock: threading.Lock = None):
+        """
+        Switch multiple nodes in this pipeline based on provided pairs.
+
+        Args:
+            switch_pairs: List of tuples (old_node_ip, new_node_ip)
+            ray_init_lock: Lock for Ray initialization (optional)
+        """
+        log_msg = "Switching nodes in pipeline: \n"
+        for oip, nip in switch_pairs:
+            log_msg += f"\t{oip} -> {nip}, \n"
+        cluster_logger.info(log_msg)
+        switch_e2e_start = time.time()
+        
+        # Find the target VNode
+        target_vnode = None
+        target_index = None
+
+        targets: List[Tuple[int, VNode]] = []  # List of (index, vnode) to be replaced
+        
+        for oip, nip in switch_pairs:
+            for i, vnode in enumerate(self.vnodes):
+                if vnode.node_ip == oip:
+                    targets.append((i, vnode))
+                    break
+
+        if len(targets) != len(switch_pairs):
+            missing_ips = [oip for oip, _ in switch_pairs if all(v.node_ip != oip for _, v in targets)]
+            raise ValueError(f"No VNode found with IPs {missing_ips} in this pipeline")
+        
+        # 1. 기존 Ray port 저장
+        old_ray_port = self.ray_port
+        new_ray_port = self.get_alternate_ray_port()
+        cluster_logger.info(f"Switching from Ray port {old_ray_port} to {new_ray_port}")
+        
+        # 기존의 api server 정보를 저장한다.
+        old_api_server_host = self.api_server_host
+        old_api_server_port = self.api_server_port
+        old_first_vnode = self.vnodes[0]
+        
+        # 2. 새로운 노드를 관리할 VNode 객체를 생성하고 참여시킨다. (placeholder GPU count)
+
+        new_vnodes: List[VNode] = []
+
+        for i, (target_index, target_vnode) in enumerate(targets):
+            new_node_ip = switch_pairs[i][1]
+            new_vnode = VNode(
+                node_ip=new_node_ip,
+                tp_size=target_vnode.tp_size, # 일단 기존꺼 사용하자.
+                start_local_rank=target_vnode.start_local_rank,
+                pipeline_rank=target_vnode.pipeline_rank,
+                layer_start_id=target_vnode.layer_start_id,
+                layer_end_id=target_vnode.layer_end_id,
+                total_layers=target_vnode.total_layers
+            )
+            self.vnodes[target_index] = new_vnode
+            new_vnodes.append(new_vnode)
+
+        for i, new_vnode in enumerate(new_vnodes):
+            nip = switch_pairs[i][1]
+            assert new_vnode.node_ip == nip, "Internal error: new_vnode IP mismatch (Index error)"
+        
+        # 3. 새로운 Ray cluster를 시작한다.
+        cluster_logger.info(f"Starting new Ray cluster on port {new_ray_port}")
+        self.start_ray_cluster(new_ray_port, ray_init_lock)
+
+        # 4. Get GPU count for new node from Ray cluster
+        for new_vnode in new_vnodes:
+            new_node_ip = new_vnode.node_ip
+            new_tp_size = None
+            while True:
+                for node_info in ray.nodes():
+                    ray_node_ip = node_info.get("NodeManagerAddress")
+                    if ray_node_ip == new_node_ip:
+                        new_tp_size = int(node_info.get("Resources").get("GPU", 0))
+                        break
+                if new_tp_size is not None and new_tp_size > 0:
+                    break
+                cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
+                time.sleep(1)
+            
+            # Update the new vnode's GPU count
+            new_vnode.tp_size = new_tp_size
+            cluster_logger.info(f"Updated new VNode {new_node_ip} with {new_tp_size} GPUs")
+        
+        # 6. 새로운 노드에서 Tensor store 를 시작한다 (병렬 처리).
+        cluster_logger.info(f"Starting tensor stores on {len(new_vnodes)} new nodes concurrently...")
+        with ThreadPoolExecutor(max_workers=len(new_vnodes)) as executor:
+            futures = []
+            for i, (target_index, target_vnode) in enumerate(targets):
+                new_vnode = new_vnodes[i]
+                tensor_store_port = target_vnode.tensor_store_port
+                parallel_strategy = self.config["parallel_strategy"]
+                future = executor.submit(
+                    new_vnode.start_tensor_store,
+                    tensor_store_port,
+                    self.config,
+                    len(parallel_strategy)
+                )
+                futures.append((new_vnode.node_ip, future))
+
+            # Wait for all tensor stores to start
+            for node_ip, future in futures:
+                try:
+                    future.result(timeout=300)  # 5 minutes timeout per node
+                    cluster_logger.info(f"Tensor store started successfully on {node_ip}")
+                except Exception as e:
+                    cluster_logger.error(f"Failed to start tensor store on {node_ip}: {e}")
+                    raise
+        
+        for new_vnode in new_vnodes:
+            new_node_ip = new_vnode.node_ip
+            # Tensor Store 가 준비될 때 까지 기다린다.
+            cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
+            status_check_time = 0
+            while not new_vnode.check_tensor_store_status():
+                status_check_time += 1
+                cluster_logger.info(f"Waiting for tensor store to be ready on new node {new_node_ip} ({status_check_time})...")
+                time.sleep(2)
+        
+        # Node Rank Mapping Dictionary 를 업데이트 한다.
+        self._generate_node_rank_mapping()
+
+        # 7. 새로운 API server 동작
+        new_first_vnode = self.vnodes[0]
+        new_api_server_host = new_first_vnode.node_ip
+        new_api_server_port = old_api_server_port
+
+        # 만약 old_api_server_host 와 new_api_server_host 가 동일하다면
+        # head 노드가 동일하다는 의미이다. 이 경우 새로운 API server 포트를 사용해야 한다.
+        if old_api_server_host == new_api_server_host:
+            # Increment port to avoid conflict
+            new_api_server_port += 1
+
+        # 새로운 api server 시작
+        new_ray_address = f"{self.ray_head_ip}:{new_ray_port}"
+        new_first_vnode.start_api_server(new_api_server_port, self.config, self.node_rank_mapping, new_ray_address)
+        
+        # 새로운 api server 가 준비될 때 까지 기다린다.
+        cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{new_api_server_port}")
+        status_check_time = 0
+        while not new_first_vnode.check_api_server_status():
+            status_check_time += 1
+            cluster_logger.info(f"Waiting for API server {new_api_server_host}:{new_api_server_port} to be ready ({status_check_time})...")
+            time.sleep(2)
+
+        cluster_logger.info(f"API server ready on node {new_first_vnode.node_ip}")
+
+        # 8. Pipeline 전환
+        start_downtime = time.time()
+        self.is_ready = False
+        # 이제 기존의 api server 를 종료해야 한다.
+        cluster_logger.info(f"Stopping old API server on {old_first_vnode.node_ip}:{old_api_server_port}")
+        old_first_vnode.stop_api_server(old_api_server_port)
+        self.api_server_host = new_api_server_host
+        self.api_server_port = new_api_server_port
+        self.is_ready = True
+        end_downtime = time.time()
+        switch_e2e_end = time.time()
+        switch_e2e_latency = switch_e2e_end - switch_e2e_start
+        downtime_duration = end_downtime - start_downtime
+        cluster_logger.info(f"Node Switch Completed. End-to-End Latency: {switch_e2e_latency:.2f} / Downtime: {downtime_duration:.2f} seconds")
+
+        for i, (target_index, target_vnode) in enumerate(targets):
+            if switch_pairs[i][0] != target_vnode.node_ip:
+                cluster_logger.warning(f"Old IP mismatch: expected {switch_pairs[i][0]}, but target_vnode has {target_vnode.node_ip}")
+
+            # Clean up Ray workers on the target node being switched
+            cluster_logger.info(f"Cleaning up Ray workers on target node {target_vnode.node_ip}")
+            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -o LogLevel=ERROR"
+            cleanup_cmd = get_ray_stop_command()
+            ssh_cmd = f"ssh {ssh_options} {target_vnode.node_ip} '{cleanup_cmd}'"
+            
+            # try:
+            #     result = subprocess.run(ssh_cmd, shell=True, capture_output=True, text=True, timeout=5)
+            #     if result.returncode == 0:
+            #         cluster_logger.info(f"Successfully cleaned up Ray workers on {target_vnode.node_ip}")
+            #     else:
+            #         # Filter out harmless SSH messages
+            #         stderr_filtered = result.stderr.strip()
+            #         if stderr_filtered and not stderr_filtered.startswith("Warning: Permanently added"):
+            #             cluster_logger.warning(f"Ray worker cleanup command failed on {target_vnode.node_ip}: {stderr_filtered}")
+            #         else:
+            #             cluster_logger.info(f"Ray worker cleanup completed on {target_vnode.node_ip} (with SSH host key warning)")
+            # except subprocess.TimeoutExpired:
+            #     cluster_logger.warning(f"Ray worker cleanup timed out on {target_vnode.node_ip} (node may be unreachable)")
+            # except Exception as e:
+            #     cluster_logger.warning(f"Error cleaning up Ray workers on {target_vnode.node_ip}: {e}")
+            
+            # Stop tensor store on old node (target_vnode == old_vnode)
+            cluster_logger.info(f"Stopping tensor store on old node {target_vnode.node_ip}")
+            target_vnode.stop_tensor_store()
+
+            cluster_logger.info(f"Node switch completed in pipeline: {target_vnode.node_ip} -> {new_node_ip}")
 
 
 class VNode:
@@ -723,7 +1149,8 @@ class VNode:
         swap_space = config.get("swap_space", 4.0)  # Default to 4GB swap space
         cache_dtype = config.get("cache_dtype", "auto")  # Default to auto-detect dtype
         max_model_len = config.get("max_model_len", 4096)
-        
+        num_gpu_blocks = config.get("num_gpu_blocks")  # Get num_gpu_blocks from config if present
+
         # Start tensor store processes for each GPU (for TP)
         for local_rank_idx in range(self.tp_size):
             local_rank = self.start_local_rank + local_rank_idx
@@ -745,7 +1172,8 @@ class VNode:
                     gpu_memory_utilization=gpu_memory_utilization,
                     swap_space=swap_space,
                     cache_dtype=cache_dtype,
-                    max_model_len=max_model_len
+                    max_model_len=max_model_len,
+                    gpu_num_blocks=num_gpu_blocks
                 )
                 
                 # Prepare log files - save directly to local remote logs directory
@@ -1112,17 +1540,20 @@ class VNode:
         if self.pipeline_rank != 0:
             cluster_logger.info(f"API server not running on {self.node_ip} (not first node)")
             return
-        
+
         cluster_logger.info(f"Stopping API server on {self.node_ip}...")
 
         if api_server_port is None:
             api_server_port = self.api_server_port
-        
+
+        # Mark as not ready immediately to prevent new requests
+        self.is_api_server_ready = False
+
+        # Step 1: Send HTTP shutdown request
         try:
-            # Send shutdown request via HTTP
             url = f"http://{self.node_ip}:{api_server_port}/shutdown"
             response = requests.post(url, timeout=3)
-            
+
             if response.status_code == 200:
                 response_data = response.json()
                 if response_data.get("status") == "shutdown_accepted":
@@ -1131,14 +1562,73 @@ class VNode:
                     cluster_logger.warning(f"Unexpected API server response: {response_data}")
             else:
                 cluster_logger.error(f"Failed to stop API server: HTTP {response.status_code}")
-                
+
         except requests.exceptions.ConnectionError as e:
             # Connection refused is expected if the server is already stopped
             cluster_logger.info(f"API server on {self.node_ip}:{api_server_port} appears to be already stopped (connection refused)")
         except Exception as e:
             cluster_logger.error(f"Failed to stop API server on {self.node_ip}: {e}")
-        
-        self.is_api_server_ready = False
+
+        # Step 2: Wait for SSH process to terminate (graceful or forced)
+        if hasattr(self, 'api_server_process') and self.api_server_process:
+            if self.api_server_process.poll() is None:  # Still running
+                cluster_logger.info(f"Waiting for graceful shutdown (up to 5 seconds)...")
+                try:
+                    # Wait for SSH process to complete (which means remote process finished)
+                    self.api_server_process.wait(timeout=5)
+                    cluster_logger.info(f"API server shutdown gracefully")
+                except subprocess.TimeoutExpired:
+                    # Graceful shutdown timed out, force terminate
+                    cluster_logger.warning(f"Graceful shutdown timeout, terminating SSH process...")
+                    self.api_server_process.terminate()
+                    try:
+                        self.api_server_process.wait(timeout=2)
+                        cluster_logger.info(f"SSH process terminated")
+                    except subprocess.TimeoutExpired:
+                        cluster_logger.warning(f"SSH process did not terminate, killing...")
+                        self.api_server_process.kill()
+                        self.api_server_process.wait()
+                        cluster_logger.info(f"SSH process killed")
+            else:
+                cluster_logger.info(f"SSH process already terminated")
+
+        # Step 3: Force kill remote process (always check to ensure GPU memory is freed)
+        # SSH process termination doesn't guarantee remote process termination due to background execution
+        try:
+            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+            # Check if remote process is still running (using port to identify specific API server)
+            check_command = (
+                f"ssh {ssh_options} {self.node_ip} "
+                f"\"pgrep -f 'api_server.py.*--port={api_server_port}'\""
+            )
+            result = subprocess.run(
+                check_command,
+                shell=True,
+                timeout=5,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode == 0 and result.stdout.strip():
+                # Process still running - force kill to free GPU memory
+                pid = result.stdout.strip()
+                cluster_logger.warning(
+                    f"API server process (PID {pid}) still running on {self.node_ip}:{api_server_port}, force killing..."
+                )
+
+                # Force kill the specific API server (identified by port)
+                kill_command = (
+                    f"ssh {ssh_options} {self.node_ip} "
+                    f"\"pkill -9 -f 'api_server.py.*--port={api_server_port}'\""
+                )
+                subprocess.run(kill_command, shell=True, timeout=5, capture_output=True)
+                cluster_logger.info(f"Force killed API server on {self.node_ip}:{api_server_port}")
+            else:
+                cluster_logger.info(f"API server process already stopped on {self.node_ip}:{api_server_port}")
+        except Exception as e:
+            cluster_logger.error(f"Failed to check/kill remote API server process: {e}")
+
         cluster_logger.info(f"API server shutdown completed on {self.node_ip}")
 
 

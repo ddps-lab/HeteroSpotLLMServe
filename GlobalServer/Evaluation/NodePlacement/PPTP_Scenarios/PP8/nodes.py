@@ -1,0 +1,8 @@
+node1_ip = ""
+node2_ip = ""
+node3_ip = ""
+node4_ip = ""
+node5_ip = ""
+node6_ip = ""
+node7_ip = ""
+node8_ip = ""

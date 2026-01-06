@@ -8,8 +8,8 @@ H = 8192 # hidden size
 n_layers = 80 # layer number
 B_type = 2 # mem relate coe
 m_d = 1e12 # comp relate coe
-s_in_i = 512 # input seq
-s_out_i = s_in_i + 128 # output seq
+s_in_i = 763 # input seq
+s_out_i = s_in_i + 232 # output seq
 b_i = 1 # batch
 
 cost_model = CostModel(alpha=alpha, beta=beta, H=H, B_type=B_type, s_in_i=s_in_i, s_out_i=s_out_i, b_i=b_i, m_d=m_d)
