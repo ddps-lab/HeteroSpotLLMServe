@@ -1,9 +1,0 @@
-g6_12xlarge_node_ip_1 = "172.31.21.240" # g6.12xlarge
-g6_12xlarge_node_ip_2 = "172.31.30.224" # g6.12xlarge
-g6_12xlarge_node_ip_3 = "172.31.19.132" # g6.12xlarge
-g5_12xlarge_node_ip_1 = "172.31.18.165" # g5.12xlarge
-g5_12xlarge_node_ip_2 = "172.31.12.161" # g5.12xlarge
-g6e_xlarge_node_ip_1  = "172.31.15.14" # g6e.xlarge
-g6e_xlarge_node_ip_2  = "172.31.7.132" # g6e.xlarge
-g6e_xlarge_node_ip_3  = "172.31.15.109" # g6e.xlarge
-g6e_xlarge_node_ip_4  = "172.31.2.115" # g6e.xlarge

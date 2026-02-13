@@ -6,6 +6,7 @@ benchmark/results/
 GlobalServer/logs/**
 TensorStore/models
 **Trace**
+.DS_Store
 
 **/.terraform/**
 **/.terraform.lock.hcl

@@ -1,0 +1,67 @@
+# spec 은 float 16 기준
+GPU_SPEC = {
+    "T4":         {"memory_size": 16000,  "FLOPS": 65 * 10**12,    "memory_bandwidth": 320 * 10**9},
+    "A10G":       {"memory_size": 22494,  "FLOPS": 70 * 10**12,   "memory_bandwidth": 600 * 10**9},
+    "L4":         {"memory_size": 22494,  "FLOPS": 121 * 10**12,   "memory_bandwidth": 300 * 10**9},
+    "L40S":       {"memory_size": 44988,  "FLOPS": 362 * 10**12,   "memory_bandwidth": 864 * 10**9},
+    "A100_40GB":  {"memory_size": 40000,  "FLOPS": 312 * 10**12,   "memory_bandwidth": 1555 * 10**9},
+    "A100_80GB":  {"memory_size": 80000,  "FLOPS": 312 * 10**12,   "memory_bandwidth": 2039 * 10**9},
+    "H100":       {"memory_size": 79647,  "FLOPS": 989.5 * 10**12, "memory_bandwidth": 3350 * 10**9},
+    "H200":       {"memory_size": 141000, "FLOPS": 989.5 * 10**12, "memory_bandwidth": 4800 * 10**9},
+    "B200":       {"memory_size": 180000, "FLOPS": 2250 * 10**12,  "memory_bandwidth": 7700 * 10**9},
+}
+
+INTERCONNECT_SPEC = {
+    "PCIe Gen3x16":  {"bandwidth": 6 * 10**9},
+    "PCIe Gen4x16":  {"bandwidth": 12 * 10**9},
+    "NVSwitch 3.0":  {"bandwidth": 262 * 10**9},
+    "NVSwitch 4.0":  {"bandwidth": 393 * 10**9},
+    "NVSwitch 5.0":  {"bandwidth": 786 * 10**9},
+}
+
+INSTANCE_SPEC = {
+    "g4dn.xlarge":           {"gpu_type": "T4",         "gpu_count": 1, "interconnect": "PCIe Gen3x16"},
+    "g4dn.12xlarge":         {"gpu_type": "T4",         "gpu_count": 4, "interconnect": "PCIe Gen3x16"},
+    "g4dn.metal":            {"gpu_type": "T4",         "gpu_count": 8, "interconnect": "PCIe Gen3x16"},
+    "g5.xlarge":             {"gpu_type": "A10G",       "gpu_count": 1, "interconnect": "PCIe Gen4x16"},
+    "g5.12xlarge":           {"gpu_type": "A10G",       "gpu_count": 4, "interconnect": "PCIe Gen4x16"},
+    "g5.48xlarge":           {"gpu_type": "A10G",       "gpu_count": 8, "interconnect": "PCIe Gen4x16"},
+    "g6.xlarge":             {"gpu_type": "L4",         "gpu_count": 1, "interconnect": "PCIe Gen4x16"},
+    "g6.12xlarge":           {"gpu_type": "L4",         "gpu_count": 4, "interconnect": "PCIe Gen4x16"},
+    "g6.48xlarge":           {"gpu_type": "L4",         "gpu_count": 8, "interconnect": "PCIe Gen4x16"},
+    "g6e.xlarge":            {"gpu_type": "L40S",       "gpu_count": 1, "interconnect": "PCIe Gen4x16"},
+    "g6e.12xlarge":          {"gpu_type": "L40S",       "gpu_count": 4, "interconnect": "PCIe Gen4x16"},
+    "g6e.48xlarge":          {"gpu_type": "L40S",       "gpu_count": 8, "interconnect": "PCIe Gen4x16"},
+    "p4d.24xlarge":          {"gpu_type": "A100_40GB",  "gpu_count": 8, "interconnect": "NVSwitch 3.0"},
+    "p4de.24xlarge":         {"gpu_type": "A100_80GB",  "gpu_count": 8, "interconnect": "NVSwitch 3.0"},
+    "p5.4xlarge":            {"gpu_type": "H100",       "gpu_count": 1, "interconnect": "NVSwitch 4.0"},
+    "p5.48xlarge":           {"gpu_type": "H100",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
+    "p5e.48xlarge":          {"gpu_type": "H200",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
+    "p5en.48xlarge":         {"gpu_type": "H200",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
+    "p6-b200.48xlarge":      {"gpu_type": "B200",       "gpu_count": 8, "interconnect": "NVSwitch 5.0"},
+    
+    "(spot)g4dn.xlarge":     {"gpu_type": "T4",         "gpu_count": 1, "interconnect": "PCIe Gen3x16"},
+    "(spot)g4dn.12xlarge":   {"gpu_type": "T4",         "gpu_count": 4, "interconnect": "PCIe Gen3x16"},
+    "(spot)g4dn.metal":      {"gpu_type": "T4",         "gpu_count": 8, "interconnect": "PCIe Gen3x16"},
+    "(spot)g5.xlarge":       {"gpu_type": "A10G",       "gpu_count": 1, "interconnect": "PCIe Gen4x16"},
+    "(spot)g5.12xlarge":     {"gpu_type": "A10G",       "gpu_count": 4, "interconnect": "PCIe Gen4x16"},
+    "(spot)g5.48xlarge":     {"gpu_type": "A10G",       "gpu_count": 8, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6.xlarge":       {"gpu_type": "L4",         "gpu_count": 1, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6.12xlarge":     {"gpu_type": "L4",         "gpu_count": 4, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6.48xlarge":     {"gpu_type": "L4",         "gpu_count": 8, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6e.xlarge":      {"gpu_type": "L40S",       "gpu_count": 1, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6e.12xlarge":    {"gpu_type": "L40S",       "gpu_count": 4, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6e.48xlarge":    {"gpu_type": "L40S",       "gpu_count": 8, "interconnect": "PCIe Gen4x16"},
+    "(spot)p4d.24xlarge":    {"gpu_type": "A100_40GB",  "gpu_count": 8, "interconnect": "NVSwitch 3.0"},
+    "(spot)p4de.24xlarge":   {"gpu_type": "A100_80GB",  "gpu_count": 8, "interconnect": "NVSwitch 3.0"},
+    "(spot)p5.4xlarge":      {"gpu_type": "H100",       "gpu_count": 1, "interconnect": "NVSwitch 4.0"},
+    "(spot)p5.48xlarge":     {"gpu_type": "H100",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
+    "(spot)p5e.48xlarge":    {"gpu_type": "H200",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
+    "(spot)p5en.48xlarge":   {"gpu_type": "H200",       "gpu_count": 8, "interconnect": "NVSwitch 4.0"},
+    "(spot)p6-b200.48xlarge":{"gpu_type": "B200",       "gpu_count": 8, "interconnect": "NVSwitch 5.0"},
+    
+    # this is for hexgen
+    "g5.12xlarge(half)": {"gpu_type": "A10G", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+    "g6.12xlarge(half)": {"gpu_type": "L4",   "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+    "g6e.12xlarge(half)": {"gpu_type": "L40S", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+}

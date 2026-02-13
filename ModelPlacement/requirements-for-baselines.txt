@@ -1,0 +1,8 @@
+deap
+ray
+starlette
+uvicorn
+fastapi
+numba
+torch
+transformers
