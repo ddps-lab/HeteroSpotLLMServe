@@ -1,0 +1,47 @@
+==================================================
+            Serving Benchmark Result
+==================================================
+Successful requests:                     16663     
+Benchmark duration (s):                  13852.51  
+Total input tokens:                      12710610  
+Total generated tokens:                  3872466   
+Request throughput (req/s):              1.20      
+Output token throughput (tok/s):         279.55    
+Total Token throughput (tok/s):          1197.12   
+----------------End-to-end Latency----------------
+Mean E2EL (ms):                          228243.69 
+Median E2EL (ms):                        153345.57 
+P10 E2EL (ms):                           33084.30  
+P25 E2EL (ms):                           95233.83  
+P50 E2EL (ms):                           153345.57 
+P75 E2EL (ms):                           386443.73 
+P90 E2EL (ms):                           526126.24 
+P99 E2EL (ms):                           720085.90 
+---------------Time to First Token----------------
+Mean TTFT (ms):                          36158.94  
+Median TTFT (ms):                        28627.54  
+P10 TTFT (ms):                           1332.23   
+P25 TTFT (ms):                           4083.48   
+P50 TTFT (ms):                           28627.54  
+P75 TTFT (ms):                           58096.22  
+P90 TTFT (ms):                           85958.06  
+P99 TTFT (ms):                           124735.43 
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          860.48    
+Median TPOT (ms):                        1027.16   
+P10 TPOT (ms):                           221.71    
+P25 TPOT (ms):                           264.76    
+P50 TPOT (ms):                           1027.16   
+P75 TPOT (ms):                           1208.97   
+P90 TPOT (ms):                           1368.11   
+P99 TPOT (ms):                           1622.80   
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           830.10    
+Median ITL (ms):                         349.92    
+P10 ITL (ms):                            116.86    
+P25 ITL (ms):                            217.33    
+P50 ITL (ms):                            349.92    
+P75 ITL (ms):                            896.72    
+P90 ITL (ms):                            2422.25   
+P99 ITL (ms):                            4912.07   
+==================================================
