@@ -39,7 +39,7 @@ async def run_benchmark(
     return await run_trace_benchmark(
         global_server=global_server,
         dataset_path=dataset_path,
-        trace_output_prefix="no_handle",
+        trace_output_prefix="spotinterruption_no_handle",
         num_requests=num_requests,
         time_scale=time_scale,
         model_name=model_name,
