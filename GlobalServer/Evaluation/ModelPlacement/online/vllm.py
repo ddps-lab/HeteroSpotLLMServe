@@ -38,7 +38,7 @@ async def run_benchmark(
     return await run_trace_benchmark(
         global_server=global_server,
         dataset_path=dataset_path,
-        trace_output_prefix="request_migration",
+        trace_output_prefix="modelplacement_online_vllm",
         num_requests=num_requests,
         time_scale=time_scale,
         model_name=model_name,
