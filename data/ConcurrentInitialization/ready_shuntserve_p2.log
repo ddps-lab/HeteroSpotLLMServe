@@ -1,0 +1,12 @@
+Stage 0: 192.168.0.152 (g6e.xlarge)
+  Times: [64.68]
+  Average: 64.68s
+Stage 1: 192.168.0.157 (g5.12xlarge)
+  Times: [42.29, 44.66, 43.17, 41.55]
+  Average: 42.92s
+Stage 2: 192.168.0.160 (g5.12xlarge)
+  Times: [44.02, 48.58, 46.06, 46.4]
+  Average: 46.27s
+Stage 3: 192.168.0.120 (g6e.xlarge)
+  Times: [58.56]
+  Average: 58.56s

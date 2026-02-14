@@ -315,7 +315,6 @@ def save_request_trace(
             'InputTokens',
             'OutputTokens',
             'Latency',
-            'QueueingDelay',
             'TTFT',
             'TPOT',
             'Success'
@@ -327,7 +326,6 @@ def save_request_trace(
                 # Calculate queueing delay
                 total_time = completion_time_ts - arrival_time_ts
                 latency = request.output.latency
-                queueing_delay = total_time - latency
 
                 # Get TTFT
                 ttft = request.output.ttft
@@ -347,7 +345,6 @@ def save_request_trace(
                     request.input.prompt_len,
                     request.output.output_tokens,
                     f"{latency:.6f}",
-                    f"{queueing_delay:.6f}",
                     f"{ttft:.6f}",
                     f"{tpot:.6f}",
                     request.output.success
@@ -362,7 +359,6 @@ def save_request_trace(
                     request.input.prompt_len,
                     0,
                     f"{total_time:.6f}",
-                    0.0,
                     0.0,
                     0.0,
                     False
