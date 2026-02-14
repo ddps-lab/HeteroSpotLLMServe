@@ -7,22 +7,18 @@ import concurrent.futures
 import sys
 import os
 import time
-from datetime import datetime
 from typing import Dict, List, Tuple
 from nodes import *
 
-# Add parent directory to path
-parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(parent_dir)
+# Add GlobalServer to path
+_d = os.path.dirname(os.path.abspath(__file__))
+while not os.path.exists(os.path.join(_d, ".git")):
+    _d = os.path.dirname(_d)
+sys.path.insert(0, os.path.join(_d, "GlobalServer"))
+del _d
 
 from global_server import GlobalServer
-from request_handler import generate_random_requests
-from benchmark_utils import print_benchmark_results
-from evaluation_utils import (
-    load_azure_trace,
-    generate_requests_from_trace,
-    run_trace_replay_benchmark
-)
+from benchmark_utils import print_benchmark_results, run_trace_benchmark, DEFAULT_DATASET_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -40,104 +36,20 @@ async def run_benchmark(
     start_time: float = None,
     end_time: float = None
 ):
-    """
-    Run a trace-based benchmark test on the GlobalServer using Azure dataset.
-
-    Args:
-        global_server: The GlobalServer instance
-        dataset_path: Path to Azure trace dataset CSV file
-        num_requests: Maximum number of requests to load from dataset (None for all)
-        time_scale: Time scale multiplier (1.0 = original, 0.5 = 2x faster, 2.0 = 2x slower)
-        model_name: Model name for generating requests
-        percentiles: List of percentiles to calculate (default: [25, 50, 75, 99])
-        disable_tqdm: Whether to disable progress bar
-        run_initial_test: Whether to run initial test requests
-        test_requests_per_pipeline: Number of test requests per pipeline
-        start_time: Start time in seconds from the first request (None for no lower bound)
-        end_time: End time in seconds from the first request (None for no upper bound)
-
-    Returns:
-        BenchmarkMetrics object with results
-    """
-    # Run initial test if requested
-    if run_initial_test:
-        num_pipelines = len(global_server.cluster.pipelines)
-        print(f"\nRunning initial test on {num_pipelines} pipeline(s)...")
-
-        # Generate test requests with fixed length for stability
-        test_count = test_requests_per_pipeline * num_pipelines
-        test_inputs = generate_random_requests(
-            num_prompts=test_count,
-            input_len=512,
-            output_len=128,
-            model_name=model_name,
-            ignore_eos=True
-        )
-
-        # Send test requests
-        print(f"Sending {test_count} test requests ({test_requests_per_pipeline} per pipeline)...")
-        test_requests = []
-        for test_input in test_inputs:
-            request = await global_server.add_request_and_wait(test_input)
-            test_requests.append(request)
-
-        # Check results
-        failed_count = 0
-        for i, request in enumerate(test_requests):
-            if not (request.output and request.output.success):
-                failed_count += 1
-                error_msg = request.output.error if request.output else "No output"
-                print(f"  Test request {i+1} failed: {error_msg}")
-
-        if failed_count > 0:
-            raise ValueError(
-                f"Initial test failed - {failed_count}/{test_count} requests failed. "
-                "Please check pipeline configuration and server status."
-            )
-        else:
-            print(f"Initial test completed successfully - all {test_count} requests succeeded!")
-            print("Starting trace benchmark...\n")
-
-    # Load Azure trace dataset
-    print(f"Loading trace dataset from: {dataset_path}")
-    trace_data = load_azure_trace(
-        csv_path=dataset_path,
-        max_requests=num_requests,
-        start_time=start_time,
-        end_time=end_time
-    )
-
-    if not trace_data:
-        raise ValueError("No trace data loaded. Check dataset path and filters.")
-
-    # Generate requests from trace
-    print("Generating requests from trace data...")
-    trace_requests = generate_requests_from_trace(
-        trace_data=trace_data,
-        model_name=model_name,
-        seed=0,
-        ignore_eos=True
-    )
-
-    print(f"Generated {len(trace_requests)} requests from trace\n")
-
-    # Prepare trace output path with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    trace_dir = os.path.join(parent_dir, "Trace")
-    os.makedirs(trace_dir, exist_ok=True)
-    trace_output_path = os.path.join(trace_dir, f"no_handle_{timestamp}.csv")
-
-    # Run trace replay benchmark
-    metrics = await run_trace_replay_benchmark(
+    return await run_trace_benchmark(
         global_server=global_server,
-        trace_requests=trace_requests,
+        dataset_path=dataset_path,
+        trace_output_prefix="no_handle",
+        num_requests=num_requests,
         time_scale=time_scale,
+        model_name=model_name,
         percentiles=percentiles,
         disable_tqdm=disable_tqdm,
-        save_trace_path=trace_output_path
+        run_initial_test=run_initial_test,
+        test_requests_per_pipeline=test_requests_per_pipeline,
+        start_time=start_time,
+        end_time=end_time,
     )
-
-    return metrics
 
 
 async def main():
@@ -448,12 +360,7 @@ async def main():
 
     try:
         # Set dataset path
-        dataset_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "Datasets",
-            "AzureLLMInferenceConvTrace_pruned_2048.csv"
-        )
+        dataset_path = DEFAULT_DATASET_PATH
 
         start_time = 0      # Start from beginning
         end_time = 20 * 60  # Run for 20 minutes
