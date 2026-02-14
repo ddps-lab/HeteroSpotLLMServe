@@ -8,7 +8,7 @@ import sys
 import os
 import time
 from typing import Dict, List, Tuple
-from nodes import *
+from nodes_8B import *
 
 # Add GlobalServer to path
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +39,7 @@ async def run_benchmark(
     return await run_trace_benchmark(
         global_server=global_server,
         dataset_path=dataset_path,
-        trace_output_prefix="shuntserve",
+        trace_output_prefix="8B_stage_switching",
         num_requests=num_requests,
         time_scale=time_scale,
         model_name=model_name,
@@ -66,8 +66,8 @@ async def main():
     logger.addHandler(console_handler)
     logger.propagate = False
 
-    global_server = GlobalServer(request_handler_mode="migration")
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    global_server = GlobalServer(request_handler_mode="re-routing")
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
 
     tasks = []
 
@@ -85,67 +85,55 @@ async def main():
         logger.info("Pipeline creation completed")
 
     # Our Pipeline 1
-    pipeline_1_stage_0_node_ip = spot_g6_12xlarge_node_ip_1
-    pipeline_1_stage_1_node_ip = spot_g6_12xlarge_node_ip_2
-    pipeline_1_stage_2_node_ip = on_demand_g6_12xlarge_node_ip_3
-    pipeline_1_stage_3_node_ip = spot_g6e_xlarge_node_ip_1
-    pipeline_1_stage_4_node_ip = spot_g6e_xlarge_node_ip_2
+    pipeline_1_stage_0_node_ip = spot_g6_xlarge_node_ip_1
+    pipeline_1_stage_1_node_ip = spot_g6_xlarge_node_ip_2
     pipeline_1_config = {
         "model_name": model_name,
-        "total_num_layers": 80,
+        "total_num_layers": 32,
         "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "20,20,20,10,10",
-        "parallel_strategy": [4,4,4,1,1],
+        "pp_layer_partition": "16,16",
+        "parallel_strategy": [1,1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 27549,
-        "max_batch_size": 442,
+        "num_gpu_blocks": 10074,
+        "max_batch_size": 162,
     }
-    estimated_throughput_1 = 4.23
+    estimated_throughput_1 = 5.73
     node_layer_mapping_1 = [
-        (pipeline_1_stage_0_node_ip, 20),
-        (pipeline_1_stage_1_node_ip, 20),
-        (pipeline_1_stage_2_node_ip, 20),
-        (pipeline_1_stage_3_node_ip, 10),
-        (pipeline_1_stage_4_node_ip, 10),
+        (pipeline_1_stage_0_node_ip, 16),
+        (pipeline_1_stage_1_node_ip, 16),
     ]
 
     # Pipeline 2
-    pipeline_2_stage_0_node_ip = spot_g6e_xlarge_node_ip_3
-    pipeline_2_stage_1_node_ip = spot_g5_12xlarge_node_ip_1
-    pipeline_2_stage_2_node_ip = spot_g5_12xlarge_node_ip_2
-    pipeline_2_stage_3_node_ip = spot_g6e_xlarge_node_ip_4
+    pipeline_2_stage_0_node_ip = spot_g6_xlarge_node_ip_3
     pipeline_2_config = {
         "model_name": model_name,
-        "total_num_layers": 80,
+        "total_num_layers": 32,
         "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "13,28,28,11",
-        "parallel_strategy": [1,4,4,1],
+        "pp_layer_partition": "32",
+        "parallel_strategy": [1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 12561,
-        "max_batch_size": 202,
+        "num_gpu_blocks": 1181,
+        "max_batch_size": 19,
     }
-    estimated_throughput_2 = 2.76
+    estimated_throughput_2 = 1.25
     node_layer_mapping_2 = [
-        (pipeline_2_stage_0_node_ip, 13),
-        (pipeline_2_stage_1_node_ip, 28),
-        (pipeline_2_stage_2_node_ip, 28),
-        (pipeline_2_stage_3_node_ip, 11),
+        (pipeline_2_stage_0_node_ip, 32),
     ]
     
     # Start pipeline creation
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
     pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
-    await asyncio.gather(pipeline_task_1, pipeline_task_2)
     tasks.append(pipeline_task_1)
     tasks.append(pipeline_task_2)
+    await asyncio.gather(pipeline_task_1, pipeline_task_2)
     
     # Start the global server in the background
     server_task = asyncio.create_task(global_server.run_global_server())
@@ -182,107 +170,73 @@ async def main():
             logger.error(f"Node switch test failed: {e}")
 
 
-    # Event 1: 
-    # 시작 5분 후 1개의 g6.12xlarge 와 2개의 g5.12xlarge spot interruption 발생
+    event_tasks = []
+    # Event 1:
+    # 시작 5분후 Pipeline 1의 1장, 2의 1장 Interrupt
     event_1_time = 5 * 60  # 5 minutes in seconds
-    asyncio.create_task(
+    event_1_task = asyncio.create_task(
         switch_node_after_delay(
             event_time=event_1_time,
-            old_node_ips=[
-                spot_g6_12xlarge_node_ip_2,
-                spot_g5_12xlarge_node_ip_1,
-                spot_g5_12xlarge_node_ip_2,
-            ],
-            new_node_ips=[
-                on_demand_g6_12xlarge_node_ip_2,
-                on_demand_g5_12xlarge_node_ip_1,
-                on_demand_g5_12xlarge_node_ip_2,
-            ]
+            old_node_ips=[spot_g6_xlarge_node_ip_1, spot_g6_xlarge_node_ip_3],
+            new_node_ips=[ondemand_g6_xlarge_node_ip_1, ondemand_g6_xlarge_node_ip_2]
         )
     )
+    event_tasks.append(event_1_task)
 
     # Event 2:
-    # 시작 15분 후 4개의 g6e.xlarge Spot Interruption 과 2개의 g6.12xlarge Spot 복구
-    event_2_time = 15 * 60  # 15 minutes in seconds
-    asyncio.create_task(
+    # 시작 10분 후 Pipeline 1의 1장 복구
+    event_2_time = 10 * 60  # 10 minutes in seconds
+    event_2_task = asyncio.create_task(
         switch_node_after_delay(
             event_time=event_2_time,
-            old_node_ips=[
-                on_demand_g6_12xlarge_node_ip_2,
-                on_demand_g6_12xlarge_node_ip_3,
-                spot_g6e_xlarge_node_ip_1,
-                spot_g6e_xlarge_node_ip_2,
-                spot_g6e_xlarge_node_ip_3,
-                spot_g6e_xlarge_node_ip_4,
-            ],
-            new_node_ips=[
-                spot_g6_12xlarge_node_ip_2,
-                spot_g6_12xlarge_node_ip_3,
-                on_demand_g6e_xlarge_node_ip_1,
-                on_demand_g6e_xlarge_node_ip_2,
-                on_demand_g6e_xlarge_node_ip_3,
-                on_demand_g6e_xlarge_node_ip_4,
-            ]
+            old_node_ips=[ondemand_g6_xlarge_node_ip_1],
+            new_node_ips=[spot_g6_xlarge_node_ip_1]
         )
     )
+    event_tasks.append(event_2_task)
 
     # Event 3:
-    # 시작 25분 후 1개의 g5.12xlarge Spot 복구
-    event_3_time = 25 * 60  # 25 minutes in seconds
-    asyncio.create_task(
+    # 시작 15분 후 Pipeline 2의 1장 복구
+    event_3_time = 15 * 60  # 15 minutes in seconds
+    event_3_task = asyncio.create_task(
         switch_node_after_delay(
             event_time=event_3_time,
-            old_node_ips=[
-                on_demand_g5_12xlarge_node_ip_1,
-            ],
-            new_node_ips=[
-                spot_g5_12xlarge_node_ip_1,
-            ]
+            old_node_ips=[ondemand_g6_xlarge_node_ip_2],
+            new_node_ips=[spot_g6_xlarge_node_ip_3]
         )
     )
+    event_tasks.append(event_3_task)
 
     # Event 4:
-    # 시작 35분 후 4개의 g6e.xlarge Spot 복구
-    event_4_time = 35 * 60  # 35 minutes in seconds
-    asyncio.create_task(
+    # 시작 20분 후 Pipeline 1의 2장 Interrupt
+    event_4_time = 20 * 60  # 20 minutes in seconds
+    event_4_task = asyncio.create_task(
         switch_node_after_delay(
             event_time=event_4_time,
-            old_node_ips=[
-                on_demand_g6e_xlarge_node_ip_1,
-                on_demand_g6e_xlarge_node_ip_2,
-                on_demand_g6e_xlarge_node_ip_3,
-                on_demand_g6e_xlarge_node_ip_4,
-            ],
-            new_node_ips=[
-                spot_g6e_xlarge_node_ip_1,
-                spot_g6e_xlarge_node_ip_2,
-                spot_g6e_xlarge_node_ip_3,
-                spot_g6e_xlarge_node_ip_4,
-            ]
+            old_node_ips=[spot_g6_xlarge_node_ip_1, spot_g6_xlarge_node_ip_2],
+            new_node_ips=[ondemand_g6_xlarge_node_ip_1, ondemand_g6_xlarge_node_ip_2]
         )
     )
+    event_tasks.append(event_4_task)
 
     # Event 5:
-    # 시작 45분 후 1개의 g5.12xlarge Spot 복구
-    event_5_time = 45 * 60  # 45 minutes in seconds
-    asyncio.create_task(
+    # 시작 25분 후 Pipeline 1의 2장 복구
+    event_5_time = 25 * 60  # 25 minutes in seconds
+    event_5_task = asyncio.create_task(
         switch_node_after_delay(
             event_time=event_5_time,
-            old_node_ips=[
-                on_demand_g5_12xlarge_node_ip_2,
-            ],
-            new_node_ips=[
-                spot_g5_12xlarge_node_ip_2,
-            ]
+            old_node_ips=[ondemand_g6_xlarge_node_ip_1, ondemand_g6_xlarge_node_ip_2],
+            new_node_ips=[spot_g6_xlarge_node_ip_1, spot_g6_xlarge_node_ip_2]
         )
     )
+    event_tasks.append(event_5_task)
 
     try:
         # Set dataset path
         dataset_path = DEFAULT_DATASET_PATH
         
         start_time = 0      # Start from beginning
-        end_time = 20 * 60  # Run for 20 minutes
+        end_time = 15 * 60  # Run for 15 minutes
 
         # Run benchmark using helper function
         metrics = await run_benchmark(
@@ -294,7 +248,7 @@ async def main():
             percentiles=[10, 25, 50, 75, 90, 95],
             disable_tqdm=False,  # Show progress bar
             run_initial_test=True,
-            test_requests_per_pipeline=0,
+            test_requests_per_pipeline=1,
             start_time=start_time,
             end_time=end_time
         )
@@ -318,6 +272,13 @@ async def main():
         # Wait for all tasks to complete
         try:
             await asyncio.gather(*tasks, return_exceptions=True)
+        except:
+            pass
+
+        try:
+            for event_task in event_tasks:
+                event_task.cancel()
+            await asyncio.gather(*event_tasks, return_exceptions=True)
         except:
             pass
 

@@ -11,9 +11,12 @@ from typing import Dict, List, Tuple
 
 from nodes import *
 
-# Add parent directory to path
-parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-sys.path.append(parent_dir)
+# Add GlobalServer to path
+_d = os.path.dirname(os.path.abspath(__file__))
+while not os.path.exists(os.path.join(_d, ".git")):
+    _d = os.path.dirname(_d)
+sys.path.insert(0, os.path.join(_d, "GlobalServer"))
+del _d
 
 from global_server import GlobalServer
 from request_handler import generate_random_requests

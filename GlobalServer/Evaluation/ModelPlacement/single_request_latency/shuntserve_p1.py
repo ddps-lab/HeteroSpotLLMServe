@@ -1,14 +1,13 @@
 """
-Spot interruption benchmark using on-demand instances with real Azure trace.
+Benchmark test for GlobalServer that measures single request latency.
+Uses fixed-length synthetic requests instead of trace data.
 """
 import asyncio
-import logging
 import concurrent.futures
+import logging
 import sys
 import os
-import time
 from typing import Dict, List, Tuple
-from nodes import *
 
 # Add GlobalServer to path
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -18,42 +17,41 @@ sys.path.insert(0, os.path.join(_d, "GlobalServer"))
 del _d
 
 from global_server import GlobalServer
-from benchmark_utils import print_benchmark_results, run_trace_benchmark, DEFAULT_DATASET_PATH
+from benchmark_utils import print_benchmark_results, run_latency_benchmark
 
-logger = logging.getLogger(__name__)
+from nodes import *
 
 
 async def run_benchmark(
     global_server: GlobalServer,
-    dataset_path: str,
-    num_requests: int = None,
-    time_scale: float = 1.0,
+    num_requests: int = 100,
+    input_len: int = 1024,
+    output_len: int = 128,
+    request_rate: float = float('inf'),
     model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
+    max_concurrency: int = None,
     percentiles: List[float] = None,
     disable_tqdm: bool = False,
     run_initial_test: bool = True,
-    test_requests_per_pipeline: int = 2,
-    start_time: float = None,
-    end_time: float = None
+    test_requests_per_pipeline: int = 2
 ):
-    return await run_trace_benchmark(
+    return await run_latency_benchmark(
         global_server=global_server,
-        dataset_path=dataset_path,
-        trace_output_prefix="ondemand_only",
         num_requests=num_requests,
-        time_scale=time_scale,
+        input_len=input_len,
+        output_len=output_len,
+        request_rate=request_rate,
         model_name=model_name,
+        max_concurrency=max_concurrency,
         percentiles=percentiles,
         disable_tqdm=disable_tqdm,
         run_initial_test=run_initial_test,
         test_requests_per_pipeline=test_requests_per_pipeline,
-        start_time=start_time,
-        end_time=end_time,
     )
 
 
-async def main():
-    """Test node switching functionality."""
+async def test_benchmark():
+    """Test benchmark with a single node configuration."""
     # Setup logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -65,11 +63,10 @@ async def main():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.propagate = False
-
-    global_server = GlobalServer()
     model_name = "meta-llama/Llama-3.1-70B-Instruct"
 
-    tasks = []
+    # Create GlobalServer instance
+    global_server = GlobalServer()
 
     # Create pipeline in background
     async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
@@ -84,15 +81,12 @@ async def main():
             )
         logger.info("Pipeline creation completed")
 
-
-    # 해당 변수들의 이름을 재사용한다.
-    # 실제로는 ip 는 on-demand 의 것을 사용한다. 아무런 이벤트 없이 end-to-end 로 실현한다.
     # Our Pipeline 1
-    pipeline_1_stage_0_node_ip = spot_g6_12xlarge_node_ip_1
-    pipeline_1_stage_1_node_ip = spot_g6_12xlarge_node_ip_2
-    pipeline_1_stage_2_node_ip = spot_g6_12xlarge_node_ip_3
-    pipeline_1_stage_3_node_ip = spot_g6e_xlarge_node_ip_1
-    pipeline_1_stage_4_node_ip = spot_g6e_xlarge_node_ip_2
+    pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
+    pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
+    pipeline_1_stage_2_node_ip = g6_12xlarge_node_ip_3
+    pipeline_1_stage_3_node_ip = g6e_xlarge_node_ip_1
+    pipeline_1_stage_4_node_ip = g6e_xlarge_node_ip_2
     pipeline_1_config = {
         "model_name": model_name,
         "total_num_layers": 80,
@@ -116,69 +110,36 @@ async def main():
         (pipeline_1_stage_4_node_ip, 10),
     ]
 
-    # Pipeline 2
-    pipeline_2_stage_0_node_ip = spot_g6e_xlarge_node_ip_3
-    pipeline_2_stage_1_node_ip = spot_g5_12xlarge_node_ip_1
-    pipeline_2_stage_2_node_ip = spot_g5_12xlarge_node_ip_2
-    pipeline_2_stage_3_node_ip = spot_g6e_xlarge_node_ip_4
-    pipeline_2_config = {
-        "model_name": model_name,
-        "total_num_layers": 80,
-        "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "13,28,28,11",
-        "parallel_strategy": [1,4,4,1],
-        "max_model_len": 8192,
-        "max_num_batched_tokens": 8192,
-        "max_num_seqs": 512,
-        "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 13556,
-        "max_batch_size": 218,
-    }
-    estimated_throughput_2 = 2.83
-    node_layer_mapping_2 = [
-        (pipeline_2_stage_0_node_ip, 13),
-        (pipeline_2_stage_1_node_ip, 28),
-        (pipeline_2_stage_2_node_ip, 28),
-        (pipeline_2_stage_3_node_ip, 11),
-    ]
-    
     # Start pipeline creation
     pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
-    await asyncio.gather(pipeline_task_1, pipeline_task_2)
-    tasks.append(pipeline_task_1)
-    tasks.append(pipeline_task_2)
-    
-    # Start the global server in the background
+
+    # Start global server
     server_task = asyncio.create_task(global_server.run_global_server())
-    tasks.append(server_task)
 
     try:
-        # Set dataset path
-        dataset_path = DEFAULT_DATASET_PATH
+        # Wait for pipeline creation to complete
+        logger.info("Waiting for pipeline creation to complete...")
+        await pipeline_task_1
+        logger.info("Pipelines are ready!")
 
-        start_time = 0      # Start from beginning
-        end_time = 20 * 60  # Run for 20 minutes
-
-        # Run benchmark using helper function
+        # Run benchmark - optimized for single request latency measurement
         metrics = await run_benchmark(
             global_server,
-            dataset_path=dataset_path,
-            num_requests=None,  # Use all requests from trace
-            time_scale=3,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
+            num_requests=10,  # Small number of requests for latency measurement
+            input_len=763,
+            output_len=232,
+            request_rate=float('inf'),  # No rate limit
             model_name=model_name,
-            percentiles=[10, 25, 50, 75, 90, 95],
-            disable_tqdm=False,  # Show progress bar
-            run_initial_test=True,
-            test_requests_per_pipeline=0,
-            start_time=start_time,
-            end_time=end_time
+            max_concurrency=1,
+            percentiles=[10, 25, 50, 75, 90, 99],
+            disable_tqdm=False,  # Show progress bars
+            run_initial_test=True,  # Run test requests first
+            test_requests_per_pipeline=0  # 0 test requests per pipeline
         )
 
         # Print results
         print_benchmark_results(metrics)
-        
+
     except KeyboardInterrupt:
         logger.info("\nBenchmark interrupted by user")
     except Exception as e:
@@ -187,14 +148,11 @@ async def main():
     finally:
         # Cleanup
         logger.info("Cleaning up...")
+        server_task.cancel()
+        pipeline_task_1.cancel()
 
-        # Cancel all tasks
-        for task in tasks:
-            task.cancel()
-
-        # Wait for all tasks to complete
         try:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.gather(server_task, return_exceptions=True)
         except:
             pass
 
@@ -206,5 +164,6 @@ async def main():
         except Exception as e:
             logger.error(f"Error stopping pipelines: {e}")
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(test_benchmark())
