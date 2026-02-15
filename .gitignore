@@ -1,7 +1,5 @@
 .vscode**
 **__pycache__**
-benchmark/dataset/
-benchmark/results/
 .basedpyright
 GlobalServer/logs/**
 TensorStore/models

@@ -2,7 +2,12 @@ import argparse
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add ModelPlacement to path
+_d = os.path.dirname(os.path.abspath(__file__))
+while not os.path.exists(os.path.join(_d, ".git")):
+    _d = os.path.dirname(_d)
+sys.path.insert(0, os.path.join(_d, "ModelPlacement"))
+del _d
 
 
 def build_model_config(model_name="meta-llama/Llama-3.1-70B-Instruct"):

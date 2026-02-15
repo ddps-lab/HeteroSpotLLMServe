@@ -5,9 +5,9 @@ This module determines optimal model placement (pipeline parallelism configurati
 ## Quick Start
 
 ```bash
-cd ModelPlacement
-python main.py --baseline shuntserve
-python main.py --baseline hexgen alpaserve shuntserve
+cd ArtifactEvaluation
+python model_placement_optimizer.py --baseline shuntserve
+python model_placement_optimizer.py --baseline hexgen alpaserve shuntserve
 ```
 
 ### Requirements
@@ -121,7 +121,6 @@ Workload parameters are derived from the Azure Conversation Dataset trace:
 
 ```
 ModelPlacement/
-  main.py                   # Unified CLI entry point
   shuntserve_optimizer.py   # ShuntServe beam search DP optimizer + Pipeline class
   hexgen_optimizer.py       # HEXGEN genetic algorithm optimizer
   alpaserve_optimizer.py    # AlpaServe DP layer partitioning

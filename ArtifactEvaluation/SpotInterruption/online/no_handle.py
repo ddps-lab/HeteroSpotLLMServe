@@ -370,7 +370,7 @@ async def main():
             global_server,
             dataset_path=dataset_path,
             num_requests=None,  # Use all requests from trace
-            time_scale=3,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
+            time_scale=3.0,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 95],
             disable_tqdm=False,  # Show progress bar

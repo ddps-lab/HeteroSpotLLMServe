@@ -4,6 +4,7 @@ Contains dataset loading, trace-based request generation, and trace replay funct
 """
 import asyncio
 import csv
+import os
 import time
 from datetime import datetime
 from typing import List, Tuple, Optional
@@ -367,12 +368,14 @@ def save_request_trace(
 
 # Unittest
 if __name__ == "__main__":
+    from benchmark_utils import ARTIFACT_EVALUATION_DIR, DEFAULT_DATASET_PATH
+
     # 원본 데이터
     datas = load_azure_trace(
-        csv_path="./Evaluation/Datasets/AzureLLMInferenceTrace_conv.csv",
+        csv_path=os.path.join(ARTIFACT_EVALUATION_DIR, "Datasets", "AzureLLMInferenceTrace_conv.csv"),
     )
 
     # pruned 데이터
     pruned_datas = load_azure_trace(
-        csv_path="./Evaluation/Datasets/AzureLLMInferenceConvTrace_pruned_2048.csv",
+        csv_path=DEFAULT_DATASET_PATH,
     )

@@ -39,7 +39,7 @@ async def run_benchmark(
     return await run_trace_benchmark(
         global_server=global_server,
         dataset_path=dataset_path,
-        trace_output_prefix="spotinterruption_only_ondemand",
+        trace_output_prefix="spotinterruption_concurrent_initialization",
         num_requests=num_requests,
         time_scale=time_scale,
         model_name=model_name,
@@ -66,7 +66,7 @@ async def main():
     logger.addHandler(console_handler)
     logger.propagate = False
 
-    global_server = GlobalServer()
+    global_server = GlobalServer(request_handler_mode="re-routing")
     model_name = "meta-llama/Llama-3.1-70B-Instruct"
 
     tasks = []
@@ -84,13 +84,10 @@ async def main():
             )
         logger.info("Pipeline creation completed")
 
-
-    # 해당 변수들의 이름을 재사용한다.
-    # 실제로는 ip 는 on-demand 의 것을 사용한다. 아무런 이벤트 없이 end-to-end 로 실현한다.
     # Our Pipeline 1
     pipeline_1_stage_0_node_ip = spot_g6_12xlarge_node_ip_1
     pipeline_1_stage_1_node_ip = spot_g6_12xlarge_node_ip_2
-    pipeline_1_stage_2_node_ip = spot_g6_12xlarge_node_ip_3
+    pipeline_1_stage_2_node_ip = on_demand_g6_12xlarge_node_ip_3
     pipeline_1_stage_3_node_ip = spot_g6e_xlarge_node_ip_1
     pipeline_1_stage_4_node_ip = spot_g6e_xlarge_node_ip_2
     pipeline_1_config = {
@@ -132,10 +129,10 @@ async def main():
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 13556,
-        "max_batch_size": 218,
+        "num_gpu_blocks": 12561,
+        "max_batch_size": 202,
     }
-    estimated_throughput_2 = 2.83
+    estimated_throughput_2 = 2.76
     node_layer_mapping_2 = [
         (pipeline_2_stage_0_node_ip, 13),
         (pipeline_2_stage_1_node_ip, 28),
@@ -154,10 +151,137 @@ async def main():
     server_task = asyncio.create_task(global_server.run_global_server())
     tasks.append(server_task)
 
+    # Schedule node switch (optional - comment out to disable)
+    async def switch_node_after_delay(event_time: float = 0, old_node_ips: List[str] = None, new_node_ips: List[str] = None):
+        """Switch node after a specified delay"""
+        await asyncio.sleep(event_time)
+        try:
+            logger.info(f"Starting node switch test: {old_node_ips} -> {new_node_ips}")
+
+            # Time measurement start
+            switch_start_time = time.time()
+
+            # Execute switch in a separate thread to avoid blocking
+            loop = asyncio.get_event_loop()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                await loop.run_in_executor(
+                    executor,
+                    global_server.switch_nodes,
+                    old_node_ips,
+                    new_node_ips
+                )
+
+            # Time measurement end and logging
+            switch_end_time = time.time()
+            switch_duration = switch_end_time - switch_start_time
+
+            logger.info("Node switch test completed")
+            logger.info(f"⏱️  Node Switch Duration: {switch_duration:.2f} seconds")
+
+        except Exception as e:
+            logger.error(f"Node switch test failed: {e}")
+
+
+    # Event 1: 
+    # 시작 5분 후 1개의 g6.12xlarge 와 2개의 g5.12xlarge spot interruption 발생
+    event_1_time = 5 * 60  # 5 minutes in seconds
+    asyncio.create_task(
+        switch_node_after_delay(
+            event_time=event_1_time,
+            old_node_ips=[
+                spot_g6_12xlarge_node_ip_2,
+                spot_g5_12xlarge_node_ip_1,
+                spot_g5_12xlarge_node_ip_2,
+            ],
+            new_node_ips=[
+                on_demand_g6_12xlarge_node_ip_2,
+                on_demand_g5_12xlarge_node_ip_1,
+                on_demand_g5_12xlarge_node_ip_2,
+            ]
+        )
+    )
+
+    # Event 2:
+    # 시작 15분 후 4개의 g6e.xlarge Spot Interruption 과 2개의 g6.12xlarge Spot 복구
+    event_2_time = 15 * 60  # 15 minutes in seconds
+    asyncio.create_task(
+        switch_node_after_delay(
+            event_time=event_2_time,
+            old_node_ips=[
+                on_demand_g6_12xlarge_node_ip_2,
+                on_demand_g6_12xlarge_node_ip_3,
+                spot_g6e_xlarge_node_ip_1,
+                spot_g6e_xlarge_node_ip_2,
+                spot_g6e_xlarge_node_ip_3,
+                spot_g6e_xlarge_node_ip_4,
+            ],
+            new_node_ips=[
+                spot_g6_12xlarge_node_ip_2,
+                spot_g6_12xlarge_node_ip_3,
+                on_demand_g6e_xlarge_node_ip_1,
+                on_demand_g6e_xlarge_node_ip_2,
+                on_demand_g6e_xlarge_node_ip_3,
+                on_demand_g6e_xlarge_node_ip_4,
+            ]
+        )
+    )
+
+    # Event 3:
+    # 시작 25분 후 1개의 g5.12xlarge Spot 복구
+    event_3_time = 25 * 60  # 25 minutes in seconds
+    asyncio.create_task(
+        switch_node_after_delay(
+            event_time=event_3_time,
+            old_node_ips=[
+                on_demand_g5_12xlarge_node_ip_1,
+            ],
+            new_node_ips=[
+                spot_g5_12xlarge_node_ip_1,
+            ]
+        )
+    )
+
+    # Event 4:
+    # 시작 35분 후 4개의 g6e.xlarge Spot 복구
+    event_4_time = 35 * 60  # 35 minutes in seconds
+    asyncio.create_task(
+        switch_node_after_delay(
+            event_time=event_4_time,
+            old_node_ips=[
+                on_demand_g6e_xlarge_node_ip_1,
+                on_demand_g6e_xlarge_node_ip_2,
+                on_demand_g6e_xlarge_node_ip_3,
+                on_demand_g6e_xlarge_node_ip_4,
+            ],
+            new_node_ips=[
+                spot_g6e_xlarge_node_ip_1,
+                spot_g6e_xlarge_node_ip_2,
+                spot_g6e_xlarge_node_ip_3,
+                spot_g6e_xlarge_node_ip_4,
+            ]
+        )
+    )
+
+    # Event 5:
+    # 시작 45분 후 1개의 g5.12xlarge Spot 복구
+    event_5_time = 45 * 60  # 45 minutes in seconds
+    asyncio.create_task(
+        switch_node_after_delay(
+            event_time=event_5_time,
+            old_node_ips=[
+                on_demand_g5_12xlarge_node_ip_2,
+            ],
+            new_node_ips=[
+                spot_g5_12xlarge_node_ip_2,
+            ]
+        )
+    )
+
+
     try:
         # Set dataset path
         dataset_path = DEFAULT_DATASET_PATH
-
+        
         start_time = 0      # Start from beginning
         end_time = 20 * 60  # Run for 20 minutes
 
@@ -166,7 +290,7 @@ async def main():
             global_server,
             dataset_path=dataset_path,
             num_requests=None,  # Use all requests from trace
-            time_scale=3,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
+            time_scale=3.0,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 95],
             disable_tqdm=False,  # Show progress bar

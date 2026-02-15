@@ -28,8 +28,9 @@ def find_project_root(marker=".git"):
 
 PROJECT_ROOT = find_project_root()
 GLOBAL_SERVER_DIR = os.path.join(PROJECT_ROOT, "GlobalServer")
+ARTIFACT_EVALUATION_DIR = os.path.join(PROJECT_ROOT, "ArtifactEvaluation")
 DEFAULT_DATASET_PATH = os.path.join(
-    GLOBAL_SERVER_DIR, "Evaluation", "Datasets",
+    ARTIFACT_EVALUATION_DIR, "Datasets",
     "AzureLLMInferenceConvTrace_pruned_2048.csv"
 )
 
@@ -398,7 +399,7 @@ async def run_trace_benchmark(
     )
 
     if trace_base_dir is None:
-        trace_base_dir = GLOBAL_SERVER_DIR
+        trace_base_dir = ARTIFACT_EVALUATION_DIR
 
     # Run initial test if requested
     if run_initial_test:
