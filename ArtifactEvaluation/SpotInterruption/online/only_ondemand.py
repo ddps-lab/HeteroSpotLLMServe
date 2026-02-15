@@ -8,7 +8,7 @@ import sys
 import os
 import time
 from typing import Dict, List, Tuple
-from nodes_8B import *
+from nodes import *
 
 # Add GlobalServer to path
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +39,7 @@ async def run_benchmark(
     return await run_trace_benchmark(
         global_server=global_server,
         dataset_path=dataset_path,
-        trace_output_prefix="spotinterruption_8b_only_ondemand",
+        trace_output_prefix="spotinterruption_only_ondemand",
         num_requests=num_requests,
         time_scale=time_scale,
         model_name=model_name,
@@ -67,7 +67,7 @@ async def main():
     logger.propagate = False
 
     global_server = GlobalServer()
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = "meta-llama/Llama-3.1-70B-Instruct"
 
     tasks = []
 
@@ -84,48 +84,63 @@ async def main():
             )
         logger.info("Pipeline creation completed")
 
+
+    # 해당 변수들의 이름을 재사용한다.
+    # 실제로는 ip 는 on-demand 의 것을 사용한다. 아무런 이벤트 없이 end-to-end 로 실현한다.
     # Our Pipeline 1
-    pipeline_1_stage_0_node_ip = spot_g6_xlarge_node_ip_1
-    pipeline_1_stage_1_node_ip = spot_g6_xlarge_node_ip_2
+    pipeline_1_stage_0_node_ip = spot_g6_12xlarge_node_ip_1
+    pipeline_1_stage_1_node_ip = spot_g6_12xlarge_node_ip_2
+    pipeline_1_stage_2_node_ip = spot_g6_12xlarge_node_ip_3
+    pipeline_1_stage_3_node_ip = spot_g6e_xlarge_node_ip_1
+    pipeline_1_stage_4_node_ip = spot_g6e_xlarge_node_ip_2
     pipeline_1_config = {
         "model_name": model_name,
-        "total_num_layers": 32,
+        "total_num_layers": 80,
         "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "16,16",
-        "parallel_strategy": [1,1],
+        "pp_layer_partition": "20,20,20,10,10",
+        "parallel_strategy": [4,4,4,1,1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 10074,
-        "max_batch_size": 162,
+        "num_gpu_blocks": 27549,
+        "max_batch_size": 442,
     }
-    estimated_throughput_1 = 5.73
+    estimated_throughput_1 = 4.23
     node_layer_mapping_1 = [
-        (pipeline_1_stage_0_node_ip, 16),
-        (pipeline_1_stage_1_node_ip, 16),
+        (pipeline_1_stage_0_node_ip, 20),
+        (pipeline_1_stage_1_node_ip, 20),
+        (pipeline_1_stage_2_node_ip, 20),
+        (pipeline_1_stage_3_node_ip, 10),
+        (pipeline_1_stage_4_node_ip, 10),
     ]
 
     # Pipeline 2
-    pipeline_2_stage_0_node_ip = spot_g6_xlarge_node_ip_3
+    pipeline_2_stage_0_node_ip = spot_g6e_xlarge_node_ip_3
+    pipeline_2_stage_1_node_ip = spot_g5_12xlarge_node_ip_1
+    pipeline_2_stage_2_node_ip = spot_g5_12xlarge_node_ip_2
+    pipeline_2_stage_3_node_ip = spot_g6e_xlarge_node_ip_4
     pipeline_2_config = {
         "model_name": model_name,
-        "total_num_layers": 32,
+        "total_num_layers": 80,
         "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "32",
-        "parallel_strategy": [1],
+        "pp_layer_partition": "13,28,28,11",
+        "parallel_strategy": [1,4,4,1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
-        "num_gpu_blocks": 1181,
-        "max_batch_size": 19,
+        "num_gpu_blocks": 13556,
+        "max_batch_size": 218,
     }
-    estimated_throughput_2 = 1.25
+    estimated_throughput_2 = 2.83
     node_layer_mapping_2 = [
-        (pipeline_2_stage_0_node_ip, 32),
+        (pipeline_2_stage_0_node_ip, 13),
+        (pipeline_2_stage_1_node_ip, 28),
+        (pipeline_2_stage_2_node_ip, 28),
+        (pipeline_2_stage_3_node_ip, 11),
     ]
     
     # Start pipeline creation
@@ -144,19 +159,19 @@ async def main():
         dataset_path = DEFAULT_DATASET_PATH
 
         start_time = 0      # Start from beginning
-        end_time = 15 * 60  # Run for 15 minutes
+        end_time = 20 * 60  # Run for 20 minutes
 
         # Run benchmark using helper function
         metrics = await run_benchmark(
             global_server,
             dataset_path=dataset_path,
             num_requests=None,  # Use all requests from trace
-            time_scale=0,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
+            time_scale=3.0,  # Original trace speed (0.0 = Offline, 1.0 = original speed)
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 95],
             disable_tqdm=False,  # Show progress bar
             run_initial_test=True,
-            test_requests_per_pipeline=1,
+            test_requests_per_pipeline=0,
             start_time=start_time,
             end_time=end_time
         )
