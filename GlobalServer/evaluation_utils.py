@@ -60,6 +60,11 @@ def load_azure_trace(
 
             # Parse timestamp
             timestamp_str = row['TIMESTAMP']
+            # Truncate fractional seconds to 6 digits (microseconds) for Python 3.10 compatibility
+            if '.' in timestamp_str:
+                parts = timestamp_str.split('.')
+                parts[1] = parts[1][:6]
+                timestamp_str = '.'.join(parts)
             timestamp = datetime.fromisoformat(timestamp_str)
 
             # Set first timestamp as reference
