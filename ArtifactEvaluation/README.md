@@ -1,8 +1,8 @@
 # Artifact Evaluation
 
-End-to-end evaluation scripts for the ShuntServe paper. Each script configures a GlobalServer with one or more pipelines on a heterogeneous spot GPU cluster, replays Azure traces (or sends synthetic requests), and collects throughput/latency metrics. Results map directly to figures in the paper.
+End-to-end evaluation scripts for the ShuntServe paper. Each script configures a GlobalServer with one or more pipelines on a heterogeneous GPU cluster, replays Azure traces (or sends synthetic requests), and collects throughput/latency metrics. Results map directly to figures in the paper. Spot interruptions are **simulated** -- all experiments run on on-demand instances.
 
-> **Note for reviewers:** If the full cluster setup (9 spot instances, 24 GPUs) is too costly, a simplified 8B test setup is available to verify basic executability. See [Appendix C](#appendix-c-simplified-8b-test-setup).
+> **Note for reviewers:** If the full cluster setup (9 instances, 24 GPUs) is too costly, a simplified 8B test setup is available to verify basic executability. See [Appendix C](#appendix-c-simplified-8b-test-setup).
 
 | Paper Figure | Experiment | Directory | Scripts |
 |---|---|---|---|
@@ -21,7 +21,7 @@ See the project root [README.md](../README.md) for environment setup instruction
 
 The default evaluation cluster matches Section VII of the paper:
 
-| Instance Type | GPU | Count | Spot Price |
+| Instance Type | GPU | Count | Price |
 |---|---|---|---|
 | g5.12xlarge | 4x NVIDIA A10G | 2 | $2.29/hr |
 | g6.12xlarge | 4x NVIDIA L4 | 3 | $1.94/hr |
@@ -29,23 +29,23 @@ The default evaluation cluster matches Section VII of the paper:
 
 Total: 9 instances, 24 GPUs, 672 GB GPU memory.
 
-For **SpotInterruption** experiments (Figures 9-11), additional on-demand instances are required as fallback replacements:
+For **SpotInterruption** experiments (Figures 9-11), additional instances are required as replacement nodes (simulating on-demand fallback):
 
-| Instance Type | On-Demand Count | Purpose |
+| Instance Type | Count | Purpose |
 |---|---|---|
-| g6.12xlarge | 2 | Replace interrupted spot g6.12xlarge |
-| g5.12xlarge | 2 | Replace interrupted spot g5.12xlarge |
-| g6e.xlarge | 4 | Replace interrupted spot g6e.xlarge |
+| g6.12xlarge | 2 | Replacement for interrupted g6.12xlarge |
+| g5.12xlarge | 2 | Replacement for interrupted g5.12xlarge |
+| g6e.xlarge | 4 | Replacement for interrupted g6e.xlarge |
 
 ### Simplified Test Setup
 
 The **SpotInterruption/8B** experiments provide a simplified test setup to verify basic executability when full replication with the 70B model cluster is costly or infeasible. This uses a smaller cluster with Llama-3.1-8B-Instruct:
 
-| Instance Type | Spot Count | On-Demand Count |
+| Instance Type | Initial Count | Replacement Count |
 |---|---|---|
 | g6.xlarge (1x L4) | 3 | 2 |
 
-This setup validates the core spot interruption handling mechanisms (stop-and-start, concurrent initialization) at reduced cost.
+This setup validates the core interruption handling mechanisms (stop-and-start, concurrent initialization) at reduced cost.
 
 ## Step 2: Prepare Model Weights
 
@@ -55,7 +55,7 @@ Model weights are loaded from S3 using our custom **TensorStore** module. Tensor
    - [meta-llama/Llama-3.1-70B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-70B-Instruct)
    - [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (for simplified test setup only)
 
-2. Create an S3 bucket and upload the model weights using `TensorStore/upload_model.sh`. Edit the script to set your bucket name and model, then run it. It downloads the model from HuggingFace, partitions tensors for TP sizes 1/2/4/8, converts to TRAW format, and uploads to S3:
+2. Create an S3 bucket and upload the model weights using `TensorStore/upload_model.sh`. This step does not require a GPU -- it can be run on any instance with sufficient CPU memory and network bandwidth. Edit the script to set your bucket name and model, then run it. It downloads the model from HuggingFace, partitions tensors for TP sizes 1/2/4/8, converts to TRAW format, and uploads to S3:
    ```bash
    # From the project root
    cd TensorStore
@@ -111,10 +111,10 @@ g6e_xlarge_node_ip_4  = ""   # 1x L40S
 
 ### SpotInterruption experiments
 
-`SpotInterruption/offline/nodes.py` and `SpotInterruption/online/nodes.py` have both spot (initial) and on-demand (replacement) IPs (identical structure):
+`SpotInterruption/offline/nodes.py` and `SpotInterruption/online/nodes.py` have both initial and replacement instance IPs (identical structure). Variable names use `spot_` and `on_demand_` prefixes to match the simulated roles:
 
 ```python
-# Spot instances (initial deployment)
+# Initial instances (simulating spot instances)
 spot_g6_12xlarge_node_ip_1 = ""
 spot_g6_12xlarge_node_ip_2 = ""
 spot_g6_12xlarge_node_ip_3 = ""
@@ -125,9 +125,9 @@ spot_g6e_xlarge_node_ip_2  = ""
 spot_g6e_xlarge_node_ip_3  = ""
 spot_g6e_xlarge_node_ip_4  = ""
 
-# On-demand instances (fallback replacements)
+# Replacement instances (simulating on-demand fallback)
 # Note: on_demand_g6_12xlarge_node_ip_1 is omitted because
-# spot_g6_12xlarge_node_ip_1 is consistently available in our experiment trace.
+# spot_g6_12xlarge_node_ip_1 is consistently available in the experiment trace.
 on_demand_g6_12xlarge_node_ip_2 = ""
 on_demand_g6_12xlarge_node_ip_3 = ""
 on_demand_g5_12xlarge_node_ip_1 = ""
@@ -223,26 +223,26 @@ Note: `warmup.py` uses different parameters (`time_scale=4.0`, `end_time=15`) fo
 
 **Path:** `SpotInterruption/offline/`
 
-Evaluates how the system handles spot instance interruptions and recoveries during offline serving of Llama-3.1-70B. Timed events simulate interruptions by replacing spot nodes with on-demand nodes and vice versa. All trace requests are submitted at once (`time_scale=0`).
+Evaluates how the system handles simulated spot interruptions and recoveries during offline serving of Llama-3.1-70B. Timed events simulate interruptions by switching nodes to replacement instances and vice versa. All trace requests are submitted at once (`time_scale=0`).
 
 | Strategy | Script | `request_handler_mode` | Interruption Handling |
 |---|---|---|---|
 | ShuntServe | `shuntserve.py` | `"migration"` | `switch_nodes()` with request migration |
 | Request Migration | `request_migration.py` | `"migration"` | `switch_nodes()` without concurrent init |
 | No Handle | `no_handle.py` | `"re-routing"` | Stop pipeline, wait, recreate |
-| Only On-Demand | `only_ondemand.py` | default | No events (on-demand baseline) |
+| No Interruption | `only_ondemand.py` | default | No events (baseline without interruptions) |
 | Concurrent Init | `concurrent_initialization.py` | `"re-routing"` | `switch_nodes()` without request migration |
-| Warmup | `warmup.py` | default | No events (on-demand with warmup) |
+| Warmup | `warmup.py` | default | No events (baseline with warmup) |
 
-Spot interruption event timeline (from `shuntserve.py`):
+Simulated interruption event timeline (from `shuntserve.py`):
 
 | Event | Time | Description |
 |---|---|---|
-| 1 | 5 min | 1x g6.12xlarge + 2x g5.12xlarge spot interrupted |
-| 2 | 15 min | 2x g6.12xlarge spot recovered, 4x g6e.xlarge interrupted |
-| 3 | 25 min | 1x g5.12xlarge spot recovered |
-| 4 | 35 min | 4x g6e.xlarge spot recovered |
-| 5 | 45 min | 1x g5.12xlarge spot recovered |
+| 1 | 5 min | 1x g6.12xlarge + 2x g5.12xlarge interrupted |
+| 2 | 15 min | 2x g6.12xlarge recovered, 4x g6e.xlarge interrupted |
+| 3 | 25 min | 1x g5.12xlarge recovered |
+| 4 | 35 min | 4x g6e.xlarge recovered |
+| 5 | 45 min | 1x g5.12xlarge recovered |
 
 Benchmark window: `start_time=0`, `end_time=1200` (first 20 min of the trace), `time_scale=0` (offline).
 
@@ -250,16 +250,16 @@ Benchmark window: `start_time=0`, `end_time=1200` (first 20 min of the trace), `
 
 **Path:** `SpotInterruption/online/`
 
-Same spot interruption scenarios as 6.3, but with online trace replay. The first 20 minutes of the trace are replayed with `time_scale=3.0` (inter-arrival times stretched 3x), so the trace is delivered over approximately 60 minutes.
+Same simulated interruption scenarios as 6.3, but with online trace replay. The first 20 minutes of the trace are replayed with `time_scale=3.0` (inter-arrival times stretched 3x), so the trace is delivered over approximately 60 minutes.
 
 | Strategy | Script | `request_handler_mode` | Interruption Handling |
 |---|---|---|---|
 | ShuntServe | `shuntserve.py` | `"migration"` | `switch_nodes()` with request migration |
 | Request Migration | `request_migration.py` | `"migration"` | `switch_nodes()` without concurrent init |
 | No Handle | `no_handle.py` | `"re-routing"` | Stop pipeline, wait, recreate |
-| Only On-Demand | `only_ondemand.py` | default | No events (on-demand baseline) |
+| No Interruption | `only_ondemand.py` | default | No events (baseline without interruptions) |
 | Concurrent Init | `concurrent_initialization.py` | `"re-routing"` | `switch_nodes()` without request migration |
-| Warmup | `warmup.py` | default | No events (on-demand with warmup) |
+| Warmup | `warmup.py` | default | No events (baseline with warmup) |
 
 Benchmark window: `start_time=0`, `end_time=1200` (first 20 min of the trace), `time_scale=3.0` (online). The event timeline is the same as 6.3.
 
@@ -285,7 +285,7 @@ Each benchmark prints a summary to the console:
 ==================================================
             Serving Benchmark Result
 ==================================================
-Successful requests:                     2048
+Successful requests:                     xxxxx
 Benchmark duration (s):                  xxx.xx
 Total input tokens:                      xxxxxx
 Total generated tokens:                  xxxxxx
@@ -314,11 +314,11 @@ Reference results from our experiments are provided in `ExpectedResults/` for co
 
 | Directory | Contents | Paper Figure |
 |---|---|---|
+| `ExpectedResults/MigrationComparison/` | KV cache migration vs recomputing latency | Figure 5 |
 | `ExpectedResults/ModelPlacement/` | Offline throughput and online latency logs per baseline | Figures 7, 8 |
-| `ExpectedResults/SpotTolerance/` | Online and offline CSV traces under spot interruptions | Figures 9-11 |
-| `ExpectedResults/ConcurrentInitialization/` | Pipeline ready-time logs | Figure 10 |
-| `ExpectedResults/MigrationComparison/` | KV cache migration vs recomputing latency | Figure 9 |
-| `ExpectedResults/SpotAvailabilityTrace/` | Spot instance availability trace used in experiments | Figure 11 |
+| `ExpectedResults/SpotTolerance/` | Online and offline CSV traces under simulated interruptions | Figures 9, 11 |
+| `ExpectedResults/SpotAvailabilityTrace/` | Instance availability trace used in experiments | Figure 10 |
+| `ExpectedResults/ConcurrentInitialization/` | Pipeline ready-time logs | Figure 12 |
 
 ## Appendix A: Pipeline Configuration Reference
 
@@ -334,7 +334,7 @@ Each experiment script defines pipeline configs as Python dicts. The key fields:
 | `max_model_len` | int | Maximum sequence length (tokens) | `8192` |
 | `max_num_batched_tokens` | int | Maximum tokens per batch | `8192` |
 | `max_num_seqs` | int | Maximum concurrent sequences | `512` |
-| `model_source` | str | Where to load weights from | `"s3"` |
+| `model_source` | str | Weight loading source (only `"s3"` is supported) | `"s3"` |
 | `s3_path` | str | S3 URI for model weights | `"s3://<YOUR_S3_BUCKET>/..."` |
 | `num_gpu_blocks` | int | KV cache blocks available | `27549` |
 | `max_batch_size` | int | Maximum batch size for scheduling | `442` |
@@ -364,10 +364,10 @@ ArtifactEvaluation/
   model_placement_optimizer.py    # Model placement optimizer entry point
   ExpectedResults/                # Reference results from our experiments
     ModelPlacement/               #   Offline throughput & online latency logs
-    SpotTolerance/                #   Spot interruption traces (online & offline)
+    SpotTolerance/                #   Interruption traces (online & offline)
     ConcurrentInitialization/     #   Pipeline ready-time logs
-    MigrationComparison/          #   KV cache migration vs recomputing
-    SpotAvailabilityTrace/        #   Spot availability trace
+    MigrationComparisn/          #   KV cache migration vs recomputing
+    SpotAvailabilityTrace/        #   Instance availability trace
   Datasets/
     AzureLLMInferenceConvTrace_pruned_2048.csv  # Pruned trace (default)
     AzureLLMInferenceTrace_conv.csv             # Full Azure trace
@@ -386,11 +386,11 @@ ArtifactEvaluation/
       test_warmup.py, test_time.py, run_test.sh
       nodes.py
   SpotInterruption/
-    offline/                        # Figures 9, 11: Offline spot interruption
+    offline/                        # Figures 9, 11: Offline interruption simulation
       shuntserve.py, request_migration.py, no_handle.py
       only_ondemand.py, concurrent_initialization.py, warmup.py
       nodes.py
-    online/                         # Figures 9, 11: Online spot interruption
+    online/                         # Figures 9, 11: Online interruption simulation
       shuntserve.py, request_migration.py, no_handle.py
       only_ondemand.py, concurrent_initialization.py, warmup.py
       nodes.py
@@ -415,7 +415,7 @@ ArtifactEvaluation/
 
 ## Appendix C: Simplified 8B Test Setup
 
-This section provides a simplified test setup for reviewers who cannot afford the full 70B cluster. It uses Llama-3.1-8B-Instruct on g6.xlarge instances (single L4 GPU each) to verify basic executability of the spot interruption handling mechanisms.
+This section provides a simplified test setup for reviewers who cannot afford the full 70B cluster. It uses Llama-3.1-8B-Instruct on g6.xlarge instances (single L4 GPU each) to verify basic executability of the interruption handling mechanisms.
 
 **Path:** `SpotInterruption/8B/`
 
@@ -423,9 +423,10 @@ This section provides a simplified test setup for reviewers who cannot afford th
 
 | Strategy | Script | `request_handler_mode` |
 |---|---|---|
-| Stop & Start | `8B_stop_and_start.py` | `"re-routing"` |
+| No Handle | `8B_no_handle.py` | `"re-routing"` |
 | Concurrent Init | `8B_concurrent_initialization.py` | `"re-routing"` |
-| Only On-Demand | `8B_only_ondemand.py` | default |
+| ShuntServe | `8B_shuntserve.py` | `"migration"` |
+| No Interruption | `8B_only_ondemand.py` | default |
 | Warmup | `8B_warmup.py` | default |
 
 8B pipeline configuration example:
