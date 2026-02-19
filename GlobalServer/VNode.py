@@ -1703,7 +1703,7 @@ def example_usage():
     try:
         # Interactive inference loop
         print("\n" + "="*50)
-        print("🚀 HeteroSpotLLMServe Interactive Mode")
+        print("🚀 ShuntServe Interactive Mode")
         print("="*50)
         print("Enter your prompts below. Type 'exit' to quit.")
         print(f"API Server: {api_url}")

@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
-Health check script for HeteroSpotLLMServe using requests library
+Health check script for ShuntServe using requests library
 """
 
 import requests
 import socket
-import json
 import sys
-import time
 
 def check_api_server_health(host, port, timeout=10):
     """Check API server health endpoint"""
@@ -110,7 +108,7 @@ def main():
     API_PORT = 8001
     TENSOR_STORE_PORT = 10001
     
-    print("=== HeteroSpotLLMServe Health Check (Python) ===")
+    print("=== ShuntServe Health Check (Python) ===")
     print(f"Checking API Server at {API_HOST}:{API_PORT}")
     print()
     

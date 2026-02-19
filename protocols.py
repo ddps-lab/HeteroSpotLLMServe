@@ -1,5 +1,5 @@
 """
-Protocol definitions for server communication in HeteroSpotLLMServe.
+Protocol definitions for server communication in ShuntServe.
 
 This module defines the communication protocols used between different components
 of the system, including TensorStore servers and API servers.

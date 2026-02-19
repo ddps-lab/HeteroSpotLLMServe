@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Health check script for HeteroSpotLLMServe
+# Health check script for ShuntServe
 API_HOST="172.31.17.139"
 API_PORT="8001"
 TENSOR_STORE_PORT="10001"
 
-echo "=== HeteroSpotLLMServe Health Check ==="
+echo "=== ShuntServe Health Check ==="
 echo "Checking API Server at $API_HOST:$API_PORT"
 echo
 
