@@ -3,7 +3,6 @@
 .basedpyright
 GlobalServer/logs/**
 TensorStore/models
-**Trace**
 .DS_Store
 !SpotAvailabilityTrace
 

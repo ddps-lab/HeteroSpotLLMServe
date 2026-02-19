@@ -1,5 +1,5 @@
-resource "aws_iam_role" "admin-role" {
-    name = "${var.prefix}-shunt-admin-role"
+resource "aws_iam_role" "s3-role" {
+    name = "${var.prefix}-shunt-s3-role"
     assume_role_policy = jsonencode({
         Version = "2012-10-17"
         Statement = [
@@ -14,12 +14,12 @@ resource "aws_iam_role" "admin-role" {
     })
 }
 
-resource "aws_iam_role_policy_attachment" "admin-role-policy-attachment" {
-    role = aws_iam_role.admin-role.name
-    policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+resource "aws_iam_role_policy_attachment" "s3-role-policy-attachment" {
+    role = aws_iam_role.s3-role.name
+    policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
-resource "aws_iam_instance_profile" "admin-instance-profile" {
-    name = "${var.prefix}-shunt-admin-instance-profile"
-    role = aws_iam_role.admin-role.name
+resource "aws_iam_instance_profile" "s3-instance-profile" {
+    name = "${var.prefix}-shunt-s3-instance-profile"
+    role = aws_iam_role.s3-role.name
 }
