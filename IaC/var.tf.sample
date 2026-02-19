@@ -27,3 +27,15 @@ variable "key_name" {
   description = "The key name to use for the infrastructure"
   default = ""
 }
+
+variable "head_instance_type" {
+  type = string
+  description = "The instance type for the head node"
+  default = "m5.large"
+}
+
+variable "hf_token" {
+  type        = string
+  description = "HuggingFace API token for accessing gated models (e.g. Llama)"
+  default     = ""
+}

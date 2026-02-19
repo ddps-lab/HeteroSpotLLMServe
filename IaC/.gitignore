@@ -1,2 +1,2 @@
-main.tf
 var.tf
+.terraform**
