@@ -21,6 +21,8 @@ from benchmark_utils import print_benchmark_results, run_trace_benchmark, DEFAUL
 
 from nodes import *
 
+S3_BUCKET = "hetero-spot-llm-serve-models"
+
 
 async def run_benchmark(
     global_server: GlobalServer,
@@ -96,7 +98,7 @@ async def test_benchmark():
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": 15360,
         "max_batch_size": 247,
     }
@@ -120,7 +122,7 @@ async def test_benchmark():
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": 1181,
         "max_batch_size": 19,
     }
@@ -145,7 +147,7 @@ async def test_benchmark():
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": 684,
         "max_batch_size": 11,
     }

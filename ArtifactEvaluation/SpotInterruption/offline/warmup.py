@@ -22,6 +22,8 @@ from benchmark_utils import print_benchmark_results, run_trace_benchmark, DEFAUL
 
 logger = logging.getLogger(__name__)
 
+S3_BUCKET = "hetero-spot-llm-serve-models"
+
 
 async def run_benchmark(
     global_server: GlobalServer,
@@ -100,7 +102,7 @@ async def main():
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 1024,
         "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": 43904,
         "max_batch_size": 706,
     }
@@ -128,7 +130,7 @@ async def main():
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": 29912,
         "max_batch_size": 481,
     }
@@ -159,7 +161,7 @@ async def main():
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
-        "s3_path": f"s3://hetero-spot-llm-serve-models/{model_name}",
+        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": 27549,
         "max_batch_size": 443,
     }

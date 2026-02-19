@@ -6,7 +6,7 @@ DEFAULT_TENSOR_STORE_BASE_PORT = 10001
 DEFAULT_API_SERVER_BASE_PORT = 8001
 
 PYTHON = "/usr/bin/python"
-PROJECT_PATH = "/home/ubuntu/HeteroSpotLLMServe"
+PROJECT_PATH = "/home/ubuntu/ShuntServe"
 RAY = "/home/ubuntu/.local/bin/ray"
 
 def get_tensor_store_command(model_name: str,
