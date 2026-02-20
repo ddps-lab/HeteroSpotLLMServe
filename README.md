@@ -16,6 +16,57 @@ Each module has its own README with detailed documentation.
 | **Infrastructure as Code** | [`IaC/`](IaC/) | Terraform configuration for provisioning the evaluation cluster on AWS (VPC, security groups, IAM, EC2 GPU instances). See [IaC/README.md](IaC/README.md). |
 | **Artifact Evaluation** | [`ArtifactEvaluation/`](ArtifactEvaluation/) | End-to-end scripts for reproducing the paper's experiments (Figures 7–11), including offline/online throughput and spot interruption scenarios. See [ArtifactEvaluation/README.md](ArtifactEvaluation/README.md). |
 
+### Directory Structure
+
+```
+ShuntServe/
+├── GlobalServer/                        # Global Server (Instance Manager, Load Balancer, Request Scheduler)
+│   ├── global_server.py
+│   ├── VNode.py
+│   ├── request_handler.py
+│   ├── benchmark_utils.py
+│   ├── evaluation_utils.py
+│   └── ...
+├── ModelPlacement/                      # Serving Performance Estimator + Model Placement Optimizer
+│   ├── README.md
+│   ├── shuntserve_optimizer.py
+│   ├── hexgen_optimizer.py
+│   ├── alpaserve_optimizer.py
+│   ├── estimator_utils.py
+│   ├── hardware_specs.py
+│   ├── cluster_pool.py
+│   └── hexgen/                          # HEXGEN baseline implementation
+├── submodules/
+│   └── vLLM/                            # Inference Engine (modified vLLM v0.8.1, git submodule)
+├── TensorStore/                         # Shared Tensor Store + Remote Storage (S3)
+│   ├── README.md
+│   ├── raw_s3_model_uploader.py
+│   ├── raw_s3_tensor_store_server.py
+│   └── upload_model.sh
+├── InferenceServer/                     # API Server (FastAPI + vLLM)
+│   ├── api_server.py
+│   └── launch_server_example.sh
+├── ArtifactEvaluation/                  # Experiment reproduction scripts
+│   ├── README.md
+│   ├── model_placement_optimizer.py
+│   ├── Datasets/
+│   ├── ExpectedResults/
+│   ├── ModelPlacement/
+│   │   ├── offline/                     # Figure 7
+│   │   └── online/                      # Figure 8
+│   └── SpotInterruption/
+│       ├── offline/                     # Figures 9, 11
+│       ├── online/                      # Figures 9, 11
+│       └── 8B/                          # Simplified 8B test setup
+├── IaC/                                 # Infrastructure as Code (Terraform)
+│   ├── README.md
+│   ├── main.tf
+│   └── ec2-cluster-module/
+├── profiling/                           # GPU profiling utilities
+├── protocols.py                         # Inter-component communication protocols
+└── utils.py                             # SSH and Ray placement group utilities
+```
+
 ## Prerequisites
 
 > **Note:** The following describes the environment we used for development and evaluation. ShuntServe may work in other configurations, but you may need to modify the code for compatibility.
