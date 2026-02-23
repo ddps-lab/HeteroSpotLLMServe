@@ -174,7 +174,7 @@ async def main():
 
     event_tasks = []
     # Event 1:
-    # 시작 5분후 Pipeline 1의 1장, 2의 1장 Interrupt
+    # 5 minutes after start: Interrupt 1 node from Pipeline 1 and 1 node from Pipeline 2
     event_1_time = 5 * 60  # 5 minutes in seconds
     event_1_task = asyncio.create_task(
         switch_node_after_delay(
@@ -186,7 +186,7 @@ async def main():
     event_tasks.append(event_1_task)
 
     # Event 2:
-    # 시작 10분 후 Pipeline 1의 1장 복구
+    # 10 minutes after start: Recover 1 node from Pipeline 1
     event_2_time = 10 * 60  # 10 minutes in seconds
     event_2_task = asyncio.create_task(
         switch_node_after_delay(
@@ -198,7 +198,7 @@ async def main():
     event_tasks.append(event_2_task)
 
     # Event 3:
-    # 시작 15분 후 Pipeline 2의 1장 복구
+    # 15 minutes after start: Recover 1 node from Pipeline 2
     event_3_time = 15 * 60  # 15 minutes in seconds
     event_3_task = asyncio.create_task(
         switch_node_after_delay(
@@ -210,7 +210,7 @@ async def main():
     event_tasks.append(event_3_task)
 
     # Event 4:
-    # 시작 20분 후 Pipeline 1의 2장 Interrupt
+    # 20 minutes after start: Interrupt 2 nodes from Pipeline 1
     event_4_time = 20 * 60  # 20 minutes in seconds
     event_4_task = asyncio.create_task(
         switch_node_after_delay(
@@ -222,7 +222,7 @@ async def main():
     event_tasks.append(event_4_task)
 
     # Event 5:
-    # 시작 25분 후 Pipeline 1의 2장 복구
+    # 25 minutes after start: Recover 2 nodes from Pipeline 1
     event_5_time = 25 * 60  # 25 minutes in seconds
     event_5_task = asyncio.create_task(
         switch_node_after_delay(

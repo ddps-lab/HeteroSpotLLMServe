@@ -1,4 +1,4 @@
-# spec 은 float 16 기준
+# Spec based on float16
 GPU_SPEC = {
     "T4":         {"memory_size": 16000,  "FLOPS": 65 * 10**12,    "memory_bandwidth": 320 * 10**9},
     "A10G":       {"memory_size": 22494,  "FLOPS": 70 * 10**12,   "memory_bandwidth": 600 * 10**9},

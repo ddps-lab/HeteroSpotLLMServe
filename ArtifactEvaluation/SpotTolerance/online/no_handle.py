@@ -265,7 +265,7 @@ async def main():
 
 
     # Event 1: 
-    # 시작 5분 후 1개의 g6.12xlarge 와 2개의 g5.12xlarge spot interruption 발생
+    # 5 minutes after start: Spot interruption of 1 g6.12xlarge and 2 g5.12xlarge instances
     event_1_time = 5 * 60  # 5 minutes
     tasks.append(asyncio.create_task(
         stop_and_restart_after_delay(
@@ -284,7 +284,7 @@ async def main():
     ))
 
     # Event 2:
-    # 시작 15분 후 4개의 g6e.xlarge Spot Interruption 과 2개의 g6.12xlarge Spot 복구
+    # 15 minutes after start: Spot Interruption of 4 g6e.xlarge and recovery of 2 g6.12xlarge Spot instances
     event_2_time = 15 * 60  # 15 minutes
     tasks.append(asyncio.create_task(
         stop_and_restart_after_delay(
@@ -309,7 +309,7 @@ async def main():
     ))
 
     # Event 3:
-    # 시작 25분 후 1개의 g5.12xlarge Spot 복구
+    # 25 minutes after start: Recovery of 1 g5.12xlarge Spot instance
     event_3_time = 25 * 60  # 25 minutes
     tasks.append(asyncio.create_task(
         stop_and_restart_after_delay(
@@ -324,7 +324,7 @@ async def main():
     ))
 
     # Event 4:
-    # 시작 35분 후 4개의 g6e.xlarge Spot 복구
+    # 35 minutes after start: Recovery of 4 g6e.xlarge Spot instances
     event_4_time = 35 * 60  # 35 minutes
     tasks.append(asyncio.create_task(
         stop_and_restart_after_delay(
@@ -345,7 +345,7 @@ async def main():
     ))
 
     # Event 5:
-    # 시작 45분 후 1개의 g5.12xlarge Spot 복구
+    # 45 minutes after start: Recovery of 1 g5.12xlarge Spot instance
     event_5_time = 45 * 60  # 45 minutes
     tasks.append(asyncio.create_task(
         stop_and_restart_after_delay(

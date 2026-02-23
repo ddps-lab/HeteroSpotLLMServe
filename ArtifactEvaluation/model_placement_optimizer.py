@@ -32,8 +32,8 @@ def build_model_config(model_name="meta-llama/Llama-3.1-70B-Instruct"):
 
 def parse_hexgen_pipelines(best_ind, cluster, cluster_config_flatten):
     """Parse hexgen GA output into per-pipeline stage lists (instance types)."""
-    genes_all = best_ind.genes[0]       # pipeline별 [node별 GPU 사용량]
-    plans_all = best_ind.plan[1][0]     # pipeline별 [stage별 TP degree]
+    genes_all = best_ind.genes[0]       # per-pipeline [GPU usage per node]
+    plans_all = best_ind.plan[1][0]     # per-pipeline [TP degree per stage]
 
     gpu_per_node = []
     for node_info in cluster:

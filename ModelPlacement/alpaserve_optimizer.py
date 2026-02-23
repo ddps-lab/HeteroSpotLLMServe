@@ -22,7 +22,7 @@ def get_latency(
     vocab_size: int,
     dtype: torch.dtype = torch.float16
 ) -> float:
-    """[start_layer, end_layer) 구간의 latency를 Estimation"""
+    """Estimate latency for [start_layer, end_layer) range"""
     num_layers = end_layer - start_layer
     if num_layers > total_num_layers:
         raise ValueError("end_layer must be less than or equal to total_num_layers")
@@ -30,7 +30,7 @@ def get_latency(
     if num_layers <= 0:
         return 0.0
 
-    batch_size = 1  # alpa serve 는 batch size 1 로 가정
+    batch_size = 1  # Alpa serve assumes batch size 1
     
     prefill_computation_latency = get_prefill_computation_latency_per_layer(
         gpu_type=gpu_type,
@@ -81,7 +81,7 @@ def get_latency(
     decoding_logit_tp_communication_latency = 0.0
 
     if end_layer == total_num_layers:
-        # 마지막 stage 에는 lm head 가 포함되어 있음
+        # Last stage includes lm head
         prefill_logit_latency = get_prefill_compute_logit_latency(
             gpu_type=gpu_type,
             gpu_count=tp_size,
@@ -140,12 +140,12 @@ class AlpaServeOptimizer:
         self.best_split: np.ndarray = None
         self.layers_per_stage: np.ndarray = None
 
-    # 수식
+    # Formula
     # F(s, start, end) = min(max(F(s-1, start, i), latency(i, end)))
-    # 이 F 는 각 stage 당 가장 높은 latency 값을 의미한다
-    # 이 각 stage 당 가장 높은 latency 를 최소화 하는 것을 목표로 한다
-    # 이는 pipeline parallelism 적용시 가장 느린 stage 가 전체 latency 를 결정하기 때문이다
-    # 이를 uneven partitioning overhead 라고 한다.
+    # F represents the highest latency value per stage
+    # The goal is to minimize this highest latency per stage
+    # This is because the slowest stage determines overall latency when applying pipeline parallelism
+    # This is called uneven partitioning overhead.
     def F(self, num_stage, start_layer, end_layer):
         if num_stage == 0 or start_layer >= end_layer:
             return 0.0

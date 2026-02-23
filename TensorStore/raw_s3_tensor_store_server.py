@@ -480,12 +480,12 @@ def get_model_forward_memory(config_dict: dict) -> int:
     num_attention_layers = END_LAYER_ID - START_LAYER_ID
     intermediate_size = config_dict["intermediate_size"]
 
-    # Intermediate Tensor Size 가 가장 큰 것은 FFN 에서이다.
-    # FFN Network 를 진행할 때 가장 큰 부분은 up&gate projection 이다.
+    # The largest intermediate tensor size occurs in the FFN.
+    # The largest part during FFN computation is the up&gate projection.
     global CACHE_DTYPE, MAX_MODEL_LEN
     dtype_size = CACHE_DTYPE.itemsize if CACHE_DTYPE else 2  # Default to 2 bytes (float16)
     max_model_len = MAX_MODEL_LEN
-    intermediate_total_dim = max_model_len * intermediate_size * 2 # 2 는 up&gate projection 이기 때문
+    intermediate_total_dim = max_model_len * intermediate_size * 2 # 2 is for up&gate projection
     intermediate_total_size = intermediate_total_dim * dtype_size
     return intermediate_total_size
 
@@ -546,7 +546,7 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
     if TENSOR_PARALLEL_SIZE > 1:
         num_kv_heads = num_kv_heads // TENSOR_PARALLEL_SIZE
 
-    # virtual engine 에 block 들이 나누어 들어간다.
+    # Blocks are distributed across virtual engines.
     num_gpu_blocks = num_gpu_blocks // PIPELINE_PARALLEL_SIZE
     
     # Get KV cache shape

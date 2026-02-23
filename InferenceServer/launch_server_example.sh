@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 현재 노드의 local ip 주소 가져오기
+# Get the local IP address of the current node
 local_ip=$(hostname -I | awk '{print $1}')
 
 # python api_server.py --model="meta-llama/Llama-3.2-3B-Instruct" --host=127.0.0.1 --port=8000 \

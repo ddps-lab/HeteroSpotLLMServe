@@ -58,14 +58,14 @@ def set_cluster_config(config):
 
 # Copy original functions from genetic_algorithm.py
 
-# array1이 array2(리밋)를 초과한 항목 수 × 1e12 페널티 부여 
+# Penalize by 1e12 for each element where array1 exceeds array2 (the limit)
 
 # cost += compare_arrays_and_calculate_cost(mem_costs, gpu_limits)
-def compare_arrays_and_calculate_cost(array1, array2): # (mem_costs: 각 GPU에서 실제 메모리 사용량, gpu_limits: 각 GPU의 메모리 한계 -> generate_gpu_memory_limits 결과)
+def compare_arrays_and_calculate_cost(array1, array2): # (mem_costs: actual memory usage per GPU, gpu_limits: memory limit per GPU -> result of generate_gpu_memory_limits)
     array1 = np.array(array1)
     array2 = np.array(array2)
     comparison = array1 > array2 # array1=[30,18,18], array2=[40,16,24] → comparison=[False, True, False]
-    cost = np.sum(comparison) * 1e12 # gpu limit 초과한만큼 큰 페널티 부여
+    cost = np.sum(comparison) * 1e12 # apply large penalty proportional to the number of GPU limit violations
     return cost
 
 # Form memory limit for each stage: different devices have different memory limit
@@ -73,12 +73,12 @@ def compare_arrays_and_calculate_cost(array1, array2): # (mem_costs: 각 GPU에�
 
 # 'gpu_mem_limit_list': [[40, 24, 40, 24]], alloc: [(1,), (), (), (1, 1, 1), (2,), (), (1,)]
 # gpu_limits = list(np.array(generate_gpu_memory_limits(alloc, gpu_mem_limit_list[sub_group_index])))
-def generate_gpu_memory_limits(gpu_array, gpu_limit): # 사용하는 GPU limit
+def generate_gpu_memory_limits(gpu_array, gpu_limit): # GPU limits in use
     result = []
-    for i, subgroup in enumerate(gpu_array): # 노드 단위로 순회, i는 노드 인덱스 subgroup은 그 노드의 로컬 스테이지 분할 튜플
+    for i, subgroup in enumerate(gpu_array): # iterate per node, i is the node index and subgroup is that node's local stage partition tuple
         limit = gpu_limit[i % len(gpu_limit)]
-        total_gpus_in_subgroup = sum(subgroup) # subgroup: tp degree 수
-        result.extend([limit] * total_gpus_in_subgroup) # GPU 개수만큼 동일한 리밋 값을 반복해서 붙임
+        total_gpus_in_subgroup = sum(subgroup) # subgroup: number of TP degrees
+        result.extend([limit] * total_gpus_in_subgroup) # repeat the same limit value for each GPU
     return result
 
 def initialize_individual():
@@ -87,7 +87,7 @@ def initialize_individual():
     # Start with all nodes in a single stage per group
     ind.genes = [[group[:]] for group in initial_array]  # Deep copy of initial_array
     ind.bias = [0] * len(ind.genes)
-    ind.batch = [BATCH_SIZE] * len(ind.genes) # BATCH SIZE 초기화
+    ind.batch = [BATCH_SIZE] * len(ind.genes) # initialize BATCH SIZE
     ind.iter = 0
     ind.goodput_store = 0
     
@@ -101,37 +101,37 @@ def evaluate(individual):
     group_batch_list = []
     
     for sub_group_index in range(len(individual.genes)):
-        individual_genes = individual.genes[sub_group_index]  # 현재 서브 풀 파이프라인 그룹 리스트
-        # print(f"🙌individual_genes: {individual_genes}") # [[4, 2, 4, 2], [4, 2, 4, 2]] -> 파이프라인 2개, 각 파이프라인은 4 GPU, 2 GPU, 4 GPU, 2 GPU 로 구성된 노드 그룹
-        # 🙌individual_genes: [[0, 0, 1, 1, 1, 0, 3], [0, 1, 0, 1, 1, 2, 0], [1, 0, 0, 2, 2, 2, 1]]
+        individual_genes = individual.genes[sub_group_index]  # current sub-pool pipeline group list
+        # print(f"individual_genes: {individual_genes}") # [[4, 2, 4, 2], [4, 2, 4, 2]] -> 2 pipelines, each pipeline consists of node groups with 4 GPU, 2 GPU, 4 GPU, 2 GPU
+        # individual_genes: [[0, 0, 1, 1, 1, 0, 3], [0, 1, 0, 1, 1, 2, 0], [1, 0, 0, 2, 2, 2, 1]]
         sub_group_plan_list = []
         sub_group_cost_list = []
         sub_group_mem_list = []
         sub_group_pp_partition_list = []
         sub_batch_list = []
         
-        # individual.bias: 파이프라인마다 1개씩 갖는 PP 경계 편향치 리스트 -> EM 단계에서 조정할 때 사용
-        if len(individual.bias) < len(individual_genes): # bias가 부족한 경우 배치 크기 채워넣기
+        # individual.bias: list of PP boundary bias values, one per pipeline -> used during EM stage adjustments
+        if len(individual.bias) < len(individual_genes): # fill in batch size when bias is insufficient
             # init new sub group's partition coe as 0
             individual.bias = individual.bias + [0] * (len(individual_genes) - len(individual.bias))
-            # init new sub group's batch as 1 -> 새 파이프라인마다 batch size 로 초기화
+            # init new sub group's batch as 1 -> initialize each new pipeline with batch size
             individual.batch = individual.batch + [BATCH_SIZE] * (len(individual_genes) - len(individual.batch))
-        for sub_group, bias_value, bsz in zip(individual_genes, individual.bias, individual.batch): # sub_group_index과는 별개임, 파이프라인 그룹 내의 각 파이프라인에 대해서
-            # print(f"📌sub_group: {sub_group}, bias_value: {bias_value}, bsz: {bsz}") # sub_group: [4, 2, 4, 2], bias_value: -1, bsz: 1
-            # 📌sub_group: [0, 0, 1, 1, 1, 0, 3], bias_value: 1, bsz: 1 -> 모든 서브 그룹 탐색
-            all_unique_combinations = [generate_unique_combinations(num_gpus) for num_gpus in sub_group] # -> gen_plan 결과: tp degree 조합
+        for sub_group, bias_value, bsz in zip(individual_genes, individual.bias, individual.batch): # independent from sub_group_index, iterating over each pipeline within the pipeline group
+            # print(f"sub_group: {sub_group}, bias_value: {bias_value}, bsz: {bsz}") # sub_group: [4, 2, 4, 2], bias_value: -1, bsz: 1
+            # sub_group: [0, 0, 1, 1, 1, 0, 3], bias_value: 1, bsz: 1 -> exploring all sub groups
+            all_unique_combinations = [generate_unique_combinations(num_gpus) for num_gpus in sub_group] # -> gen_plan result: TP degree combinations
             # all_unique_combinations: [[(2, 2), (1, 1, 1, 1), (4,), (1, 1, 2)], /////// [(1, 1), (2,)], /////// [(2, 2), (1, 1, 1, 1), (4,), (1, 1, 2)], /////// [(1, 1), (2,)]] 
             # print(f"all_unique_combinations: {all_unique_combinations}")
-            final_combinations = [] # 전체 시스템의 모든 가능한 TP 조합 생성
+            final_combinations = [] # generate all possible TP combinations for the entire system
             for combination in product(*all_unique_combinations):
                 final_combinations.append(list(combination))
                 
             cost_list = []
             # print(final_combinations)
-            for alloc in final_combinations: # alloc: 각 노드별 TP degree 조합
+            for alloc in final_combinations: # alloc: TP degree combination per node
                 
-                # print(f"👀alloc: {alloc}") # 노드별로 GPU를 스테이지들에 어떻게 쪼갤지 # [(2, 2), (1, 1), (2, 2), (1, 1)] 
-                # 👀alloc: [(), (), (1,), (1,), (1,), (), (1, 2)] -> instance에 대해서 
+                # print(f"alloc: {alloc}") # how to split GPUs into stages per node # [(2, 2), (1, 1), (2, 2), (1, 1)]
+                # alloc: [(), (), (1,), (1,), (1,), (), (1, 2)] -> per instance
                 parallel_config = [item for sublist in alloc for item in sublist]
                 
                 # print(f"👀 👀parallel_config: {parallel_config}")           # [2, 2, 1, 1, 2, 2, 1, 1]
@@ -144,22 +144,22 @@ def evaluate(individual):
                     continue
             
                 
-                # alloc에 대해서 -> 각 노드별 조합에 대해서 계산
+                # for this alloc -> compute for each per-node combination
                 
                 # Obtain computation cost and memory cost for each stage
-                # 스테이지별 비용만 계산
+                # compute cost per stage only
                 # return: comp_cost_list, mem_cost_list, pp_layer_list
-                stage_costs, mem_costs, pp_layer_list =  compute_costs(parallel_config, bias_value, bsz) # 연산 비용 및 메모리 비용 계산
+                stage_costs, mem_costs, pp_layer_list =  compute_costs(parallel_config, bias_value, bsz) # compute computation and memory costs
                 # print(f"🔍 mem_costs: {mem_costs}, pp_layer_list: {pp_layer_list}, parallel_config: {parallel_config}")
                 
                 # Obtain communication cost for each stage
-                comm_costs = tp_communication_costs(pp_layer_list, parallel_config, bsz) # 노드 내부 TP 통신 비용 계산 -> 같은 스테이지 내에서 동일한 여러 GPU 간 TP 
+                comm_costs = tp_communication_costs(pp_layer_list, parallel_config, bsz) # compute intra-node TP communication cost -> TP across multiple GPUs within the same stage
                 
                 # Obtain intermediate communication cost between devices: poor bandwidth condition
-                inter_device_comm_cost = inter_device_communication_cost(bsz) # 디바이스 간 PP 통신 비용 계산 -> 다른 스테이지 간 GPU
+                inter_device_comm_cost = inter_device_communication_cost(bsz) # compute inter-device PP communication cost -> GPUs across different stages
                 
                 # Predicted cost for this sub_group plan
-                # 노드별 비용 계산 스케일
+                # scale cost computation per node
                 cost = predict_cost(alloc, comp_abilities[sub_group_index], comm_abilities[sub_group_index], stage_costs, comm_costs, inter_device_comm_cost)
                 
                 # Form memory limit for each stage: different devices have different memory limit
@@ -172,11 +172,11 @@ def evaluate(individual):
                 # print(f"🔍 memory_penalty: {memory_penalty}")
                 cost += memory_penalty
                 
-                cost_list.append([cost, alloc, mem_costs, pp_layer_list, bsz]) # alloc 중 가장 비용이 낮은 것을 선택하기 위해서
+                cost_list.append([cost, alloc, mem_costs, pp_layer_list, bsz]) # to select the lowest cost alloc
                 
             min_item = min(cost_list, key=lambda x: x[0])
             
-            # 예시: min_item = [0.25, [(), (), (1,), (1,), (1,), (), (1, 2)], [2.5, 2.5, 2.5, 2.5, 5.0], [20, 30, 30], 1]
+            # example: min_item = [0.25, [(), (), (1,), (1,), (1,), (), (1, 2)], [2.5, 2.5, 2.5, 2.5, 5.0], [20, 30, 30], 1]
             
             sub_group_cost = min_item[0]
             # Select the best sub_group plan
@@ -185,14 +185,14 @@ def evaluate(individual):
             sub_group_pp_partition = min_item[3] # [20, 30, 30]
             sub_batch = min_item[4] # 1
             
-            # sub_group 모음 
+            # sub_group collection
             sub_group_cost_list.append(sub_group_cost)
-            sub_group_plan_list.append([item for sublist in sub_group_plan for item in sublist]) # 빈 튜플 제거하고 평탄화
+            sub_group_plan_list.append([item for sublist in sub_group_plan for item in sublist]) # remove empty tuples and flatten
             sub_group_mem_list.append(sub_group_mem)
             sub_group_pp_partition_list.append(sub_group_pp_partition)
             sub_batch_list.append(sub_batch)
         
-        # individual_genes 모음
+        # individual_genes collection
         group_cost_list.append(sub_group_cost_list)
         group_plan_list.append(sub_group_plan_list)
         group_mem_list.append(sub_group_mem_list)
@@ -205,10 +205,10 @@ def evaluate(individual):
 
     if summation_group_cost > 1e9:
         # Memory overflow, return high penalty
-        # 기존 코드는 왜 group_plan_list 를 반환할까? -> format 이 일정하지 않은 문제 발생;; 그래서 고쳤다.
+        # Why did the original code return group_plan_list? -> caused inconsistent format issues; so it was fixed.
         return 1e9, group_plan_list, group_pp_partition_list
     
-    # 원본 hexgen genetic algorithm logic 복구
+    # restore original HEXGEN genetic algorithm logic
     set_interval_for_global_search = 10 #10
     if individual.iter % set_interval_for_global_search == 0 and individual.iter >= 100: #100
         flattened_plan_list = [sublist for inner_list in group_plan_list for sublist in inner_list]
@@ -220,7 +220,7 @@ def evaluate(individual):
         # print(f"🔵Goodput of Simulator : {goodput:10.10f} / Fitness : {fitness:10.10f}")
     else:
         # # Local optimal strategy search
-        # fitness =  1 / sum(len(inner_list) for inner_list in individual.genes) #-> 원본 코드는 이것만 사용
+        # fitness =  1 / sum(len(inner_list) for inner_list in individual.genes) #-> original code only uses this
         flattened_cost_list = [sublist for inner_list in group_cost_list for sublist in inner_list] 
         fitness = 1 / (sum(flattened_cost_list) / len(flattened_cost_list))
         
@@ -230,9 +230,9 @@ def evaluate(individual):
 def is_group_valid(group, gpu_mem_list):
     """Check if the given group is valid based on the multiplication criterion"""
     MULTIPLIER_ARRAY = gpu_mem_list
-    # HEXGEN 의 수식상 70B 모델의 weight 들의 크기를 120GB 로 설정한다.
-    # 여기서 추가적인 batch 를 어느정도 쓸건지에 따라서 threshold 를 정해주어야 한다.
-    # 우리는 여기서 batch 를 늘리기 위한 메모리 사용량을 weight 의 절반으로 둔다
+    # In HEXGEN's formula, the weight size of the 70B model is set to 120GB.
+    # The threshold must be determined based on how much additional batch memory will be used.
+    # Here we set the memory usage for increasing batch size to half of the weight size.
     VALID_THRESHOLD = 120 + 120
     total = sum(a*b for a, b in zip(group, MULTIPLIER_ARRAY))
     return total >= VALID_THRESHOLD
@@ -248,9 +248,9 @@ def mutate(individual):
         comp_abilities_ = comp_abilities[sub_group_index]
         
 
-    # single_model_config = { # 각 벡터 수 = 전체 노드 수
-    #     "initial_array": [[]], # 서브그룹의 개수는 1개, 그 안에 각 노드 그룹의 GPU 수를 넣는다. [1, 1, 1, 4, 4, 4, 4]
-    #     "gpu_mem_limit_list": [[]], # 각 노드 그룹의 GPU 메모리 제한 [44, 44, 44, 44, 22, 22, 22]
+    # single_model_config = { # number of vectors = total number of nodes
+    #     "initial_array": [[]], # number of sub-groups is 1, containing the GPU count per node group. [1, 1, 1, 4, 4, 4, 4]
+    #     "gpu_mem_limit_list": [[]], # GPU memory limit per node group [44, 44, 44, 44, 22, 22, 22]
     #     "comp_abilities": [[]], # [1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5]
     #     "comm_abilities": [[]], # [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     # }
@@ -259,7 +259,7 @@ def mutate(individual):
         max_attempts = 1000
         attempts = 0
         
-        # 미리 gpu_mem_limit_list_ 를 통해서 restriction_array_ 를 계산해놓는다.
+        # pre-compute restriction_array_ using gpu_mem_limit_list_
         pre_cost = cost_function(initial_array_, restriction_array_, genes, comp_abilities_, gpu_mem_limit_list_)
         
         while attempts < max_attempts:
@@ -321,28 +321,28 @@ def mutate(individual):
                         #     genes.insert(idx + 1, new_group)
                         #     valid_mutation = True
 
-                        # 위 방법 실제 HEXGEN 의 알고리즘이다.
-                        # 변경하는 이유는 만약 애초에 초기 노드 그룹이 모든 Node 가 단일한 GPU 를 채택한다면
-                        # 절대 그룹을 분할할 수 없는 상황이 오기 때문이다.
-                        # 이 경우를 해결하기 위해서, Single GPU Node 가 1개만 존재하는 경우 
-                        # 그룹 분할을 // 2 를 통해 하는 것이 아니라 random 하게 포함 여부를 선택하게 한다.
+                        # The above method is the actual HEXGEN algorithm.
+                        # The reason for the change is that if the initial node group consists entirely of single-GPU nodes,
+                        # it becomes impossible to split the group at all.
+                        # To handle this case, when a single-GPU node has only 1 GPU,
+                        # instead of splitting via // 2, we randomly decide whether to include it or not.
                         new_group = []
                         for node_count in group:
-                            # 2개 이상인 경우 기존 방식을 채택한다.
+                            # if count is 2 or more, use the existing method
                             if node_count > 1:
                                 new_group.append(node_count // 2)
-                            elif 0 <= node_count <= 1: # 0 일 경우도 아래의 로직을 통해 함께 처리될 수 있다.
-                                # 50% 확률을 통해 random 으로 넣을지 말지 결정
+                            elif 0 <= node_count <= 1: # the case of 0 can also be handled by the logic below
+                                # randomly decide whether to include with 50% probability
                                 if random.random() < 0.5:
                                     new_group.append(node_count)
                                 else:
                                     new_group.append(0)
-                            else: # 이 경우 node_count 가 음수가 되었다는 얘기인데 무언가 문제가 발생했다는 것이다.
+                            else: # this means node_count has become negative, indicating something went wrong
                                 raise ValueError(f"Node count is negative. group:{group}, new_group:{new_group}")
                         
-                        # 기존에는 업데이트시에 다시 계산했지만, 이미 생성된 group 을 통해서 기존 노드 수를 감소시키는 것으로 대체한다.
+                        # previously recalculated during update, but replaced by reducing the original node count using the already created group
                         parent_group = [x - y for x, y in zip(group, new_group)]
-                        # 이 경우 사실 기존에 쪼개져버린 원본 그룹도 체크를 해주어야 한다. 원본 HEXGEN 코드에 버그가 있던 것.
+                        # in this case, the original group that was split also needs to be validated. This was a bug in the original HEXGEN code.
                         if is_group_valid(new_group, gpu_mem_limit_list_) and is_group_valid(parent_group, gpu_mem_limit_list_):
                             genes[idx] = parent_group
                             genes.insert(idx + 1, new_group)
@@ -379,7 +379,7 @@ def mutate(individual):
     
     return (individual,)
 
-def validate_individual(individual): # 각 노드의 gpu 총합이 초기값과 일치하는지 확인
+def validate_individual(individual): # verify that the total GPU count per node matches the initial value
     """Validation function from original genetic_algorithm.py"""
     genes = individual.genes
     for sub_group_index in range(len(genes)):
@@ -390,17 +390,17 @@ def validate_individual(individual): # 각 노드의 gpu 총합이 초기값과 
             for i in range(len(sub_array)):
                 sums[i] += sub_array[i]
         
-        for sub_array in genes_: # 빈 파이프라인 방지
+        for sub_array in genes_: # prevent empty pipelines
             if all(element == 0 for element in sub_array):
                 return False
     return sums == initial_array_
 
-def selValidTournament(individuals, k, tournsize): # k개 중 가장 높은 fitness를 가진 개체 선택
+def selValidTournament(individuals, k, tournsize): # select the individual with the highest fitness from k candidates
     """Custom selection function from original genetic_algorithm.py"""
     chosen = []
     for i in range(k):
         aspirants = tools.selRandom(individuals, tournsize)
-        valid_aspirants = [ind for ind in aspirants if validate_individual(ind)]  # 제약 조건을 만족하는 개체들만 필터링
+        valid_aspirants = [ind for ind in aspirants if validate_individual(ind)]  # filter only individuals that satisfy constraints
         if valid_aspirants:
             chosen.append(max(valid_aspirants, key=attrgetter('fitness')))
         else:
@@ -437,14 +437,14 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     population = toolbox.population(n=population_size)
     
     # Parameters from original
-    cxpb = 0.0  # Probability of mating two individuals -> 교차 확률 없음
-    mutpb = 1.0  # Probability of mutating an individual -> 돌연변이 확률
+    cxpb = 0.0  # Probability of mating two individuals -> no crossover probability
+    mutpb = 1.0  # Probability of mutating an individual -> mutation probability
     
     # Setup statistics
     stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("avg", np.mean) # 해당 세대 개체들의 평균 fitness 값
-    stats.register("min", np.min) # 해당 세대 최고 개체의 fitness
-    stats.register("max", np.max) # 해당 세대 최악 개체의 fitness
+    stats.register("avg", np.mean) # average fitness value of individuals in the current generation
+    stats.register("min", np.min) # best individual's fitness in the current generation
+    stats.register("max", np.max) # worst individual's fitness in the current generation
     
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else []) + ['plan'] + ['pp_partition']
@@ -458,8 +458,8 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     # Run genetic algorithm (exactly like original)
     for gen in range(generations):
         offspring = algorithms.varOr(population, toolbox, lambda_=10, cxpb=cxpb, mutpb=mutpb)
-        # 변이/교차로 만들어진 자식들을 lambda_개 생성
-        # varOr: 부모들에서 무작위로 뽑아 교차/돌연변이를 적용해 자식을 만듦
+        # generate lambda_ offspring via mutation/crossover
+        # varOr: randomly select from parents and apply crossover/mutation to create offspring
         
         eval_data = list(map(toolbox.evaluate, offspring))
         for ind, data in zip(offspring, eval_data):
@@ -543,9 +543,9 @@ def main():
 
     cluster_config_flatten = []
 
-    single_model_config = { # 각 벡터 수 = 전체 노드 수
-        "initial_array": [[]], # 서브그룹의 개수는 1개, 그 안에 각 노드 그룹의 GPU 수를 넣는다. [1, 1, 1, 4, 4, 4, 4]
-        "gpu_mem_limit_list": [[]], # 각 노드 그룹의 GPU 메모리 제한 [44, 44, 44, 44, 22, 22, 22]
+    single_model_config = { # number of vectors = total number of nodes
+        "initial_array": [[]], # number of sub-groups is 1, containing the GPU count per node group. [1, 1, 1, 4, 4, 4, 4]
+        "gpu_mem_limit_list": [[]], # GPU memory limit per node group [44, 44, 44, 44, 22, 22, 22]
         "comp_abilities": [[]], # [1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5]
         "comm_abilities": [[]], # [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     }
@@ -556,7 +556,7 @@ def main():
         memory_limit = node_info["memory_limit"]
         comp_ability = node_info["computation_ability"]
         comm_ability = node_info["communication_ability"]
-        for i in range(node_count): # 각 노드 그룹의 인스턴스 수 만큼 반복
+        for i in range(node_count): # repeat for the number of instances in each node group
             single_model_config["initial_array"][0].append(num_gpu)
             single_model_config["gpu_mem_limit_list"][0].append(memory_limit)
             single_model_config["comp_abilities"][0].append(comp_ability)
@@ -581,29 +581,29 @@ def main():
     print(f"  Plan:      {best_ind.plan[1]}")
     print(f"  PP Partition: {getattr(best_ind, 'pp_partition', None)}")
 
-    # Plan 기반으로 파이프라인 출력
+    # Print pipelines based on the plan
     genes_all = best_ind.genes[0]           # [[0, 0, 1, 1, 2, 1, 2], [1, 1, 0, 0, 2, 1, 2], [0, 0, 0, 3, 0, 2, 0]]
     plans_all = best_ind.plan[1][0]         # [[1, 1, 1, 1, 1, 2], [1, 1, 1, 1, 1, 1, 1], [1, 2, 2]]
     pp_partitions_all = best_ind.pp_partition[0]  # [[13, 13, 13, 13, 14, 14], [10, 11, 11, 11, 13, 12, 12], [26, 27, 27]]
 
-    # 각 파이프라인 출력
+    # print each pipeline
     for pipeline_idx, gene_pipeline in enumerate(genes_all):
         print(f"\nPipeline {pipeline_idx+1}")
 
-        # GPU 사용량 카운트 (node 단위로 기록)
+        # count GPU usage (recorded per node)
         instance_usage = [0] * len(cluster_config_flatten)
 
         for node_idx, node_count in enumerate(gene_pipeline):
             if node_count > 0 and node_idx < len(cluster_config_flatten):
                 instance_usage[node_idx] += node_count
 
-        # 클러스터 정의 순서대로 출력
+        # print in the order of cluster definition
         offset = 0
         for node_info in cluster:
             num_instances = node_info["num_instances"]
             instance_type = node_info["instance_type"]
 
-            # 해당 클러스터 구간(node 범위)에 속하는 GPU 사용량 합산
+            # sum up GPU usage belonging to this cluster segment (node range)
             total_usage = sum(instance_usage[offset:offset + num_instances])
             offset += num_instances
 

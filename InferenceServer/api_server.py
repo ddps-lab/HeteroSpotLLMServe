@@ -145,7 +145,7 @@ async def build_async_engine_client(
     # Ensures everything is shutdown and cleaned up on error/exit
     engine_args = AsyncEngineArgs.from_cli_args(args)
     
-    # 노드 매핑 정보를 가져옵니다
+    # Retrieve node mapping information
     node_rank_mapping = None
     if hasattr(args, 'node_rank_mapping') and args.node_rank_mapping:
         try:
@@ -165,10 +165,10 @@ async def build_async_engine_client(
     else:
         logger.info("No node rank mapping provided. Automatically set via vLLM")
     
-    # 파이프라인 병렬 레이어 파티션 정보를 확인합니다
+    # Check pipeline parallel layer partition information
     if hasattr(args, 'pp_layer_partition') and args.pp_layer_partition:
         try:
-            # 콤마로 구분된 정수 문자열인지 검증합니다
+            # Validate that the value is a comma-separated string of integers
             pp_layers = [int(layer) for layer in args.pp_layer_partition.split(',')]
             os.environ["VLLM_PP_LAYER_PARTITION"] = args.pp_layer_partition
             logger.info(f"VLLM_PP_LAYER_PARTITION is set to {os.environ['VLLM_PP_LAYER_PARTITION']}")
@@ -201,7 +201,7 @@ async def build_async_engine_client_from_engine_args(
     vllm_config = engine_args.create_engine_config(usage_context=usage_context)
     vllm_config.parallel_config.ray_address = ray_address
     
-    # Ray를 통한 노드 배치 그룹을 설정합니다 (노드 매핑이 제공된 경우)
+    # Set up node placement group via Ray (if node mapping is provided)
     if node_rank_mapping is not None:
         try:
             placement_group = create_placement_group_and_bundle_indices(node_rank_mapping, ray_address)
@@ -213,11 +213,11 @@ async def build_async_engine_client_from_engine_args(
 
     # V1 AsyncLLM.
     if envs.VLLM_USE_V1:
-        # V1 엔진은 분석되지 않아서 사용하지 않을 것
+        # V1 engine is not analyzed, so it will not be used
         raise NotImplementedError("V1 is not supported in this version")
 
     # elif (MQLLMEngineClient.is_unsupported_config(vllm_config) == False and disable_frontend_multiprocessing == False):
-    #     # MQLLMEngineClient 는 분석되지 않아서 사용하지 않을 것
+    #     # MQLLMEngineClient is not analyzed, so it will not be used
     #     raise NotImplementedError("MQLLMEngineClient is not supported in this version")
 
     # V0 AsyncLLM.
@@ -1022,9 +1022,9 @@ if __name__ == "__main__":
         description="vLLM OpenAI-Compatible RESTful API server.")
     parser = make_arg_parser(parser)
     
-    # v0 버전 사용
+    # Use v0 version
     os.environ["VLLM_USE_V1"] = "0"
-    # 노드 매핑 인자 추가
+    # Add node mapping argument
     parser.add_argument(
         "--node-rank-mapping",
         type=str,
@@ -1036,14 +1036,14 @@ if __name__ == "__main__":
         default=None,
         help="Path to a JSON file containing node-to-rank mapping")
     
-    # 파이프라인 병렬 레이어 파티션 인자 추가
+    # Add pipeline parallel layer partition argument
     parser.add_argument(
         "--pp-layer-partition",
         type=str,
         default=None,
         help="Pipeline parallel layer partition configuration as comma-separated integers. Example: '12,14,6'")
     
-    # Ray 클러스터 주소 인자 추가 (필수)
+    # Add Ray cluster address argument (required)
     parser.add_argument(
         "--ray-address",
         type=str,
