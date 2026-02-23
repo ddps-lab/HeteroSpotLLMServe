@@ -28,9 +28,9 @@ def generate_unique_combinations(num_gpus):
         if remaining_gpus == 0:
             allocations.add(tuple(sorted(current_allocation)))  # Sort and add as tuple
             return
-        # 원본 코드는 아래와 같이 1, 2, 3, 4, 6, 8을 사용
+        # The original code uses 1, 2, 3, 4, 6, 8 as shown below
         # for parallel_degree in [1, 2, 3, 4, 6, 8]:
-        # 하지만 현실적으로 TP 를 3으로 나눠버리면 hidden state 가 나누어 떨어지지 않기 때문에 불가능함.
+        # However, TP=3 is not feasible because hidden state dimensions are not divisible by 3.
         for parallel_degree in [1, 2, 4, 8]:
             # if remaining_gpus >= parallel_degree:
             # Check if adding more to the current allocation would exceed the dimension limit, current limit: 8

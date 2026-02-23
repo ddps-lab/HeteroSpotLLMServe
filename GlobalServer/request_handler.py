@@ -207,8 +207,8 @@ async def async_request_without_migration(request: Request, logger: logging.Logg
                                     output.output_tokens = len(output.itl) + 1
                                     
                             # Check for usage stats
-                            # 여기서 이번 request 에서 얼마나 토큰이 생성되었는지 알 수 있음 (completion_tokens)
-                            # 일단 지금 필요하지 않으니 주석처리한다.
+                            # Can find out how many tokens were generated in this request (completion_tokens)
+                            # For now, not needed, so commented out.
                             # if usage := data.get("usage"):
                             #     output.output_tokens = usage.get("completion_tokens", output.output_tokens)
                                 
@@ -329,8 +329,8 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
                                     output.output_tokens = len(output.itl) + 1
                                     
                             # Check for usage stats
-                            # 여기서 이번 request 에서 얼마나 토큰이 생성되었는지 알 수 있음 (completion_tokens)
-                            # 일단 지금 필요하지 않으니 주석처리한다.
+                            # Can find out how many tokens were generated in this request (completion_tokens)
+                            # For now, not needed, so commented out.
                             # if usage := data.get("usage"):
                             #     output.output_tokens = usage.get("completion_tokens", output.output_tokens)
                                 

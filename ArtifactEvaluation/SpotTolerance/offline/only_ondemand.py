@@ -87,8 +87,8 @@ async def main():
         logger.info("Pipeline creation completed")
 
 
-    # 해당 변수들의 이름을 재사용한다.
-    # 실제로는 ip 는 on-demand 의 것을 사용한다. 아무런 이벤트 없이 end-to-end 로 실현한다.
+    # Reuse the names of these variables.
+    # In practice, the IPs use on-demand instances. Run end-to-end without any events.
     # Our Pipeline 1
     pipeline_1_stage_0_node_ip = spot_g6_12xlarge_node_ip_1
     pipeline_1_stage_1_node_ip = spot_g6_12xlarge_node_ip_2

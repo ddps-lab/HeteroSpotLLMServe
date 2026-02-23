@@ -375,12 +375,12 @@ def save_request_trace(
 if __name__ == "__main__":
     from benchmark_utils import ARTIFACT_EVALUATION_DIR, DEFAULT_DATASET_PATH
 
-    # 원본 데이터
+    # Original data
     datas = load_azure_trace(
         csv_path=os.path.join(ARTIFACT_EVALUATION_DIR, "Datasets", "AzureLLMInferenceTrace_conv.csv"),
     )
 
-    # pruned 데이터
+    # Pruned data
     pruned_datas = load_azure_trace(
         csv_path=DEFAULT_DATASET_PATH,
     )

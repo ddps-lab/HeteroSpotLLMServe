@@ -26,7 +26,7 @@ class Pipeline:
         self.single_request_latency = float('inf')
 
     def __repr__(self):
-        """Pipeline 객체의 문자열 표현"""
+        """String representation of the Pipeline object"""
         if not self.stages:
             return "Pipeline(empty)"
 
@@ -43,11 +43,11 @@ class Pipeline:
                 f"\tglobal_batch_size={self.global_batch_size})")
 
     def set_cost(self, cost: float):
-        """파이프라인의 총 비용을 설정합니다 (hourly cost)."""
+        """Sets the total cost of the pipeline (hourly cost)."""
         self.cost = cost
 
     def calculate_throughput(self, config: Dict[str, Any]) -> float:
-        """파이프라인의 throughput을 계산하고 self.throughput에 저장합니다."""
+        """Calculates the pipeline's throughput and stores it in self.throughput."""
         node_layer_comb = []
         for i, (instance, layer_count) in enumerate(zip(self.stages, self.layer_per_stage)):
             node_layer_comb.append((instance, self.azs[i], layer_count))
@@ -74,7 +74,7 @@ class Pipeline:
         return self.throughput
 
 def get_minimum_latency(pipeline: Pipeline, config: Dict[str, Any]):
-    """파이프라인의 최소 지연 시간을 계산합니다."""
+    """Calculates the minimum latency of the pipeline."""
     node_layer_comb = []
     for i, (instance, layer_count) in enumerate(zip(pipeline.stages, pipeline.layer_per_stage)):
         node_layer_comb.append((instance, pipeline.azs[i], layer_count))
@@ -146,7 +146,7 @@ class BeamSearchDPOptimizer:
         return tuple(sorted(stage_info))
 
     def _create_pipeline(self, stages: List[Tuple[str, int]]) -> Pipeline:
-        """스테이지 정보로부터 Pipeline 객체 생성"""
+        """Creates a Pipeline object from stage information"""
         pipeline = Pipeline()
         if len(stages) <= 0:
             return pipeline
@@ -167,7 +167,7 @@ class BeamSearchDPOptimizer:
         return pipeline
 
     def _add_new_stage(self, pipeline: Pipeline, instance: str, layers: int) -> Pipeline:
-        """기존 파이프라인에 새로운 스테이지를 추가하여 새로운 파이프라인 생성"""
+        """Creates a new pipeline by adding a new stage to an existing pipeline"""
         if layers <= 0:
             return None
 
@@ -195,7 +195,7 @@ class BeamSearchDPOptimizer:
         return new_pipeline
 
     def _recalculate_pipeline_throughput(self, pipeline: Pipeline) -> Pipeline:
-        """파이프라인의 throughput을 재계산"""
+        """Recalculates the pipeline's throughput"""
         cache_key = self._get_cache_key(pipeline)
 
         global cache_hit_count, cache_miss_count
@@ -218,12 +218,12 @@ class BeamSearchDPOptimizer:
         return pipeline
 
     def _check_feasibility_pipeline(self, pipeline: Pipeline, slo: int, budget: float) -> bool:
-        """파이프라인이 주어진 SLO 및 예산 제약을 만족하는지 확인"""
+        """Checks whether the pipeline satisfies the given SLO and budget constraints"""
         if pipeline is None:
             return False
         if pipeline.cost > budget:
             return False
-        # throughput 체크는 _evaluate_pipeline에서 수행
+        # Throughput check is performed in _evaluate_pipeline
         if self.optimization_mode == "hard_slo" and pipeline.single_request_latency > slo:
             return False
         return True
@@ -271,7 +271,7 @@ class BeamSearchDPOptimizer:
         # Base case
         self.dp[0][0][()] = self._create_pipeline([])
 
-        # 알고리즘 overhead 측정
+        # Measure algorithm overhead
         check_cluster_availability_time = 0
         add_new_stage_time = 0
         sort_pipeline_signature_time = 0
@@ -291,7 +291,7 @@ class BeamSearchDPOptimizer:
         latency_cache_hit_count = 0
         latency_cache_miss_count = 0
 
-        # DP 수행
+        # Perform DP
         for pivot_layer in range(1, self.num_layers + 1):
             logger.debug(f"Processing layer {pivot_layer}/{self.num_layers}...")
 

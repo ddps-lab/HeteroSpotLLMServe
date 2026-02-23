@@ -9,66 +9,66 @@ logger = logging.getLogger(__name__)
 def run_server_remote(hostname: str, username: str, command_to_execute: str, log_file: str = "tensor_server.log", 
                       ssh_key_path: Optional[str] = None, ssh_port: int = 22) -> tuple[bool, Optional[subprocess.Popen]]:
     """
-    최초 접속 시 fingerprint 확인을 비활성화합니다.
+    Disables fingerprint verification on initial connection.
 
-    :param hostname: 원격 서버 주소 (IP 또는 도메인 이름)
-    :param username: SSH 사용자 이름
-    :param command_to_execute: 원격 서버에서 실행할 전체 명령어 문자열 (cd, source, python 등 포함)
-    :param log_file: 출력을 저장할 원격 서버의 로그 파일 경로
-    :param ssh_key_path: (선택 사항) 사용할 특정 SSH 개인 키 파일 경로
-    :param ssh_port: (선택 사항) SSH 포트
-    :return: 성공 여부 (True/False), 메시지 또는 에러
+    :param hostname: Remote server address (IP or domain name)
+    :param username: SSH username
+    :param command_to_execute: Full command string to execute on the remote server (including cd, source, python, etc.)
+    :param log_file: Log file path on the remote server to store output
+    :param ssh_key_path: (Optional) Path to a specific SSH private key file to use
+    :param ssh_port: (Optional) SSH port
+    :return: Success status (True/False), message or error
     """
     if not command_to_execute:
-        logger.error(f"[{hostname}] 실행할 명령어가 제공되지 않았습니다.")
-        return False, "실행할 명령어가 제공되지 않았습니다."
+        logger.error(f"[{hostname}] No command to execute was provided.")
+        return False, "No command to execute was provided."
 
-    # SSH 명령어 기본 구성
+    # Basic SSH command configuration
     ssh_command_parts = [
         "ssh",
         "-p", str(ssh_port),
-        "-o", "StrictHostKeyChecking=no",  # fingerprint 확인 비활성화 (또는 accept-new)
-        # "-o", "UserKnownHostsFile=/dev/null", # known_hosts 파일을 사용하지 않음 (더 강력한 비활성화)
+        "-o", "StrictHostKeyChecking=no",  # Disable fingerprint verification (or accept-new)
+        # "-o", "UserKnownHostsFile=/dev/null", # Do not use known_hosts file (stronger disabling)
     ]
 
-    # 특정 SSH 키를 사용하는 경우
+    # If using a specific SSH key
     if ssh_key_path:
         ssh_command_parts.extend(["-i", ssh_key_path])
 
-    # 사용자@호스트 추가
+    # Append user@host
     ssh_command_parts.append(f"{username}@{hostname}")
 
     log_file_dir = os.path.dirname(log_file)
     if not os.path.exists(log_file_dir):
         os.makedirs(log_file_dir)
 
-    # 원격에서 실행할 포그라운드 명령어 구성 (로그 리디렉션 포함)
+    # Construct foreground command to execute remotely (including log redirection)
     remote_shell_command = f"{command_to_execute} > {log_file} 2>&1"
     
-    # 최종 SSH 명령어 (원격 쉘 명령이를 인자로 전달)
+    # Final SSH command (pass the remote shell command as an argument)
     ssh_command_parts.append(remote_shell_command)
 
     try:
-        # Popen은 비동기적으로 프로세스를 시작합니다.
+        # Popen starts the process asynchronously.
         process = subprocess.Popen(ssh_command_parts, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # &를 사용하지 않으므로, SSH 세션은 원격 명령이 종료될 때까지 유지됩니다.
-        # mt_tensor_store_server.py는 스스로 종료되지 않는 서버이므로, 이 SSH 세션은 계속 열려있게 됩니다.
-        logger.info(f"[{hostname}] 원격 명령어를 포그라운드로 제출 요청했습니다. 로그는 원격 서버의 '{log_file}' 파일을 확인하세요.")
-        logger.info(f"[{hostname}] SSH 프로세스 PID: {process.pid}. 이 세션은 원격 서버가 실행되는 동안 유지됩니다.")
+        # Since & is not used, the SSH session is maintained until the remote command terminates.
+        # Because mt_tensor_store_server.py is a server that does not terminate on its own, this SSH session will remain open.
+        logger.info(f"[{hostname}] Submitted remote command in foreground. Check the log file '{log_file}' on the remote server.")
+        logger.info(f"[{hostname}] SSH process PID: {process.pid}. This session will be maintained while the remote server is running.")
         return True, process
 
     except FileNotFoundError:
-        # ssh 명령어를 찾을 수 없는 경우 (로컬 시스템에 ssh 클라이언트가 설치되지 않음)
-        logger.error(f"[{hostname}] 오류: 'ssh' 명령어를 찾을 수 없습니다. SSH 클라이언트가 설치되어 있는지 확인하세요.")
+        # When the ssh command cannot be found (SSH client is not installed on the local system)
+        logger.error(f"[{hostname}] Error: 'ssh' command not found. Please verify that an SSH client is installed.")
         return False, None
     except subprocess.CalledProcessError as e:
-        # check=True 사용 시 발생 (여기서는 Popen을 사용하므로 직접 발생 X, communicate 후 returncode로 판단)
-        logger.error(f"[{hostname}] 명령어 실행 중 오류 발생: {e}")
+        # Raised when check=True is used (not directly raised here since Popen is used; determined by returncode after communicate)
+        logger.error(f"[{hostname}] Error occurred during command execution: {e}")
         logger.error(f"STDOUT: {e.stdout.decode().strip() if e.stdout else ''}")
         logger.error(f"STDERR: {e.stderr.decode().strip() if e.stderr else ''}")
-        return False, f"명령어 실행 오류: {e.stderr.decode().strip() if e.stderr else str(e)}"
+        return False, f"Command execution error: {e.stderr.decode().strip() if e.stderr else str(e)}"
     except Exception as e:
-        logger.error(f"[{hostname}] 예기치 않은 오류 발생: {e}")
+        logger.error(f"[{hostname}] Unexpected error occurred: {e}")
         return False, None
 
 def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[int]], ray_address: str):
@@ -78,7 +78,7 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
         logger.info(f"Initialize Ray with address: {ray_address} at create_placement_group_and_bundle_indices")
         ray.init(address=ray_address)
 
-    # 전체 rank 수 계산 및 rank-IP 매핑 생성
+    # Calculate total number of ranks and create rank-to-IP mapping
     total_ranks = 0
     rank_to_ip = {}
     for ip, ranks in node_rank_mapping.items():
@@ -89,63 +89,63 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
                  raise ValueError(f"Rank {rank} is assigned to multiple IPs. Ranks must be unique.")
             rank_to_ip[rank] = ip
 
-    # Rank가 0부터 total_ranks-1까지 연속적인지 확인
+    # Verify that ranks are contiguous from 0 to total_ranks-1
     if set(rank_to_ip.keys()) != set(range(total_ranks)):
         raise ValueError(f"Ranks must be contiguous from 0 to {total_ranks - 1}. Found ranks: {sorted(rank_to_ip.keys())}")
 
-    # 각 rank에 대해 placement group spec 생성
+    # Create placement group spec for each rank
     placement_group_specs: List[Dict[str, float]] = []
     for rank in range(total_ranks):
         ip = rank_to_ip[rank]
         placement_group_specs.append({
             'GPU': 1.0,
-            f"node:{ip}": 0.001 # 특정 노드를 사용하겠다는 의미
+            f"node:{ip}": 0.001 # Indicates that a specific node should be used
         })
     
-    # strategy 를 STRICT_SPREAD 로 설정하면 모든 랭크가 다 다른 노드에 분배되어야 함.
-    # 따라서 ray.get 에서 무한대기를 하는 상황이 발생한다. PACK 으로 변경하자.
+    # If strategy is set to STRICT_SPREAD, all ranks must be distributed to different nodes.
+    # This causes an infinite wait in ray.get. Changed to PACK instead.
     placement_group = ray.util.placement_group(placement_group_specs, strategy="PACK")
     ray.get(placement_group.ready())
 
-    # 생성된 번들(bundle)과 할당된 노드 IP 매핑
+    # Map created bundles to assigned node IPs
     bundle_to_node = {} # { bundle_idx: node_ip }
     for bundle_id, bundle in enumerate(placement_group.bundle_specs):
         for resource_key in bundle:
             if resource_key.startswith("node:"):
                 node_ip = resource_key[5:] # 'node:172.31.16.230' -> '172.31.16.230'
                 bundle_to_node[bundle_id] = node_ip
-                break # 노드 IP 찾으면 다음 번들로 넘어감
+                break # Move to the next bundle once the node IP is found
 
-    # Rank 순서에 맞게 번들 인덱스 할당
+    # Assign bundle indices according to rank order
     bundle_indices = [None] * total_ranks
-    # 각 IP별로 아직 할당되지 않은 rank 리스트 (정렬된 상태)
+    # List of unassigned ranks per IP (sorted)
     remaining_ranks_for_ip = {ip: sorted(ranks) for ip, ranks in node_rank_mapping.items()}
-    assigned_bundles = set() # 이미 할당된 번들 추적
+    assigned_bundles = set() # Track already assigned bundles
 
     for bundle_idx in range(len(placement_group.bundle_specs)):
         if bundle_idx not in bundle_to_node:
             raise RuntimeError(f"Bundle {bundle_idx} is not assigned to any node.")
 
-        # bundle index 와 해당 bundle index 의 node ip 를 추출한다.
+        # Extract the bundle index and its corresponding node IP.
         node_ip = bundle_to_node[bundle_idx]
 
         if node_ip in remaining_ranks_for_ip and remaining_ranks_for_ip[node_ip]:
-            # 해당 IP에 할당해야 할 가장 낮은 rank를 가져옴
+            # Get the lowest rank that needs to be assigned to this IP
             assigned_rank = remaining_ranks_for_ip[node_ip].pop(0)
             if bundle_indices[assigned_rank] is not None:
                  raise RuntimeError(f"Rank {assigned_rank} is already assigned to bundle {bundle_indices[assigned_rank]}. Trying to assign bundle {bundle_idx}.")
             bundle_indices[assigned_rank] = str(bundle_idx)
-            assigned_bundles.add(bundle_idx) # 할당된 번들로 기록
+            assigned_bundles.add(bundle_idx) # Record as assigned bundle
 
-            # 해당 IP의 모든 rank가 할당되었으면 딕셔너리에서 제거
+            # Remove from the dictionary if all ranks for this IP have been assigned
             if not remaining_ranks_for_ip[node_ip]:
                 del remaining_ranks_for_ip[node_ip]
         else:
-            # 해당 번들에 매칭되는 rank가 없는 경우 (로직 오류 또는 PG 생성 문제)
+            # No matching rank found for this bundle (logic error or placement group creation issue)
              raise RuntimeError(f"Could not find a rank assignment for bundle {bundle_idx} on node {node_ip}. Remaining ranks: {remaining_ranks_for_ip}")
 
 
-    # 모든 rank가 번들에 할당되었는지 확인
+    # Verify that all ranks have been assigned to bundles
     if None in bundle_indices:
         unassigned_ranks = [i for i, b in enumerate(bundle_indices) if b is None]
         raise RuntimeError(f"Could not assign bundles to all ranks. Unassigned ranks: {unassigned_ranks}. Assignments: {bundle_indices}")
@@ -155,7 +155,7 @@ def create_placement_group_and_bundle_indices(node_rank_mapping: Dict[str, List[
         raise RuntimeError(f"Number of assigned bundles ({len(assigned_bundles)}) does not match total bundles ({len(placement_group.bundle_specs)}).")
 
 
-    # 환경 변수 설정 및 출력
+    # Set and print environment variables
     os.environ["VLLM_RAY_BUNDLE_INDICES"] = ",".join(bundle_indices)
     print(f"VLLM_RAY_BUNDLE_INDICES is setted to {os.environ['VLLM_RAY_BUNDLE_INDICES']}")
     print(f"bundle specs : {placement_group.bundle_specs}")
