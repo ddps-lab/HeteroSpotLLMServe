@@ -50,7 +50,7 @@ ShuntServe/
 │   ├── README.md
 │   ├── model_placement_optimizer.py
 │   ├── Datasets/
-│   ├── ExpectedResults/
+│   ├── ReferenceData/
 │   ├── ModelPlacement/
 │   │   ├── offline/                     # Figure 7
 │   │   └── online/                      # Figure 8

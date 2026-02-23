@@ -310,15 +310,15 @@ Mean ITL (ms):                           xx.xx
 
 ### Expected Results
 
-Reference results from our experiments are provided in `ExpectedResults/` for comparison:
+Reference results from our experiments are provided in `ReferenceData/` for comparison:
 
 | Directory | Contents | Paper Figure |
 |---|---|---|
-| `ExpectedResults/MigrationComparison/` | KV cache migration vs recomputing latency | Figure 5 |
-| `ExpectedResults/ModelPlacement/` | Offline throughput and online latency logs per baseline | Figures 7, 8 |
-| `ExpectedResults/SpotTolerance/` | Online and offline CSV traces under simulated interruptions | Figures 9, 11 |
-| `ExpectedResults/SpotAvailabilityTrace/` | Instance availability trace used in experiments | Figure 10 |
-| `ExpectedResults/ConcurrentInitialization/` | Pipeline ready-time logs | Figure 12 |
+| `ReferenceData/MigrationComparison/` | KV cache migration vs recomputing latency | Figure 5 |
+| `ReferenceData/ModelPlacement/` | Offline throughput and online latency logs per baseline | Figures 7, 8 |
+| `ReferenceData/SpotTolerance/` | Online and offline CSV traces under simulated interruptions | Figures 9, 11 |
+| `ReferenceData/SpotAvailabilityTrace/` | Instance availability trace used in experiments | Figure 10 |
+| `ReferenceData/ConcurrentInitialization/` | Pipeline ready-time logs | Figure 12 |
 
 ## Appendix A: Pipeline Configuration Reference
 
@@ -362,7 +362,7 @@ The trace is loaded from `Datasets/AzureLLMInferenceConvTrace_pruned_2048.csv`. 
 ```
 ArtifactEvaluation/
   model_placement_optimizer.py    # Model placement optimizer entry point
-  ExpectedResults/                # Reference results from our experiments
+  ReferenceData/                # Reference results from our experiments
     ModelPlacement/               #   Offline throughput & online latency logs
     SpotTolerance/                #   Interruption traces (online & offline)
     ConcurrentInitialization/     #   Pipeline ready-time logs
