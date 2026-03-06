@@ -1,4 +1,0 @@
-[submodule "submodules/vLLM"]
-	path = submodules/vLLM
-	url = https://github.com/ddps-lab/vLLM.git
-	branch = main
