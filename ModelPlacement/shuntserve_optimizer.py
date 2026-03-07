@@ -89,7 +89,8 @@ def get_minimum_latency(pipeline: Pipeline, config: Dict[str, Any]):
         intermediate_dim=config["intermediate_size"],
         vocab_size=config["vocab_size"],
         node_layer_comb=node_layer_comb,
-        dtype=config["dtype"]
+        dtype=config["dtype"],
+        head_dim=config.get("head_dim"),
     )
 
     return latency
@@ -293,7 +294,10 @@ class BeamSearchDPOptimizer:
 
         # Perform DP
         for pivot_layer in range(1, self.num_layers + 1):
-            logger.debug(f"Processing layer {pivot_layer}/{self.num_layers}...")
+            if pivot_layer % 10 == 0 or pivot_layer == self.num_layers:
+                logger.info(f"Processing layer {pivot_layer}/{self.num_layers}...")
+            else:
+                logger.debug(f"Processing layer {pivot_layer}/{self.num_layers}...")
 
             for prev_num_layer in range(0, pivot_layer):  # Limit lookback range
                 new_num_layer = pivot_layer - prev_num_layer

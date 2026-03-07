@@ -227,13 +227,22 @@ def evaluate(individual):
         
     return fitness, group_plan_list, group_pp_partition_list # Return the average cost as fitness
 
+# Default weight size for validity check (FP16 model weight in GB).
+# Override via set_model_weight_size() for different models.
+_model_weight_size_gb = 120  # Llama-3.1-70B default
+
+
+def set_model_weight_size(weight_size_gb: float):
+    """Set the model weight size (GB) used for group validity check."""
+    global _model_weight_size_gb
+    _model_weight_size_gb = weight_size_gb
+
+
 def is_group_valid(group, gpu_mem_list):
     """Check if the given group is valid based on the multiplication criterion"""
     MULTIPLIER_ARRAY = gpu_mem_list
-    # In HEXGEN's formula, the weight size of the 70B model is set to 120GB.
-    # The threshold must be determined based on how much additional batch memory will be used.
-    # Here we set the memory usage for increasing batch size to half of the weight size.
-    VALID_THRESHOLD = 120 + 120
+    # The threshold is weight_size + weight_size (extra memory for batch/KV cache).
+    VALID_THRESHOLD = _model_weight_size_gb + _model_weight_size_gb
     total = sum(a*b for a, b in zip(group, MULTIPLIER_ARRAY))
     return total >= VALID_THRESHOLD
 
@@ -407,10 +416,36 @@ def selValidTournament(individuals, k, tournsize): # select the individual with 
             chosen.append(tools.selRandom(individuals, 1)[0])
     return chosen
 
-def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
-    """Run HEXGEN genetic algorithm with custom configuration"""
+def run_hexgen_ga(config, population_size=50, generations=100, verbose=True,
+                  model_config=None):
+    """Run HEXGEN genetic algorithm with custom configuration.
+    
+    Args:
+        config: Cluster configuration dict.
+        population_size: GA population size.
+        generations: Number of GA generations.
+        verbose: Print progress.
+        model_config: Optional dict with model-specific parameters:
+            - hidden_size: int (e.g., 8192)
+            - num_layers: int (e.g., 80)
+            - input_len: int (default 763)
+            - output_len: int (default 232)
+            - weight_size_gb: float (FP16 model weight in GB, e.g., 120)
+    """
     
     start_time = time.perf_counter()
+    
+    # Configure model-specific parameters if provided
+    if model_config:
+        from cost_model_impl import configure as configure_cost_model
+        configure_cost_model(
+            hidden_size=model_config['hidden_size'],
+            num_layers=model_config['num_layers'],
+            input_len=model_config.get('input_len', 763),
+            output_len=model_config.get('output_len', 232),
+        )
+        if 'weight_size_gb' in model_config:
+            set_model_weight_size(model_config['weight_size_gb'])
     
     # Set the cluster configuration
     set_cluster_config(config)
@@ -504,7 +539,13 @@ def run_hexgen_ga(config, population_size=50, generations=100, verbose=True):
     return gen, avg, min_, max_, best_ind
 
 
-def main():
+def main(model_config=None):
+    """Run HexGen GA optimizer.
+    
+    Args:
+        model_config: Optional dict with model-specific parameters for non-Llama models:
+            - hidden_size, num_layers, input_len, output_len, weight_size_gb
+    """
     # Test 1: Single group (all nodes in one pipeline)
     print("\n" + "=" * 80)
     print("Test 1: Single Group Configuration")
@@ -567,7 +608,8 @@ def main():
     result1 = run_hexgen_ga(
         single_model_config,
         population_size=100,
-        generations=300
+        generations=300,
+        model_config=model_config,
     )
     
     gen1, avg1, min1, max1, best_ind = result1

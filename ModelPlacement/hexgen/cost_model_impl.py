@@ -1,7 +1,7 @@
 from cost_model import CostModel
 from gen_pp_layer_list import partition_layers
 
-# Provided Configurations
+# ─── Default Configurations (can be overridden via configure()) ──────────────
 alpha = 1e-6 # comm latency
 beta = 1e11 # comm bandwidth
 H = 8192 # hidden size
@@ -13,6 +13,24 @@ s_out_i = s_in_i + 232 # output seq
 b_i = 1 # batch
 
 cost_model = CostModel(alpha=alpha, beta=beta, H=H, B_type=B_type, s_in_i=s_in_i, s_out_i=s_out_i, b_i=b_i, m_d=m_d)
+
+
+def configure(hidden_size: int, num_layers: int, input_len: int = 763, output_len: int = 232):
+    """Reconfigure the cost model for a different model architecture.
+    
+    Args:
+        hidden_size: Model hidden dimension (e.g., 8192 for Llama-70B, 5120 for Qwen3)
+        num_layers: Number of transformer layers (e.g., 80 for Llama-70B, 64 for Qwen3)
+        input_len: Average input sequence length (default: 763)
+        output_len: Average output sequence length (default: 232)
+    """
+    global H, n_layers, s_in_i, s_out_i, cost_model
+    H = hidden_size
+    n_layers = num_layers
+    s_in_i = input_len
+    s_out_i = s_in_i + output_len
+    cost_model = CostModel(alpha=alpha, beta=beta, H=H, B_type=B_type, s_in_i=s_in_i, s_out_i=s_out_i, b_i=b_i, m_d=m_d)
+
 
 def compute_costs(parallel_config, bias, bsz):
 

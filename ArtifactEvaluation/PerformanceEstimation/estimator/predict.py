@@ -87,6 +87,12 @@ INSTANCE_VARIATIONS = {
 
 def build_model_config(model_name: str):
     model_config = AutoConfig.from_pretrained(model_name)
+    # Use explicit head_dim from config if available (e.g. Qwen3),
+    # otherwise fall back to hidden_size // num_attention_heads
+    head_dim = getattr(
+        model_config, "head_dim",
+        model_config.hidden_size // model_config.num_attention_heads
+    )
     return {
         "expected_input_len": 763,
         "expected_output_len": 232,
@@ -96,6 +102,7 @@ def build_model_config(model_name: str):
         "num_key_value_heads": getattr(
             model_config, "num_key_value_heads", model_config.num_attention_heads
         ),
+        "head_dim": head_dim,
         "intermediate_size": model_config.intermediate_size,
         "vocab_size": model_config.vocab_size,
         "max_position_embeddings": model_config.max_position_embeddings,
@@ -121,6 +128,7 @@ def get_max_batch_for_pipeline(config, stages):
         gpu_mem_utilization=config["gpu_mem_utilization"],
         node_layer_comb=node_layer_comb,
         dtype=config["dtype"],
+        head_dim=config.get("head_dim"),
     )
     return int(max_batch), int(num_blocks)
 
