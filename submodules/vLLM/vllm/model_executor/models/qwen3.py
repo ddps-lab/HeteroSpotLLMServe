@@ -1,38 +1,97 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Backported Qwen3 support for vLLM 0.8.1
-# Based on qwen2.py with QK-Norm addition and bias=False for QKV.
+# Based on llama.py's Tensor Store pattern with Qwen3-specific QK-Norm.
 # Copyright 2024 The Qwen team.
 # Copyright 2023 The vLLM team.
 """Inference-only Qwen3 model compatible with HuggingFace weights."""
-from typing import Iterable, Optional, Set, Tuple, Union
+import time
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 import torch
 from torch import nn
+from multiprocessing.managers import BaseManager, DictProxy
 
 from vllm.attention import Attention, AttentionType
+from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
 from vllm.distributed import get_pp_group, get_tensor_model_parallel_world_size
+from vllm.distributed.parallel_state import is_first_stage, is_last_stage
 from vllm.logger import init_logger
+from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
-from vllm.model_executor.layers.linear import (QKVParallelLinear,
+from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
+                                               QKVParallelLinear,
                                                RowParallelLinear)
 from vllm.model_executor.layers.logits_processor import LogitsProcessor
 from vllm.model_executor.layers.quantization import QuantizationConfig
 from vllm.model_executor.layers.rotary_embedding import get_rope
 from vllm.model_executor.layers.sampler import SamplerOutput, get_sampler
 from vllm.model_executor.layers.vocab_parallel_embedding import (
-    ParallelLMHead)
+    DEFAULT_VOCAB_PADDING_SIZE, ParallelLMHead, VocabParallelEmbedding)
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import IntermediateTensors
 
 from .interfaces import SupportsLoRA, SupportsPP
-from .qwen2 import Qwen2MLP, Qwen2Model
-from .utils import (AutoWeightsLoader, PPMissingLayer,
+from .utils import (PPMissingLayer, extract_layer_index,
                     make_empty_intermediate_tensors_factory, make_layers,
                     maybe_prefix)
 
 logger = init_logger(__name__)
+
+# Tensor Store connection constants (same as llama.py)
+TENSOR_SERVER_HOST = '127.0.0.1'
+TENSOR_SERVER_PORT = 50001
+TENSOR_SERVER_AUTHKEY = b'param_store'
+
+class TensorManager(BaseManager):
+    pass
+
+TENSOR_DICT = {}
+MANAGER_INSTANCE = None
+
+TensorManager.register('get_tensor_dict', proxytype=DictProxy)
+
+
+class Qwen3MLP(nn.Module):
+
+    def __init__(
+        self,
+        hidden_size: int,
+        intermediate_size: int,
+        hidden_act: str,
+        quant_config: Optional[QuantizationConfig] = None,
+        prefix: str = "",
+    ) -> None:
+        super().__init__()
+        self.gate_up_proj_tensor_name = f"{prefix}.gate_up_proj.weight"
+        self.gate_up_proj = MergedColumnParallelLinear(
+            input_size=hidden_size,
+            output_sizes=[intermediate_size] * 2,
+            bias=False,
+            quant_config=quant_config,
+            prefix=f"{prefix}.gate_up_proj",
+            weight_tensor=TENSOR_DICT[self.gate_up_proj_tensor_name]
+        )
+        self.down_proj_tensor_name = f"{prefix}.down_proj.weight"
+        self.down_proj = RowParallelLinear(
+            input_size=intermediate_size,
+            output_size=hidden_size,
+            bias=False,
+            quant_config=quant_config,
+            prefix=f"{prefix}.down_proj",
+            weight_tensor=TENSOR_DICT[self.down_proj_tensor_name]
+        )
+        if hidden_act != "silu":
+            raise ValueError(f"Unsupported activation: {hidden_act}. "
+                             "Only silu is supported for now.")
+        self.act_fn = SiluAndMul()
+
+    def forward(self, x):
+        x, _ = self.gate_up_proj(x)
+        x = self.act_fn(x)
+        x, _ = self.down_proj(x)
+        return x
 
 
 class Qwen3Attention(nn.Module):
@@ -68,21 +127,26 @@ class Qwen3Attention(nn.Module):
         self.scaling = self.head_dim**-0.5
         self.rope_theta = rope_theta
 
+        self.qkv_proj_tensor_name = f"{prefix}.qkv_proj.weight"
         self.qkv_proj = QKVParallelLinear(
-            hidden_size,
-            self.head_dim,
-            self.total_num_heads,
-            self.total_num_kv_heads,
+            hidden_size=hidden_size,
+            head_size=self.head_dim,
+            total_num_heads=self.total_num_heads,
+            total_num_kv_heads=self.total_num_kv_heads,
             bias=False,
             quant_config=quant_config,
             prefix=f"{prefix}.qkv_proj",
+            weight_tensor=TENSOR_DICT[self.qkv_proj_tensor_name]
         )
+
+        self.o_proj_tensor_name = f"{prefix}.o_proj.weight"
         self.o_proj = RowParallelLinear(
-            self.total_num_heads * self.head_dim,
-            hidden_size,
+            input_size=self.total_num_heads * self.head_dim,
+            output_size=hidden_size,
             bias=False,
             quant_config=quant_config,
             prefix=f"{prefix}.o_proj",
+            weight_tensor=TENSOR_DICT[self.o_proj_tensor_name]
         )
 
         self.rotary_emb = get_rope(
@@ -101,9 +165,13 @@ class Qwen3Attention(nn.Module):
                               prefix=f"{prefix}.attn",
                               attn_type=attn_type)
 
-        # QK-Norm: Qwen3's key difference from Qwen2
-        self.q_norm = RMSNorm(self.head_dim, eps=rms_norm_eps)
-        self.k_norm = RMSNorm(self.head_dim, eps=rms_norm_eps)
+        # QK-Norm: Qwen3's key difference from Qwen2/Llama
+        self.q_norm_tensor_name = f"{prefix}.q_norm.weight"
+        self.k_norm_tensor_name = f"{prefix}.k_norm.weight"
+        self.q_norm = RMSNorm(self.head_dim, eps=rms_norm_eps,
+                              weight_tensor=TENSOR_DICT[self.q_norm_tensor_name])
+        self.k_norm = RMSNorm(self.head_dim, eps=rms_norm_eps,
+                              weight_tensor=TENSOR_DICT[self.k_norm_tensor_name])
 
     def forward(
         self,
@@ -161,17 +229,21 @@ class Qwen3DecoderLayer(nn.Module):
             prefix=f"{prefix}.self_attn",
             attn_type=attn_type,
         )
-        self.mlp = Qwen2MLP(
+        self.mlp = Qwen3MLP(
             hidden_size=self.hidden_size,
             intermediate_size=config.intermediate_size,
             hidden_act=config.hidden_act,
             quant_config=quant_config,
             prefix=f"{prefix}.mlp",
         )
+        self.input_layernorm_tensor_name = f"{prefix}.input_layernorm.weight"
+        self.post_attention_layernorm_tensor_name = f"{prefix}.post_attention_layernorm.weight"
         self.input_layernorm = RMSNorm(config.hidden_size,
-                                       eps=rms_norm_eps)
+                                       eps=rms_norm_eps,
+                                       weight_tensor=TENSOR_DICT[self.input_layernorm_tensor_name])
         self.post_attention_layernorm = RMSNorm(config.hidden_size,
-                                                eps=rms_norm_eps)
+                                                eps=rms_norm_eps,
+                                                weight_tensor=TENSOR_DICT[self.post_attention_layernorm_tensor_name])
 
     def forward(
         self,
@@ -196,13 +268,11 @@ class Qwen3DecoderLayer(nn.Module):
         return hidden_states, residual
 
 
-class Qwen3Model(Qwen2Model):
-    """Qwen3Model reuses Qwen2Model but swaps in Qwen3DecoderLayer."""
+@support_torch_compile
+class Qwen3Model(nn.Module):
 
     def __init__(self, *, vllm_config: VllmConfig, prefix: str = ""):
-        # We call nn.Module.__init__ directly to avoid Qwen2Model.__init__
-        # which creates Qwen2DecoderLayer instances.
-        nn.Module.__init__(self)
+        super().__init__()
 
         config = vllm_config.model_config.hf_config
         cache_config = vllm_config.cache_config
@@ -212,15 +282,17 @@ class Qwen3Model(Qwen2Model):
         self.quant_config = quant_config
         self.vocab_size = config.vocab_size
 
-        if get_pp_group().is_first_rank or (config.tie_word_embeddings
-                                            and get_pp_group().is_last_rank):
-            from vllm.model_executor.layers.vocab_parallel_embedding import (
-                VocabParallelEmbedding)
+        self.embed_tokens_tensor_name = f"{prefix}.embed_tokens.weight"
+        self.norm_tensor_name = f"{prefix}.norm.weight"
+
+        if is_first_stage(get_pp_group().rank) or (config.tie_word_embeddings
+                                                    and is_last_stage(get_pp_group().rank)):
             self.embed_tokens = VocabParallelEmbedding(
-                config.vocab_size,
+                self.vocab_size,
                 config.hidden_size,
                 quant_config=quant_config,
                 prefix=f"{prefix}.embed_tokens",
+                weight_tensor=TENSOR_DICT[self.embed_tokens_tensor_name]
             )
         else:
             self.embed_tokens = PPMissingLayer()
@@ -237,10 +309,46 @@ class Qwen3Model(Qwen2Model):
         self.make_empty_intermediate_tensors = (
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
-        if get_pp_group().is_last_rank:
-            self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+        if is_last_stage(get_pp_group().rank):
+            self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps,
+                               weight_tensor=TENSOR_DICT[self.norm_tensor_name])
         else:
             self.norm = PPMissingLayer()
+
+    def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
+        return self.embed_tokens(input_ids)
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        positions: torch.Tensor,
+        intermediate_tensors: Optional[IntermediateTensors] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+    ) -> Union[torch.Tensor, IntermediateTensors]:
+        if get_pp_group().is_first_rank:
+            if inputs_embeds is not None:
+                hidden_states = inputs_embeds
+            else:
+                hidden_states = self.get_input_embeddings(input_ids)
+            residual = None
+        else:
+            assert intermediate_tensors is not None
+            hidden_states = intermediate_tensors["hidden_states"]
+            residual = intermediate_tensors["residual"]
+        for layer in self.layers[self.start_layer:self.end_layer]:
+            hidden_states, residual = layer(
+                positions,
+                hidden_states,
+                residual,
+            )
+        if not get_pp_group().is_last_rank:
+            return IntermediateTensors({
+                "hidden_states": hidden_states,
+                "residual": residual
+            })
+        hidden_states, _ = self.norm(hidden_states, residual)
+        return hidden_states
 
 
 class Qwen3ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
@@ -261,22 +369,68 @@ class Qwen3ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         config = vllm_config.model_config.hf_config
         quant_config = vllm_config.quant_config
         lora_config = vllm_config.lora_config
-
         self.config = config
         self.lora_config = lora_config
         self.quant_config = quant_config
+
+        ### Begin loading tensors from the tensor store server
+        global TENSOR_DICT
+        global MANAGER_INSTANCE
+        if vllm_config.parallel_config.local_rank == -1:
+            raise ValueError("local_rank is not set")
+        tensor_server_port = TENSOR_SERVER_PORT + vllm_config.parallel_config.local_rank
+        MANAGER_INSTANCE = TensorManager(
+            address=(TENSOR_SERVER_HOST, tensor_server_port),
+            authkey=TENSOR_SERVER_AUTHKEY
+        )
+        if MANAGER_INSTANCE is None:
+            raise ValueError("Failed to create TensorManager instance")
+        max_retries = 120
+        wait_time = 5
+        for attempt in range(max_retries):
+            try:
+                MANAGER_INSTANCE.connect()
+                logger.info("Connected to TensorManager server.")
+                break
+            except ConnectionRefusedError:
+                logger.info(f"Connection refused (Attempt {attempt + 1}/{max_retries}). "
+                           f"Server might not be ready. Retrying in {wait_time}s...")
+                if attempt == max_retries - 1:
+                    raise ValueError("Max connection attempts reached. Exiting.")
+                time.sleep(wait_time)
+            except Exception as e:
+                logger.error(f"Error connecting to manager")
+                raise e
+        logger.info("TensorManager server connected successfully.")
+
+        try:
+            logger.info("Accessing Tensor Dict via Manager")
+            TENSOR_DICT = MANAGER_INSTANCE.get_tensor_dict()
+            if not TENSOR_DICT:
+                raise ValueError("Tensor Dictionary is empty")
+        except Exception as e:
+            logger.error(f"Error accessing Tensor Dict via Manager: {e}")
+            raise e
+        ### End loading tensors from the tensor store server
+
         self.model = Qwen3Model(vllm_config=vllm_config,
                                 prefix=maybe_prefix(prefix, "model"))
 
-        if get_pp_group().is_last_rank:
+        if is_last_stage(get_pp_group().rank):
             if config.tie_word_embeddings:
                 self.lm_head = self.model.embed_tokens
             else:
-                self.lm_head = ParallelLMHead(config.vocab_size,
-                                              config.hidden_size,
-                                              quant_config=quant_config,
-                                              prefix=maybe_prefix(
-                                                  prefix, "lm_head"))
+                lm_head_tensor_name = "lm_head.weight"
+                self.lm_head = ParallelLMHead(
+                    config.vocab_size,
+                    config.hidden_size,
+                    quant_config=quant_config,
+                    prefix=maybe_prefix(prefix, "lm_head"),
+                    weight_tensor=TENSOR_DICT[lm_head_tensor_name]
+                )
+            if config.tie_word_embeddings:
+                self.lm_head = self.lm_head.tie_weights(
+                    self.model.embed_tokens)
         else:
             self.lm_head = PPMissingLayer()
 
@@ -319,9 +473,7 @@ class Qwen3ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
     def load_weights(self, weights: Iterable[Tuple[str,
                                                    torch.Tensor]]) -> Set[str]:
-        loader = AutoWeightsLoader(
-            self,
-            skip_prefixes=(["lm_head."]
-                           if self.config.tie_word_embeddings else None),
-        )
-        return loader.load_weights(weights)
+        # Weights are loaded via Tensor Store, not through this method.
+        # This is kept for interface compatibility.
+        loaded_params: Set[str] = set()
+        return loaded_params
