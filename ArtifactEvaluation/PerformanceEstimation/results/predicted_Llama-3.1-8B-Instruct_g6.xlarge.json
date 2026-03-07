@@ -1,0 +1,77 @@
+{
+  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "instance": "g6.xlarge",
+  "gpu_type": "L4",
+  "gpu_count": 1,
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "batch_sizes": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    19
+  ],
+  "results": [
+    {
+      "label": "TP=1, PP=1",
+      "tp": 1,
+      "pp": 1,
+      "stages": [
+        [
+          "g6.xlarge",
+          32
+        ]
+      ],
+      "max_batch_size": 19,
+      "num_blocks": 1181,
+      "batch_results": [
+        {
+          "batch_size": 1,
+          "prefill_latency_ms": 97.16804122234711,
+          "decode_latency_ms": 11699.096343893334,
+          "total_latency_ms": 11796.26438511568,
+          "throughput_rps": 0.08477259981234249
+        },
+        {
+          "batch_size": 2,
+          "prefill_latency_ms": 194.33608244469423,
+          "decode_latency_ms": 11790.987646293332,
+          "total_latency_ms": 11985.323728738025,
+          "throughput_rps": 0.16687075337017923
+        },
+        {
+          "batch_size": 4,
+          "prefill_latency_ms": 388.67216488938845,
+          "decode_latency_ms": 11974.770251093332,
+          "total_latency_ms": 12363.442415982721,
+          "throughput_rps": 0.3235344870316247
+        },
+        {
+          "batch_size": 8,
+          "prefill_latency_ms": 777.3443297787769,
+          "decode_latency_ms": 12342.335460693334,
+          "total_latency_ms": 13119.67979047211,
+          "throughput_rps": 0.6097709797620084
+        },
+        {
+          "batch_size": 16,
+          "prefill_latency_ms": 1554.6886595575538,
+          "decode_latency_ms": 13077.465879893334,
+          "total_latency_ms": 14632.154539450888,
+          "throughput_rps": 1.0934821633315284
+        },
+        {
+          "batch_size": 19,
+          "prefill_latency_ms": 1846.1927832245951,
+          "decode_latency_ms": 13353.139787093336,
+          "total_latency_ms": 15199.33257031793,
+          "throughput_rps": 1.2500548897195798
+        }
+      ]
+    }
+  ]
+}

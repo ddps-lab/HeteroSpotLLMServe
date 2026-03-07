@@ -6,5 +6,5 @@ g6e_12xlarge_node_ip = ""
 # Config B: Qwen2.5-32B on g6.12xlarge (L4 × 4, TP=4)
 g6_12xlarge_node_ip = ""
 
-# # Config C: Llama-3.1-8B on g6.xlarge (L4 × 1, TP=1) — 보류
-# g6_xlarge_node_ip = ""
+# Test: Llama-3.1-8B on g6.xlarge (L4 × 1, TP=1) — 빠른 테스트용
+g6_xlarge_node_ip = ""
