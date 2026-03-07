@@ -58,6 +58,7 @@ MODELS = {
         "num_hidden_layers": 36,
         "num_attention_heads": 32,
         "num_key_value_heads": 8,
+        "head_dim": 128,
         "intermediate_size": 9728,
         "vocab_size": 151936,
         "max_position_embeddings": 40960,
@@ -127,6 +128,7 @@ def estimate_model(model_name: str, model_cfg: dict, batch_sizes: list, verbose:
         gpu_mem_utilization=GPU_MEM_UTIL,
         node_layer_comb=node_layer_comb,
         dtype=DTYPE,
+        head_dim=model_cfg.get("head_dim"),
     )
     print(f"\n  Max Batch Size: {max_batch}")
     print(f"  Num KV Blocks: {num_blocks}")
