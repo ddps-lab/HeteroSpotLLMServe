@@ -1,6 +1,6 @@
 """
-vLLM Pipeline 1: g6.12xlarge×3
-PP=3 (26,27,27), TP=[4,4,4]
+AlpaServe Pipeline 1: g6.12xlarge×3
+PP=3 (27,27,26), TP=[4,4,4]
 Synthetic fixed-length requests (input=763, output=232)
 """
 import asyncio
@@ -14,7 +14,7 @@ _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 del _d
 
 from global_server import GlobalServer
@@ -24,7 +24,7 @@ from save_results import save_benchmark_results
 from nodes import *
 
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results", "vllm_p1.json")
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results", "alpaserve_p1.json")
 
 
 async def test_benchmark():
@@ -55,7 +55,7 @@ async def test_benchmark():
         "model_name": model_name,
         "total_num_layers": 80,
         "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "26,27,27",
+        "pp_layer_partition": "27,27,26",
         "parallel_strategy": [4,4,4],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
@@ -66,11 +66,11 @@ async def test_benchmark():
         "max_batch_size": 247,
     }
     node_layer_mapping = [
-        (g6_12xlarge_node_ip_1, 26),
+        (g6_12xlarge_node_ip_1, 27),
         (g6_12xlarge_node_ip_2, 27),
-        (g6_12xlarge_node_ip_3, 27),
+        (g6_12xlarge_node_ip_3, 26),
     ]
-    estimated_throughput = 2.80
+    estimated_throughput = 2.89
 
     pipeline_task = asyncio.create_task(
         create_pipeline_async(config, node_layer_mapping, estimated_throughput)
@@ -97,9 +97,9 @@ async def test_benchmark():
 
         print_benchmark_results(metrics)
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "vLLM",
+            "system": "AlpaServe",
             "pipeline": "P1",
-            "pp_layer_partition": "26,27,27",
+            "pp_layer_partition": "27,27,26",
             "parallel_strategy": [4,4,4],
             "instances": ["g6.12xlarge×3"],
             "input_len": 763,

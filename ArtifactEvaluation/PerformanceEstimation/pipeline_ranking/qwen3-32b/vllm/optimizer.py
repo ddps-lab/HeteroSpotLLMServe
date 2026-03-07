@@ -1,5 +1,5 @@
 """
-vLLM Optimizer: shows homogeneous pipeline configs (even layer partition).
+vLLM Optimizer for Qwen3-32B: shows homogeneous pipeline configs (even layer partition).
 vLLM doesn't have a placement optimizer — it uses simple even partitioning
 within each homogeneous instance group.
 Run: python3 optimizer.py
@@ -24,13 +24,10 @@ def even_partition(num_layers, num_stages):
     """Even layer partition (vLLM default)."""
     base = num_layers // num_stages
     remainder = num_layers % num_stages
-    layers = []
-    for i in range(num_stages):
-        layers.append(base + (1 if i < remainder else 0))
-    return layers
+    return [base + (1 if i < remainder else 0) for i in range(num_stages)]
 
 
-def run_vllm_pipeline(instance_type, num_instances, model_config, gpu_mem_utilization=0.85):
+def run_vllm_pipeline(instance_type, num_instances, model_config, head_dim, gpu_mem_utilization=0.85):
     """Compute vLLM pipeline config with even partitioning."""
     num_layers = model_config.num_hidden_layers
     layers_per_stage = even_partition(num_layers, num_instances)
@@ -50,6 +47,7 @@ def run_vllm_pipeline(instance_type, num_instances, model_config, gpu_mem_utiliz
         gpu_mem_utilization=gpu_mem_utilization,
         node_layer_comb=node_layer_comb,
         dtype=torch.float16,
+        head_dim=head_dim,
     )
 
     gbs, _ = get_global_batch_size(
@@ -63,6 +61,7 @@ def run_vllm_pipeline(instance_type, num_instances, model_config, gpu_mem_utiliz
         gpu_mem_utilization=gpu_mem_utilization,
         node_layer_comb=node_layer_comb,
         dtype=torch.float16,
+        head_dim=head_dim,
     )
 
     return {
@@ -80,24 +79,27 @@ def run_vllm_pipeline(instance_type, num_instances, model_config, gpu_mem_utiliz
 
 
 def main():
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_name = "Qwen/Qwen3-32B"
     model_config = AutoConfig.from_pretrained(model_name)
+    head_dim = getattr(model_config, "head_dim", None) or (model_config.hidden_size // model_config.num_attention_heads)
 
     print("=" * 80)
     print("vLLM Pipeline Config (even partition per homogeneous group)")
     print(f"Model: {model_name}")
+    print(f"  hidden_size={model_config.hidden_size}, num_layers={model_config.num_hidden_layers}, "
+          f"num_heads={model_config.num_attention_heads}, head_dim={head_dim}")
     print("Cluster: g6.12xlarge×3, g5.12xlarge×2, g6e.xlarge×4")
     print("=" * 80)
 
     groups = [
-        ("g6.12xlarge", 3, 0.85),   # Pipeline 1: L4×4 × 3
-        ("g5.12xlarge", 2, 0.85),   # Pipeline 2: A10G×4 × 2
-        ("g6e.xlarge", 4, 0.9),     # Pipeline 3: L40S×1 × 4
+        ("g6.12xlarge", 3, 0.85),
+        ("g5.12xlarge", 2, 0.85),
+        ("g6e.xlarge", 4, 0.9),
     ]
 
     total_throughput = 0
     for i, (instance_type, num_instances, gpu_util) in enumerate(groups, 1):
-        result = run_vllm_pipeline(instance_type, num_instances, model_config, gpu_util)
+        result = run_vllm_pipeline(instance_type, num_instances, model_config, head_dim, gpu_util)
 
         print(f"\n{'─' * 60}")
         print(f"Pipeline {i}: {instance_type} × {num_instances}")

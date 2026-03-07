@@ -16,13 +16,18 @@ import numpy as np
 
 # plan: [[8, 4, 4], [8, 4, 4], [8, 4, 4], [8, 4, 4], [8, 4, 4], [16, 8, 8], [8, 4, 4]]
 
+# Default model name for profiling lookup. Override via Simulator(model_name=...).
+_default_model_name = "Llama-70b"
+
+
 class Simulator:
     
-    def __init__(self, plans, bias, bsz, slo):
+    def __init__(self, plans, bias, bsz, slo, model_name=None):
         self.plans = plans
         self.bias = bias
         self.bsz = bsz
         self.slo = slo
+        self.model_name = model_name or _default_model_name
 
     def calculate_stage_costs(self, plan, bias, bsz):
         stage_costs, _, pp_layer_list = compute_costs(plan, bias, bsz)
@@ -40,7 +45,7 @@ class Simulator:
                     partial(
                         Executable, 
                         load_test_prof_result(
-                            "Llama-70b", # Select model type
+                            self.model_name, # Select model type
                             stage_costs, # Input model plan
                             ),
                         ),

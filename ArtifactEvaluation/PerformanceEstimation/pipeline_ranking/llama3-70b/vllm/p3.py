@@ -1,6 +1,6 @@
 """
-ShuntServe Pipeline 1: g6.12xlarge×3 + g6e.xlarge×2
-PP=5 (20,20,20,10,10), TP=[4,4,4,1,1]
+vLLM Pipeline 3: g6e.xlarge×4
+PP=4 (20,20,20,20), TP=[1,1,1,1]
 Synthetic fixed-length requests (input=763, output=232)
 """
 import asyncio
@@ -10,12 +10,11 @@ import sys
 import os
 from typing import Dict, List, Tuple
 
-# Add GlobalServer and parent dir to path
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 del _d
 
 from global_server import GlobalServer
@@ -25,7 +24,7 @@ from save_results import save_benchmark_results
 from nodes import *
 
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results", "shuntserve_p1.json")
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results", "vllm_p3.json")
 
 
 async def test_benchmark():
@@ -52,29 +51,27 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
-    # ShuntServe Pipeline 1
     config = {
         "model_name": model_name,
         "total_num_layers": 80,
-        "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "20,20,20,10,10",
-        "parallel_strategy": [4,4,4,1,1],
+        "gpu_memory_utilization": 0.9,
+        "pp_layer_partition": "20,20,20,20",
+        "parallel_strategy": [1,1,1,1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://{S3_BUCKET}/{model_name}",
-        "num_gpu_blocks": 27549,
-        "max_batch_size": 442,
+        "num_gpu_blocks": 684,
+        "max_batch_size": 11,
     }
     node_layer_mapping = [
-        (g6_12xlarge_node_ip_1, 20),
-        (g6_12xlarge_node_ip_2, 20),
-        (g6_12xlarge_node_ip_3, 20),
-        (g6e_xlarge_node_ip_1, 10),
-        (g6e_xlarge_node_ip_2, 10),
+        (g6e_xlarge_node_ip_1, 20),
+        (g6e_xlarge_node_ip_2, 20),
+        (g6e_xlarge_node_ip_3, 20),
+        (g6e_xlarge_node_ip_4, 20),
     ]
-    estimated_throughput = 4.23
+    estimated_throughput = 0.27
 
     pipeline_task = asyncio.create_task(
         create_pipeline_async(config, node_layer_mapping, estimated_throughput)
@@ -88,7 +85,7 @@ async def test_benchmark():
 
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=4420,  # max_batch_size(442) × 10
+            num_requests=110,  # max_batch_size(11) × 10
             input_len=763,
             output_len=232,
             request_rate=float('inf'),
@@ -96,19 +93,19 @@ async def test_benchmark():
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
             run_initial_test=True,
-            test_requests_per_pipeline=2,
+            test_requests_per_pipeline=0,
         )
 
         print_benchmark_results(metrics)
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
-            "pipeline": "P1",
-            "pp_layer_partition": "20,20,20,10,10",
-            "parallel_strategy": [4,4,4,1,1],
-            "instances": ["g6.12xlarge×3", "g6e.xlarge×2"],
+            "system": "vLLM",
+            "pipeline": "P3",
+            "pp_layer_partition": "20,20,20,20",
+            "parallel_strategy": [1,1,1,1],
+            "instances": ["g6e.xlarge×4"],
             "input_len": 763,
             "output_len": 232,
-            "num_requests": 4420,
+            "num_requests": 110,
         })
 
     except KeyboardInterrupt:
