@@ -457,7 +457,9 @@ def get_cache_block_size_bytes(config_dict: dict) -> int:
     # Get model parameters from config
     num_attention_layers = END_LAYER_ID - START_LAYER_ID
     num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
-    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    # Use explicit head_dim from config if available (e.g. Qwen3),
+    # otherwise fall back to hidden_size // num_attention_heads (e.g. Llama)
+    head_size = config_dict.get("head_dim", config_dict["hidden_size"] // config_dict["num_attention_heads"])
     
     # Adjust num_kv_heads for tensor parallelism
     if TENSOR_PARALLEL_SIZE > 1:
@@ -540,7 +542,9 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
     # Get model parameters
     num_attention_layers = END_LAYER_ID - START_LAYER_ID
     num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
-    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    # Use explicit head_dim from config if available (e.g. Qwen3),
+    # otherwise fall back to hidden_size // num_attention_heads (e.g. Llama)
+    head_size = config_dict.get("head_dim", config_dict["hidden_size"] // config_dict["num_attention_heads"])
     
     # Adjust for tensor parallelism
     if TENSOR_PARALLEL_SIZE > 1:
