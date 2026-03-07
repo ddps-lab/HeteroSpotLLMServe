@@ -486,10 +486,10 @@ def get_prefill_compute_logit_latency(
         return 0
 
     compute_logit_ops = get_prefill_compute_logit_ops(
-        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+        1, hidden_dim, vocab_size, gpu_count, batch_size
     )
     compute_logit_memory_access = get_prefill_compute_logit_memory_access_count(
-        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+        1, hidden_dim, vocab_size, gpu_count, batch_size
     ) * dtype.itemsize  # Convert to Bytes
 
     GPU_SPEC_info = GPU_SPEC[gpu_type]
