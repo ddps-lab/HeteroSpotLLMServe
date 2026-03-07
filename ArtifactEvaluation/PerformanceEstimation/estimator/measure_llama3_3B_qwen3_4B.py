@@ -45,7 +45,7 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 
 CONFIGS = {
     "llama3_3B": {
-        "model_name": "meta-llama/Llama-3.2-3B-Instruct",
+        "model_name": "meta-llama/Llama-3.2-3B",
         "total_num_layers": 28,
         "node_ip": lambda: g6_xlarge_node_ip,
         "instance_type": "g6.xlarge",
@@ -58,8 +58,8 @@ CONFIGS = {
                 "tp": 1, "pp": 1,
                 "parallel_strategy": [1],
                 "pp_layer_partition": "28",
-                "num_gpu_blocks": 0,      # ← estimator 결과로 채울 것
-                "max_batch_size": 0,      # ← estimator 결과로 채울 것
+                "num_gpu_blocks": 6280,      # ← estimator 결과로 채울 것
+                "max_batch_size": 101,      # ← estimator 결과로 채울 것
                 "batch_sizes": [1, 2, 4, 8, 16],
             },
         ],
@@ -78,8 +78,8 @@ CONFIGS = {
                 "tp": 1, "pp": 1,
                 "parallel_strategy": [1],
                 "pp_layer_partition": "36",
-                "num_gpu_blocks": 0,      # ← estimator 결과로 채울 것
-                "max_batch_size": 0,      # ← estimator 결과로 채울 것
+                "num_gpu_blocks": 7213,      # ← estimator 결과로 채울 것
+                "max_batch_size": 116,      # ← estimator 결과로 채울 것
                 "batch_sizes": [1, 2, 4, 8, 16],
             },
         ],

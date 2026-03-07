@@ -7,4 +7,4 @@ g6e_12xlarge_node_ip = ""
 g6_12xlarge_node_ip = ""
 
 # Test: Llama-3.1-8B on g6.xlarge (L4 × 1, TP=1) — 빠른 테스트용
-g6_xlarge_node_ip = ""
+g6_xlarge_node_ip = "172.31.41.154"
