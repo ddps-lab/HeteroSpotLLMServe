@@ -150,11 +150,11 @@ def list_tensor_files_from_s3_with_boto3(s3_client, bucket_name: str, base_s3_pa
     tensor_names = []
 
     try:
-        # Set up prefix for listing with TP-specific path: TP{tp_size}/shard{tp_rank}/
+        # Set up prefix for listing with TP-specific path: raw/{base_path}/TP{tp_size}/shard{tp_rank}/
         if base_s3_path:
-            prefix = f"{base_s3_path}/TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/"
+            prefix = f"raw/{base_s3_path}/TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/"
         else:
-            prefix = f"TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/"
+            prefix = f"raw/TP{TENSOR_PARALLEL_SIZE}/shard{TENSOR_PARALLEL_RANK}/"
 
         logging.info(f"Listing tensors from S3 with prefix: {prefix}")
 
@@ -457,7 +457,9 @@ def get_cache_block_size_bytes(config_dict: dict) -> int:
     # Get model parameters from config
     num_attention_layers = END_LAYER_ID - START_LAYER_ID
     num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
-    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    # Use explicit head_dim from config if available (e.g. Qwen3),
+    # otherwise fall back to hidden_size // num_attention_heads (e.g. Llama)
+    head_size = config_dict.get("head_dim", config_dict["hidden_size"] // config_dict["num_attention_heads"])
     
     # Adjust num_kv_heads for tensor parallelism
     if TENSOR_PARALLEL_SIZE > 1:
@@ -540,7 +542,9 @@ def allocate_kv_cache(config_dict: dict, num_gpu_blocks: int) -> dict:
     # Get model parameters
     num_attention_layers = END_LAYER_ID - START_LAYER_ID
     num_kv_heads = config_dict.get("num_key_value_heads", config_dict["num_attention_heads"])
-    head_size = config_dict["hidden_size"] // config_dict["num_attention_heads"]
+    # Use explicit head_dim from config if available (e.g. Qwen3),
+    # otherwise fall back to hidden_size // num_attention_heads (e.g. Llama)
+    head_size = config_dict.get("head_dim", config_dict["hidden_size"] // config_dict["num_attention_heads"])
     
     # Adjust for tensor parallelism
     if TENSOR_PARALLEL_SIZE > 1:

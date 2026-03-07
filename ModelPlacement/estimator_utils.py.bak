@@ -32,12 +32,10 @@ def get_prefill_qkv_projection_ops_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     qkv_projection_ops = (
-        2 * input_len * hidden_dim * H_q + 4 * input_len * hidden_dim * H_kv  # Q,O + K,V
+        2 * input_len * hidden_dim ** 2 + 4 * input_len * hidden_dim * H_kv
     ) // tp_size * batch_size
     return qkv_projection_ops
 
@@ -46,15 +44,12 @@ def get_prefill_attention_ops_per_layer(
     hidden_dim: int,
     tp_size: int,
     batch_size: int,
-    num_attention_head: int = None,
-    head_dim: int = None,
 ):
     # H_kv is not actually used during attention. It is replicated anyway, so the computation amount is the same.
     # It only uses slightly less memory
-    # When head_dim != hidden_dim // num_heads (e.g. Qwen3), use H_q for attention dimension
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim) if num_attention_head is not None else hidden_dim
+    # H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     attention_ops = 2 * (
-        input_len ** 2 * H_q * 2 + input_len * H_q ** 2
+        input_len ** 2 * hidden_dim * 2 + input_len * hidden_dim ** 2
     ) // tp_size * batch_size
     return attention_ops
 
@@ -88,12 +83,10 @@ def get_decoding_qkv_projection_ops_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     qkv_projection_ops = 2 * (
-        hidden_dim * H_q + 2 * (hidden_dim * H_kv)  # Q,O + K,V
+        hidden_dim ** 2 + 2 * (hidden_dim * H_kv)
     ) // tp_size * batch_size * output_len
     return qkv_projection_ops
 
@@ -105,7 +98,6 @@ def get_decoding_attention_ops_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
     # Only in attention does the formula change slightly depending on output len
     # For qkv projection or ffn, output_len is simply multiplied at the end,
@@ -114,12 +106,11 @@ def get_decoding_attention_ops_per_layer(
     # The resulting formula is: 4*(s_in + t)H + 2H^2
     # where t ranges from 1 to output_len, and expanding as a series gives:
     # 4s_in*H*s_out + 4H * s_out(s_out+1)/2 + 2H^2*s_out
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     attention_ops = (
-        4 * input_len * output_len * H_q +
-        2 * H_q * output_len * (output_len + 1) +
-        2 * H_q ** 2 * output_len
+        4 * input_len * output_len * hidden_dim +
+        2 * hidden_dim * output_len * (output_len + 1) +
+        2 * hidden_dim ** 2 * output_len
     )
     attention_ops = attention_ops // tp_size * batch_size
     return attention_ops
@@ -154,13 +145,11 @@ def get_prefill_qkv_projection_memory_access_count_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     qkv_projection_memory_access_count = (
         batch_size * input_len * hidden_dim +  # input
-        (hidden_dim * H_q + 2 * hidden_dim * H_kv) // tp_size  # weights (Q,O + K,V)
+        (hidden_dim ** 2 + 2 * hidden_dim * H_kv) // tp_size  # weights
     )
     return qkv_projection_memory_access_count
 
@@ -171,14 +160,12 @@ def get_prefill_attention_memory_access_count_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     attention_memory_access_count = (
         batch_size * input_len * hidden_dim +  # input
         2 * input_len * H_kv +  # k, v
-        H_q**2 # q
+        hidden_dim**2 # q
     ) // tp_size
     return attention_memory_access_count
 
@@ -219,14 +206,12 @@ def get_decoding_qkv_projection_memory_access_count_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
     # input_len is not needed here because it is always 1
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     qkv_projection_memory_access_count = (
         batch_size * hidden_dim +  # input
-        (hidden_dim * H_q + 2 * hidden_dim * H_kv) // tp_size  # weights (Q,O + K,V)
+        (hidden_dim ** 2 + 2 * hidden_dim * H_kv) // tp_size  # weights
     ) * output_len
     return qkv_projection_memory_access_count
 
@@ -238,7 +223,6 @@ def get_decoding_attention_memory_access_count_per_layer(
     num_kv_cache_head: int,
     tp_size: int,
     batch_size: int,
-    head_dim: int = None,
 ):
     # Only in attention does the formula change slightly depending on output len
     # For qkv projection or ffn, output_len is simply multiplied at the end,
@@ -247,13 +231,12 @@ def get_decoding_attention_memory_access_count_per_layer(
     # The resulting formula is: (BH + 2B(s_in + t)H_kv + H^2)
     # where t ranges from 1 to output_len, and expanding as a series gives:
     # s_out*BH + 2Bs_in*H_kv*s_out + 2BH_kv * s_out(s_out+1)/2 + s_out*H^2
-    H_kv = _h_kv(hidden_dim, num_attention_head, num_kv_cache_head, head_dim)
-    H_q = _h_q(hidden_dim, num_attention_head, head_dim)
+    H_kv = int(hidden_dim * (num_kv_cache_head / num_attention_head))
     attention_memory_access_count = (
         batch_size * hidden_dim * output_len +  # input(BH) is fed output_len times
         2 * batch_size * input_len * H_kv * output_len +  # k, v
         batch_size * H_kv * output_len * (output_len + 1) +  # compounded kv cache
-        H_q**2 * output_len # q
+        hidden_dim**2 * output_len # q
     ) // tp_size
     return attention_memory_access_count
 
@@ -434,7 +417,6 @@ def get_prefill_computation_latency_per_layer(
     batch_size: int,
     intermediate_dim: int,
     dtype: torch.dtype = torch.float16,
-    head_dim: int = None,
 ):
     prefill_qkv_ops = get_prefill_qkv_projection_ops_per_layer(
         input_len=input_len,
@@ -443,15 +425,12 @@ def get_prefill_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     prefill_attention_ops = get_prefill_attention_ops_per_layer(
         input_len=input_len,
         hidden_dim=hidden_dim,
         tp_size=gpu_count,
         batch_size=batch_size,
-        num_attention_head=num_attention_head,
-        head_dim=head_dim,
     )
     prefill_ffn_ops = get_prefill_ffn_ops_per_layer(
         input_len=input_len,
@@ -467,7 +446,6 @@ def get_prefill_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     prefill_attention_memory_access_count = get_prefill_attention_memory_access_count_per_layer(
         input_len=input_len,
@@ -476,7 +454,6 @@ def get_prefill_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     prefill_ffn_memory_access_count = get_prefill_ffn_memory_access_count_per_layer(
         input_len=input_len,
@@ -558,7 +535,6 @@ def get_decoding_computation_latency_per_layer(
     batch_size: int,
     intermediate_dim: int,
     dtype: torch.dtype = torch.float16,
-    head_dim: int = None,
 ):
     qkv_projection_ops_per_layer = get_decoding_qkv_projection_ops_per_layer(
         output_len=output_len,
@@ -567,7 +543,6 @@ def get_decoding_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     attention_ops_per_layer = get_decoding_attention_ops_per_layer(
         input_len=input_len,
@@ -577,7 +552,6 @@ def get_decoding_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     ffn_ops_per_layer = get_decoding_ffn_ops_per_layer(
         output_len=output_len,
@@ -593,7 +567,6 @@ def get_decoding_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     attention_memory_access_count_per_layer = get_decoding_attention_memory_access_count_per_layer(
         input_len=input_len,
@@ -603,7 +576,6 @@ def get_decoding_computation_latency_per_layer(
         num_kv_cache_head=num_kv_cache_head,
         tp_size=gpu_count,
         batch_size=batch_size,
-        head_dim=head_dim,
     )
     ffn_memory_access_count_per_layer = get_decoding_ffn_memory_access_count_per_layer(
         output_len=output_len,
@@ -697,8 +669,7 @@ def get_memory_size_decoder_layer_weight_bytes(
     num_attention_head: int,
     num_key_value_head: int,
     intermediate_dim: int,
-    dtype: torch.dtype = torch.float16,
-    head_dim: int = None,
+    dtype: torch.dtype
 ):
     """
     A single Decoder Layer contains the following weights:
@@ -714,19 +685,17 @@ def get_memory_size_decoder_layer_weight_bytes(
     """
     assert num_attention_head % num_key_value_head == 0, "num_attention_head must be divisible by num_key_value_head"
     num_total_elem = 0
-    eff_head_dim = _effective_head_dim(hidden_dim, num_attention_head, head_dim)
-    H_q = num_attention_head * eff_head_dim
-    kv_cache_dim = num_key_value_head * eff_head_dim
+    kv_cache_dim = hidden_dim // (num_attention_head // num_key_value_head)
 
     # input layer norm
     input_layer_norm_elem = hidden_dim
     num_total_elem += input_layer_norm_elem
 
-    # q, o projection: Q = hidden_dim → H_q, O = H_q → hidden_dim
-    q_o_projection_elem = hidden_dim * H_q * 2
+    # q, o projection
+    q_o_projection_elem = hidden_dim * hidden_dim * 2
     num_total_elem += q_o_projection_elem
 
-    # k, v projection: K = hidden_dim → kv_dim, V = hidden_dim → kv_dim
+    # k, v projection
     k_v_projection_elem = hidden_dim * kv_cache_dim * 2
     num_total_elem += k_v_projection_elem
 
@@ -750,8 +719,7 @@ def get_single_request_latency(
     intermediate_dim: int,
     vocab_size: int,
     node_layer_comb: List[tuple[str, str, int]],
-    dtype: torch.dtype = torch.float16,
-    head_dim: int = None,
+    dtype: torch.dtype = torch.float16
 ):
     batch_size = 1 #for single request
 
@@ -780,8 +748,7 @@ def get_single_request_latency(
             num_kv_cache_head=num_kv_cache_head,
             batch_size=batch_size,
             intermediate_dim=intermediate_dim,
-            dtype=dtype,
-            head_dim=head_dim,
+            dtype=dtype
         ) * layer_count
 
         decoding_computation_latency = get_decoding_computation_latency_per_layer(
@@ -792,7 +759,6 @@ def get_single_request_latency(
             hidden_dim=hidden_dim,
             num_attention_head=num_attention_head,
             num_kv_cache_head=num_kv_cache_head,
-            head_dim=head_dim,
             batch_size=batch_size,
             intermediate_dim=intermediate_dim,
             dtype=dtype
@@ -952,8 +918,7 @@ def get_global_batch_size(
             num_attention_head=num_attention_head,
             num_key_value_head=num_kv_cache_head,
             intermediate_dim=intermediate_dim,
-            dtype=dtype,
-            head_dim=head_dim,
+            dtype=dtype
         ) * layer_count  # Multiply by layer count for this node
         
         # Add embedding weight for first node
@@ -1123,8 +1088,7 @@ def get_throughput(
                 num_kv_cache_head=num_kv_cache_head,
                 intermediate_dim=intermediate_dim,
                 batch_size=max_prefill_batch_size,
-                dtype=dtype,
-                head_dim=head_dim,
+                dtype=dtype
             ) * layer_count
 
             # When reaching the last stage, the logit computation latency should also be included.
@@ -1222,8 +1186,7 @@ def get_throughput(
                     num_kv_cache_head=num_kv_cache_head,
                     intermediate_dim=intermediate_dim,
                     batch_size=tmp_batch_size,
-                    dtype=dtype,
-                    head_dim=head_dim,
+                    dtype=dtype
                 ) * layer_count
 
 
@@ -1316,8 +1279,7 @@ def get_throughput(
                 num_kv_cache_head=num_kv_cache_head,
                 intermediate_dim=intermediate_dim,
                 batch_size=decoding_batch_size,
-                dtype=dtype,
-                head_dim=head_dim,
+                dtype=dtype
             ) * layer_count
 
             tmp_decoding_compute_logit_latency = 0
