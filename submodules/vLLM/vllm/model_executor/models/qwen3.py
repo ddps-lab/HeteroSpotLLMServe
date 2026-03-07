@@ -12,22 +12,6 @@ import torch
 from torch import nn
 from multiprocessing.managers import BaseManager, DictProxy
 
-# Register Qwen3Config with transformers AutoConfig so that
-# config.json with model_type="qwen3" can be loaded without
-# upgrading transformers to 4.51+.
-# Qwen3Config is identical to Qwen2Config except model_type and
-# attention_bias default (False vs True), which is read from
-# config.json anyway.
-try:
-    from transformers import AutoConfig, Qwen2Config
-
-    class Qwen3Config(Qwen2Config):
-        model_type = "qwen3"
-
-    AutoConfig.register("qwen3", Qwen3Config)
-except Exception:
-    pass  # Already registered or transformers version issue
-
 from vllm.attention import Attention, AttentionType
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
