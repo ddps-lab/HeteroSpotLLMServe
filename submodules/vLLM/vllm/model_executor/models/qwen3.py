@@ -101,6 +101,7 @@ class Qwen3Attention(nn.Module):
                  hidden_size: int,
                  num_heads: int,
                  num_kv_heads: int,
+                 head_dim: int = 128,
                  max_position: int = 4096 * 32,
                  rope_theta: float = 1000000,
                  rms_norm_eps: float = 1e-6,
@@ -121,7 +122,8 @@ class Qwen3Attention(nn.Module):
         else:
             assert tp_size % self.total_num_kv_heads == 0
         self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
-        self.head_dim = hidden_size // self.total_num_heads
+        # Qwen3 uses explicit head_dim from config (not hidden_size // num_heads)
+        self.head_dim = head_dim
         self.q_size = self.num_heads * self.head_dim
         self.kv_size = self.num_kv_heads * self.head_dim
         self.scaling = self.head_dim**-0.5
@@ -219,8 +221,9 @@ class Qwen3DecoderLayer(nn.Module):
         self.self_attn = Qwen3Attention(
             hidden_size=self.hidden_size,
             num_heads=config.num_attention_heads,
-            max_position=config.max_position_embeddings,
             num_kv_heads=config.num_key_value_heads,
+            head_dim=getattr(config, "head_dim", self.hidden_size // config.num_attention_heads),
+            max_position=config.max_position_embeddings,
             rope_theta=rope_theta,
             rms_norm_eps=rms_norm_eps,
             cache_config=cache_config,
