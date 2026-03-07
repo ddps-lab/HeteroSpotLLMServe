@@ -291,6 +291,9 @@ async def measure_single_variation(
             "median_ttft_ms": metrics.median_ttft_ms,
             "mean_tpot_ms": metrics.mean_tpot_ms,
             "median_tpot_ms": metrics.median_tpot_ms,
+            "percentiles_ttft_ms": {str(int(p)): v for p, v in metrics.percentiles_ttft_ms} if metrics.percentiles_ttft_ms else {},
+            "percentiles_tpot_ms": {str(int(p)): v for p, v in metrics.percentiles_tpot_ms} if metrics.percentiles_tpot_ms else {},
+            "percentiles_e2el_ms": {str(int(p)): v for p, v in metrics.percentiles_e2el_ms} if metrics.percentiles_e2el_ms else {},
             "completed": metrics.completed,
         }
 
