@@ -264,24 +264,10 @@ def main():
 
     print()
 
-    # ─── Determine batch sizes ───────────────────────────────────────────
-    if args.batch_sizes:
-        batch_sizes = [int(x) for x in args.batch_sizes.split(",")]
-    else:
-        valid_max = [v["max_batch_size"] for v in var_infos if v["max_batch_size"] > 0]
-        if not valid_max:
-            print("ERROR: All configurations result in OOM")
-            return
-        global_max = min(valid_max)
-        batch_sizes = []
-        b = 1
-        while b <= global_max:
-            batch_sizes.append(b)
-            b *= 2
-        if batch_sizes[-1] != global_max:
-            batch_sizes.append(global_max)
+    # ─── Determine batch sizes per variation ─────────────────────────────
+    # Each variation gets its own batch size range based on its max_batch_size.
+    # --batch-sizes overrides all variations with the same list.
 
-    print(f"Batch sizes: {batch_sizes}")
     print()
 
     # ─── Predict and print table ─────────────────────────────────────────
@@ -297,6 +283,27 @@ def main():
         max_bs = vinfo["max_batch_size"]
         label = var["label"]
         var_results = []
+
+        if args.batch_sizes:
+            batch_sizes = [int(x) for x in args.batch_sizes.split(",")]
+        else:
+            if max_bs <= 0:
+                print(f"{label:<16} | {'ALL':>6} | {'OOM':>12} | {'OOM':>12} | {'OOM':>12} | {'OOM':>12}")
+                print("-" * len(header))
+                all_results.append({
+                    "label": label, "tp": var["tp"], "pp": var["pp"],
+                    "stages": [(inst, layers) for inst, layers in stages],
+                    "max_batch_size": 0, "num_blocks": vinfo["num_blocks"],
+                    "batch_results": [],
+                })
+                continue
+            batch_sizes = []
+            b = 1
+            while b <= max_bs:
+                batch_sizes.append(b)
+                b *= 2
+            if batch_sizes[-1] != max_bs:
+                batch_sizes.append(max_bs)
 
         for bs in batch_sizes:
             if max_bs <= 0 or bs > max_bs:
