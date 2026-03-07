@@ -418,7 +418,16 @@ class Qwen3ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
         if is_last_stage(get_pp_group().rank):
             if config.tie_word_embeddings:
-                self.lm_head = self.model.embed_tokens
+                # When tying weights, create ParallelLMHead without weight_tensor
+                # (it will share weights with embed_tokens via tie_weights)
+                self.lm_head = ParallelLMHead(
+                    config.vocab_size,
+                    config.hidden_size,
+                    quant_config=quant_config,
+                    prefix=maybe_prefix(prefix, "lm_head"),
+                )
+                self.lm_head = self.lm_head.tie_weights(
+                    self.model.embed_tokens)
             else:
                 lm_head_tensor_name = "lm_head.weight"
                 self.lm_head = ParallelLMHead(
@@ -428,9 +437,6 @@ class Qwen3ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                     prefix=maybe_prefix(prefix, "lm_head"),
                     weight_tensor=TENSOR_DICT[lm_head_tensor_name]
                 )
-            if config.tie_word_embeddings:
-                self.lm_head = self.lm_head.tie_weights(
-                    self.model.embed_tokens)
         else:
             self.lm_head = PPMissingLayer()
 
