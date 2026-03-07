@@ -877,11 +877,15 @@ def get_global_batch_size(
     node_layer_comb: List[tuple[str, str, int]], # node type, az, containing layer count,
     dtype: torch.dtype = torch.float16,
     block_size: int = 16,
+    head_dim: int = None,
 ):
     global_batch_sizes = []
     cumulative_layers = 0  # Track cumulative layer count
 
-    dim_kv_head = hidden_dim // num_attention_head * num_kv_cache_head
+    # Use explicit head_dim if provided (e.g. Qwen3 where head_dim != hidden_dim // num_heads),
+    # otherwise fall back to hidden_dim // num_attention_head
+    effective_head_dim = head_dim if head_dim is not None else (hidden_dim // num_attention_head)
+    dim_kv_head = effective_head_dim * num_kv_cache_head
 
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
@@ -1002,6 +1006,7 @@ def get_throughput(
     node_layer_comb: List[tuple[str, str, int]], # node type, az, containing layer count,
     dtype: torch.dtype = torch.float16,
     block_size: int = 16,
+    head_dim: int = None,
 ):
     global_batch_size, num_blocks = get_global_batch_size(
         avg_input_len=avg_input_len,
@@ -1017,6 +1022,7 @@ def get_throughput(
         node_layer_comb=node_layer_comb,
         dtype=dtype,
         block_size=block_size,
+        head_dim=head_dim,
     )
     if global_batch_size == 0:
         return OUT_OF_MEMORY, float("inf"), 0 # global_batch_size being 0 means the memory constraint is not satisfied.
