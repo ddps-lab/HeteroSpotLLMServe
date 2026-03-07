@@ -121,6 +121,27 @@ CONFIGS = {
             },
         ],
     },
+    # ─── Test config: 8B on L4×1 (빠른 검증용) ────────────────────────────
+    "8B_L4_test": {
+        "model_name": "meta-llama/Llama-3.1-8B-Instruct",
+        "total_num_layers": 32,
+        "node_ip": lambda: g6_xlarge_node_ip,
+        "instance_type": "g6.xlarge",
+        "gpu_memory_utilization": 0.85,
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "variations": [
+            {
+                "label": "TP=1, PP=1",
+                "tp": 1, "pp": 1,
+                "parallel_strategy": [1],
+                "pp_layer_partition": "32",
+                "num_gpu_blocks": 0,     # ← predict.py 결과로 채울 것
+                "max_batch_size": 0,
+                "batch_sizes": [1, 2, 4, 8],
+            },
+        ],
+    },
 }
 
 
