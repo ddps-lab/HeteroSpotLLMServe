@@ -6,7 +6,7 @@ requests >= 2.26.0
 tqdm
 blake3
 py-cpuinfo
-transformers >= 4.48.2, < 4.49  # Required for Bamba model and Transformers backend. Pinned to avoid TokenizersBackend incompatibility.
+transformers >= 4.51.0, < 4.52  # Qwen3 support requires >= 4.51.0
 tokenizers >= 0.19.1, < 0.22  # Required for Llama 3. Pinned to match transformers constraint.
 protobuf # Required by LlamaTokenizer.
 fastapi[standard] >= 0.115.0 # Required by FastAPI's form models in the OpenAI API server's audio transcriptions endpoint.
