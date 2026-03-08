@@ -64,4 +64,7 @@ INSTANCE_SPEC = {
     "g5.12xlarge(half)": {"gpu_type": "A10G", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
     "g6.12xlarge(half)": {"gpu_type": "L4",   "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
     "g6e.12xlarge(half)": {"gpu_type": "L40S", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+    "(spot)g5.12xlarge(half)": {"gpu_type": "A10G", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6.12xlarge(half)": {"gpu_type": "L4",   "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
+    "(spot)g6e.12xlarge(half)": {"gpu_type": "L40S", "gpu_count": 2, "interconnect": "PCIe Gen4x16"},
 }
