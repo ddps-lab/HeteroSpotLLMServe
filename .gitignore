@@ -17,3 +17,6 @@ TensorStore/models
 submodules/vLLM/vllm.egg-info/
 submodules/vLLM/vllm/_version.py
 submodules/vLLM/vllm/vllm_flash_attn/
+
+# Generated figures from notebooks
+**/results/figures/
