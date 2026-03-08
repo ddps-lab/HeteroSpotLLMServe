@@ -1420,7 +1420,7 @@ def get_throughput(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
     from transformers import AutoConfig
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = "Qwen/Qwen3-32B"
     model_config = AutoConfig.from_pretrained(model_name)
 
     config = {
@@ -1476,7 +1476,7 @@ if __name__ == "__main__":
     # Unit Test : Get Global Batch Size
     
     node_layer_comb = [
-        ("g6.xlarge", "dummy-az", 32),
+        ("g5.12xlarge", "dummy-az", 64),
     ]
 
     global_batch_size = get_global_batch_size(

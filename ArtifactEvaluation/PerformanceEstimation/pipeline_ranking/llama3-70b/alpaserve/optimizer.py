@@ -5,6 +5,7 @@ Run: python3 optimizer.py
 """
 import sys
 import os
+import json
 
 # Add ModelPlacement to path
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -96,19 +97,11 @@ def main():
     ]
 
     total_throughput = 0
+    all_results = []
     for i, (instance_type, num_instances, gpu_util) in enumerate(groups, 1):
         result = run_alpaserve_optimizer(instance_type, num_instances, model_name, model_config, gpu_util)
 
-        print(f"\n{'─' * 60}")
-        print(f"Pipeline {i}: {instance_type} × {num_instances}")
-        print(f"  GPU: {result['gpu_type']} (TP={result['tp_size']})")
-        print(f"  PP={result['pp_size']}, Layer partition: {result['layers_per_stage']}")
-        print(f"  Parallel strategy: {[result['tp_size']] * result['pp_size']}")
-        print(f"  Optimal stage latency: {result['optimal_latency_ms']:.2f} ms")
-        print(f"  Throughput: {result['throughput']:.4f} req/s")
-        print(f"  Single request latency: {result['single_latency_ms']:.2f} ms")
-        print(f"  Num GPU blocks: {result['num_blocks']}")
-
+        gbs = 0
         if result['throughput'] > 0:
             from estimator_utils import get_global_batch_size
             gbs, _ = get_global_batch_size(
@@ -123,12 +116,60 @@ def main():
                 node_layer_comb=[(instance_type, "us-east-1a", l) for l in result['layers_per_stage']],
                 dtype=torch.float16,
             )
+        result['max_batch_size'] = gbs
+        result['gpu_mem_utilization'] = gpu_util
+        all_results.append(result)
+
+        print(f"\n{'─' * 60}")
+        print(f"Pipeline {i}: {instance_type} × {num_instances}")
+        print(f"  GPU: {result['gpu_type']} (TP={result['tp_size']})")
+        print(f"  PP={result['pp_size']}, Layer partition: {result['layers_per_stage']}")
+        print(f"  Parallel strategy: {[result['tp_size']] * result['pp_size']}")
+        print(f"  Optimal stage latency: {result['optimal_latency_ms']:.2f} ms")
+        print(f"  Throughput: {result['throughput']:.4f} req/s")
+        print(f"  Single request latency: {result['single_latency_ms']:.2f} ms")
+        print(f"  Num GPU blocks: {result['num_blocks']}")
+        if gbs > 0:
             print(f"  Max batch size: {gbs}")
 
         total_throughput += max(result['throughput'], 0)
 
     print(f"\n{'=' * 60}")
     print(f"Total system throughput: {total_throughput:.3f} req/s")
+
+    # ─── Save results to JSON ────────────────────────────────────────────
+    output_pipelines = []
+    for i, result in enumerate(all_results, 1):
+        tp_list = [result['tp_size']] * result['pp_size']
+        stages_list = [[result['instance_type'], l] for l in result['layers_per_stage']]
+        output_pipelines.append({
+            "label": f"AP-P{i}",
+            "system": "AlpaServe",
+            "stages": stages_list,
+            "parallel_strategy": tp_list,
+            "pp_layer_partition": ",".join(str(l) for l in result['layers_per_stage']),
+            "gpu_memory_utilization": result['gpu_mem_utilization'],
+            "predicted_throughput_rps": result['throughput'],
+            "predicted_total_latency_ms": result['single_latency_ms'],
+            "optimal_stage_latency_ms": result['optimal_latency_ms'],
+            "max_batch_size": result['max_batch_size'],
+            "num_blocks": result['num_blocks'],
+        })
+
+    output = {
+        "model": model_name,
+        "workload": {"input_len": 763, "output_len": 232},
+        "pipelines": output_pipelines,
+        "total_throughput_rps": total_throughput,
+    }
+
+    results_dir = os.path.join(os.path.dirname(__file__), "..", "results")
+    os.makedirs(results_dir, exist_ok=True)
+    model_short = model_name.split("/")[-1]
+    output_file = os.path.join(results_dir, f"predicted_alpaserve_{model_short}.json")
+    with open(output_file, "w") as f:
+        json.dump(output, f, indent=2)
+    print(f"\nSaved to {output_file}")
 
 
 if __name__ == "__main__":

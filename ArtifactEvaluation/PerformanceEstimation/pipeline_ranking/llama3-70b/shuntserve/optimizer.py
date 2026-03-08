@@ -6,6 +6,7 @@ Run: python3 optimizer.py
 import sys
 import os
 import copy
+import json
 import logging
 
 # Add ModelPlacement to path
@@ -153,6 +154,42 @@ def main():
     unused = {k: v for k, v in remaining_nodes.items() if v > 0}
     if unused:
         print(f"Unused resources: {unused}")
+
+    # ─── Save results to JSON ────────────────────────────────────────────
+    output_pipelines = []
+    for i, pipeline in enumerate(all_pipelines, 1):
+        tp_list = [INSTANCE_SPEC[inst]['gpu_count'] for inst in pipeline.stages]
+        stages_list = [[inst, int(layers)] for inst, layers in zip(pipeline.stages, pipeline.layer_per_stage)]
+        output_pipelines.append({
+            "label": f"SS-P{i}",
+            "system": "ShuntServe",
+            "stages": stages_list,
+            "parallel_strategy": tp_list,
+            "pp_layer_partition": ",".join(str(int(l)) for l in pipeline.layer_per_stage),
+            "gpu_memory_utilization": config["gpu_mem_utilization"],
+            "predicted_throughput_rps": pipeline.throughput,
+            "predicted_total_latency_ms": pipeline.latency_per_global_batch,
+            "max_batch_size": pipeline.global_batch_size,
+            "num_blocks": pipeline.num_blocks,
+        })
+
+    output = {
+        "model": model_name,
+        "workload": {
+            "input_len": config["expected_input_len"],
+            "output_len": config["expected_output_len"],
+        },
+        "pipelines": output_pipelines,
+        "total_throughput_rps": total_throughput,
+    }
+
+    results_dir = os.path.join(os.path.dirname(__file__), "..", "results")
+    os.makedirs(results_dir, exist_ok=True)
+    model_short = model_name.split("/")[-1]
+    output_file = os.path.join(results_dir, f"predicted_shuntserve_{model_short}.json")
+    with open(output_file, "w") as f:
+        json.dump(output, f, indent=2)
+    print(f"\nSaved to {output_file}")
 
 
 if __name__ == "__main__":

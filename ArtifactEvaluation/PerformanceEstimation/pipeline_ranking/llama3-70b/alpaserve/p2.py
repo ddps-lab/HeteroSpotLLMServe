@@ -1,14 +1,13 @@
 """
-AlpaServe Pipeline 2: g5.12xlarge×2
-PP=2 (41,39), TP=[4,4]
-Synthetic fixed-length requests (input=763, output=232)
+AlpaServe Pipeline 2
+Config loaded from optimizer results (predicted_alpaserve_*.json)
 """
 import asyncio
 import concurrent.futures
+import json
 import logging
 import sys
 import os
-from typing import Dict, List, Tuple
 
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
@@ -23,8 +22,24 @@ from save_results import save_benchmark_results
 
 from nodes import *
 
+# ─── Load config from optimizer results ──────────────────────────────
+PIPELINE_INDEX = 1  # AP-P2
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
+PREDICTED_FILE = [f for f in os.listdir(RESULTS_DIR) if f.startswith("predicted_alpaserve_")][0]
+with open(os.path.join(RESULTS_DIR, PREDICTED_FILE)) as f:
+    _data = json.load(f)
+_pipeline = _data["pipelines"][PIPELINE_INDEX]
+
+STAGE_LAYER_COUNT_IDX = 1
+
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results", "alpaserve_p2.json")
+OUTPUT_PATH = os.path.join(RESULTS_DIR, "alpaserve_p2.json")
+
+# ─── Node assignment (manual) ────────────────────────────────────────
+NODE_LAYER_MAPPING = [
+    (g5_12xlarge_node_ip_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),
+    (g5_12xlarge_node_ip_2, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),
+]
 
 
 async def test_benchmark():
@@ -38,7 +53,23 @@ async def test_benchmark():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.propagate = False
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+
+    model_name = _data["model"]
+
+    print("=" * 70)
+    print(f"AlpaServe Pipeline 2 — Config loaded from {PREDICTED_FILE}")
+    print(f"  Model: {model_name}")
+    print(f"  Label: {_pipeline['label']}")
+    print(f"  Stages: {_pipeline['stages']}")
+    print(f"  PP layer partition: {_pipeline['pp_layer_partition']}")
+    print(f"  Parallel strategy: {_pipeline['parallel_strategy']}")
+    print(f"  Predicted throughput: {_pipeline['predicted_throughput_rps']:.3f} req/s")
+    print(f"  Max batch size: {_pipeline['max_batch_size']}")
+    print(f"  Num GPU blocks: {_pipeline['num_blocks']}")
+    print(f"  Node mapping:")
+    for ip, layers in NODE_LAYER_MAPPING:
+        print(f"    {ip or '(empty)'} → {layers} layers")
+    print("=" * 70)
 
     global_server = GlobalServer()
 
@@ -53,26 +84,23 @@ async def test_benchmark():
 
     config = {
         "model_name": model_name,
-        "total_num_layers": 80,
-        "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "41,39",
-        "parallel_strategy": [4,4],
+        "total_num_layers": sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in _pipeline["stages"]),
+        "gpu_memory_utilization": _pipeline.get("gpu_memory_utilization", 0.85),
+        "pp_layer_partition": _pipeline["pp_layer_partition"],
+        "parallel_strategy": _pipeline["parallel_strategy"],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
         "max_num_seqs": 512,
         "model_source": "s3",
         "s3_path": f"s3://{S3_BUCKET}/{model_name}",
-        "num_gpu_blocks": 1181,
-        "max_batch_size": 19,
+        "num_gpu_blocks": _pipeline["num_blocks"],
+        "max_batch_size": int(_pipeline["max_batch_size"]),
     }
-    node_layer_mapping = [
-        (g5_12xlarge_node_ip_1, 41),
-        (g5_12xlarge_node_ip_2, 39),
-    ]
-    estimated_throughput = 0.95
+    estimated_throughput = _pipeline["predicted_throughput_rps"]
+    max_batch_size = int(_pipeline["max_batch_size"])
 
     pipeline_task = asyncio.create_task(
-        create_pipeline_async(config, node_layer_mapping, estimated_throughput)
+        create_pipeline_async(config, NODE_LAYER_MAPPING, estimated_throughput)
     )
     server_task = asyncio.create_task(global_server.run_global_server())
 
@@ -83,27 +111,28 @@ async def test_benchmark():
 
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=190,  # max_batch_size(19) × 10
-            input_len=763,
-            output_len=232,
+            num_requests=max_batch_size * 10,
+            input_len=_data["workload"]["input_len"],
+            output_len=_data["workload"]["output_len"],
             request_rate=float('inf'),
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
             run_initial_test=True,
-            test_requests_per_pipeline=0,
+            test_requests_per_pipeline=2,
         )
 
         print_benchmark_results(metrics)
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
             "system": "AlpaServe",
-            "pipeline": "P2",
-            "pp_layer_partition": "41,39",
-            "parallel_strategy": [4,4],
-            "instances": ["g5.12xlarge×2"],
-            "input_len": 763,
-            "output_len": 232,
-            "num_requests": 190,
+            "pipeline": f"P{PIPELINE_INDEX + 1}",
+            "pp_layer_partition": _pipeline["pp_layer_partition"],
+            "parallel_strategy": _pipeline["parallel_strategy"],
+            "stages": _pipeline["stages"],
+            "input_len": _data["workload"]["input_len"],
+            "output_len": _data["workload"]["output_len"],
+            "num_requests": max_batch_size * 10,
+            "predicted_throughput_rps": estimated_throughput,
         })
 
     except KeyboardInterrupt:

@@ -1,0 +1,83 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "pipelines": [
+    {
+      "label": "SS-P1",
+      "system": "ShuntServe",
+      "stages": [
+        [
+          "(spot)g6.12xlarge",
+          20
+        ],
+        [
+          "(spot)g6.12xlarge",
+          21
+        ],
+        [
+          "(spot)g6.12xlarge",
+          21
+        ],
+        [
+          "(spot)g6e.xlarge",
+          10
+        ],
+        [
+          "(spot)g6e.xlarge",
+          8
+        ]
+      ],
+      "parallel_strategy": [
+        4,
+        4,
+        4,
+        1,
+        1
+      ],
+      "pp_layer_partition": "20,21,21,10,8",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 4.09606987878251,
+      "predicted_total_latency_ms": 112791.04450662399,
+      "max_batch_size": 461,
+      "num_blocks": 28730
+    },
+    {
+      "label": "SS-P2",
+      "system": "ShuntServe",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          13
+        ],
+        [
+          "(spot)g5.12xlarge",
+          27
+        ],
+        [
+          "(spot)g5.12xlarge",
+          28
+        ],
+        [
+          "(spot)g6e.xlarge",
+          12
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        4,
+        4,
+        1
+      ],
+      "pp_layer_partition": "13,27,28,12",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 2.898168045946107,
+      "predicted_total_latency_ms": 83501.02415162027,
+      "max_batch_size": 241,
+      "num_blocks": 15049
+    }
+  ],
+  "total_throughput_rps": 6.994237924728617
+}
