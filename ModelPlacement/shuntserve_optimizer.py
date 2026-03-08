@@ -64,8 +64,7 @@ class Pipeline:
             intermediate_dim=config["intermediate_size"],
             gpu_mem_utilization=config["gpu_mem_utilization"],
             node_layer_comb=node_layer_comb,
-            dtype=config["dtype"],
-            head_dim=config.get("head_dim"),
+            dtype=config["dtype"]
         )
 
         self.throughput = throughput
