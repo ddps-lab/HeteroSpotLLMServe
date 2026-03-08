@@ -1,0 +1,110 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "pipelines": [
+    {
+      "label": "SS-P1",
+      "system": "ShuntServe",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          16
+        ],
+        [
+          "(spot)g6e.xlarge",
+          16
+        ],
+        [
+          "(spot)g6e.xlarge",
+          16
+        ],
+        [
+          "(spot)g6e.xlarge",
+          16
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "16,16,16,16",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 12.882689421259741,
+      "predicted_total_latency_ms": 40674.7366846604,
+      "max_batch_size": 523,
+      "num_blocks": 32586
+    },
+    {
+      "label": "SS-P2",
+      "system": "ShuntServe",
+      "stages": [
+        [
+          "(spot)g6.12xlarge",
+          24
+        ],
+        [
+          "(spot)g6.12xlarge",
+          24
+        ],
+        [
+          "(spot)g6.12xlarge",
+          16
+        ]
+      ],
+      "parallel_strategy": [
+        4,
+        4,
+        4
+      ],
+      "pp_layer_partition": "24,24,16",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 7.675969152223889,
+      "predicted_total_latency_ms": 111516.86295560462,
+      "max_batch_size": 855,
+      "num_blocks": 53232
+    },
+    {
+      "label": "SS-P3",
+      "system": "ShuntServe",
+      "stages": [
+        [
+          "(spot)g5.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 2.2445802431303843,
+      "predicted_total_latency_ms": 39651.06628394667,
+      "max_batch_size": 88,
+      "num_blocks": 5534
+    },
+    {
+      "label": "SS-P4",
+      "system": "ShuntServe",
+      "stages": [
+        [
+          "(spot)g5.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 2.2445802431303843,
+      "predicted_total_latency_ms": 39651.06628394667,
+      "max_batch_size": 88,
+      "num_blocks": 5534
+    }
+  ]
+}
