@@ -1,0 +1,162 @@
+"""
+Example Pipeline — Llama-3.2-3B on 1× g6.xlarge (single L4 GPU)
+
+Unit test: verifies logging, benchmark metrics, and JSON result output
+without running the optimizer. Small model fits entirely on one GPU.
+"""
+import asyncio
+import concurrent.futures
+import json
+import logging
+import sys
+import os
+
+_d = os.path.dirname(os.path.abspath(__file__))
+while not os.path.exists(os.path.join(_d, ".git")):
+    _d = os.path.dirname(_d)
+sys.path.insert(0, os.path.join(_d, "GlobalServer"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+del _d
+
+from global_server import GlobalServer
+from benchmark_utils import print_benchmark_results, run_latency_benchmark
+from save_results import save_benchmark_results
+
+from nodes import *
+
+# ─── Manual config (no optimizer) ────────────────────────────────────
+MODEL_NAME = "meta-llama/Llama-3.2-3B"
+TOTAL_LAYERS = 28
+INPUT_LEN = 512
+OUTPUT_LEN = 64
+NUM_REQUESTS = 20
+S3_BUCKET = "hetero-spot-llm-serve-models"
+
+RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
+OUTPUT_PATH = os.path.join(RESULTS_DIR, "example_Llama-3.2-3B.json")
+
+# Single GPU — all layers on one node
+NODE_LAYER_MAPPING = [
+    (g6_xlarge_node_ip_1, TOTAL_LAYERS),  # g6.xlarge: 1× L4 GPU
+]
+
+
+async def test_benchmark():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s',
+                                  datefmt='%Y-%m-%d %H:%M:%S')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.propagate = False
+
+    print("=" * 70)
+    print(f"Example Pipeline — Unit Test")
+    print(f"  Model: {MODEL_NAME}")
+    print(f"  Layers: {TOTAL_LAYERS}")
+    print(f"  Instance: g6.xlarge (1× L4 GPU)")
+    print(f"  Input/Output: {INPUT_LEN}/{OUTPUT_LEN} tokens")
+    print(f"  Requests: {NUM_REQUESTS}")
+    print(f"  Output: {OUTPUT_PATH}")
+    print("=" * 70)
+
+    global_server = GlobalServer()
+
+    async def create_pipeline_async(config, node_layer_mapping, throughput):
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            await loop.run_in_executor(
+                executor, global_server.create_pipeline,
+                node_layer_mapping, config, throughput
+            )
+        logger.info("Pipeline creation completed")
+
+    # Estimator results for g6.xlarge (1× L4, 22494 MB):
+    #   max_batch_size = 176, num_blocks = 6336
+    #   throughput = 20.22 req/s, latency = 8702.86 ms
+    MAX_BATCH_SIZE = 176
+    NUM_GPU_BLOCKS = 6336
+
+    config = {
+        "model_name": MODEL_NAME,
+        "total_num_layers": TOTAL_LAYERS,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": [TOTAL_LAYERS],
+        "parallel_strategy": [1],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": f"s3://{S3_BUCKET}/{MODEL_NAME}",
+        "num_gpu_blocks": NUM_GPU_BLOCKS,
+        "max_batch_size": MAX_BATCH_SIZE,
+    }
+    estimated_throughput = 20.22
+
+    pipeline_task = asyncio.create_task(
+        create_pipeline_async(config, NODE_LAYER_MAPPING, estimated_throughput)
+    )
+    server_task = asyncio.create_task(global_server.run_global_server())
+
+    try:
+        logger.info("Waiting for pipeline creation to complete...")
+        await pipeline_task
+        logger.info("Pipeline is ready!")
+
+        metrics = await run_latency_benchmark(
+            global_server=global_server,
+            num_requests=NUM_REQUESTS,
+            input_len=INPUT_LEN,
+            output_len=OUTPUT_LEN,
+            request_rate=float('inf'),
+            model_name=MODEL_NAME,
+            max_concurrency=MAX_BATCH_SIZE,
+            percentiles=[10, 25, 50, 75, 90, 99],
+            disable_tqdm=False,
+            run_initial_test=True,
+            test_requests_per_pipeline=2,
+        )
+
+        print_benchmark_results(metrics)
+        save_benchmark_results(metrics, OUTPUT_PATH, extra={
+            "system": "example",
+            "model": MODEL_NAME,
+            "total_layers": TOTAL_LAYERS,
+            "instance_type": "g6.xlarge",
+            "num_gpus": 1,
+            "pp_layer_partition": [TOTAL_LAYERS],
+            "parallel_strategy": [1],
+            "input_len": INPUT_LEN,
+            "output_len": OUTPUT_LEN,
+            "num_requests": NUM_REQUESTS,
+            "max_batch_size": MAX_BATCH_SIZE,
+            "num_gpu_blocks": NUM_GPU_BLOCKS,
+            "estimated_throughput_rps": estimated_throughput,
+        })
+
+    except KeyboardInterrupt:
+        logger.info("\nBenchmark interrupted by user")
+    except Exception as e:
+        logger.error(f"Benchmark failed: {e}")
+        raise
+    finally:
+        logger.info("Cleaning up...")
+        server_task.cancel()
+        pipeline_task.cancel()
+        try:
+            await asyncio.gather(server_task, return_exceptions=True)
+        except:
+            pass
+        logger.info("Stopping pipelines...")
+        try:
+            global_server.cluster.stop_all_pipelines()
+            logger.info("All pipelines stopped")
+        except Exception as e:
+            logger.error(f"Error stopping pipelines: {e}")
+
+
+if __name__ == "__main__":
+    asyncio.run(test_benchmark())
