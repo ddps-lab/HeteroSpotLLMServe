@@ -29,8 +29,14 @@ MODEL_NAME = "Qwen/Qwen3-4B"
 TOTAL_LAYERS = 36
 INPUT_LEN = 512
 OUTPUT_LEN = 64
-NUM_REQUESTS = 20
 S3_BUCKET = "hetero-spot-llm-serve-models"
+
+# Estimator results for g6.xlarge (1× L4, 22494 MB):
+#   max_batch_size = 117, num_blocks = 4212
+#   throughput = 14.20 req/s, latency = 8239.63 ms
+MAX_BATCH_SIZE = 117
+NUM_GPU_BLOCKS = 4212
+NUM_REQUESTS = MAX_BATCH_SIZE * 10
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 OUTPUT_PATH = os.path.join(RESULTS_DIR, "example_Qwen3-4B.json")
@@ -74,17 +80,11 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
-    # Estimator results for g6.xlarge (1× L4, 22494 MB):
-    #   max_batch_size = 117, num_blocks = 4212
-    #   throughput = 14.20 req/s, latency = 8239.63 ms
-    MAX_BATCH_SIZE = 117
-    NUM_GPU_BLOCKS = 4212
-
     config = {
         "model_name": MODEL_NAME,
         "total_num_layers": TOTAL_LAYERS,
         "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": [TOTAL_LAYERS],
+        "pp_layer_partition": str(TOTAL_LAYERS),
         "parallel_strategy": [1],
         "max_model_len": 8192,
         "max_num_batched_tokens": 8192,
