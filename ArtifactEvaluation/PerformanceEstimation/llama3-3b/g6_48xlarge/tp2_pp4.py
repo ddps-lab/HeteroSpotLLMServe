@@ -23,6 +23,12 @@ del _d
 from global_server import GlobalServer
 from benchmark_utils import print_benchmark_results, run_latency_benchmark
 
+# ─── Node IP (from shared nodes.py) ──────────────────────────────────
+_pe_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _pe_dir)
+from nodes import get_node_ip
+NODE_IP = get_node_ip("g6.48xlarge")
+
 # ─── Load estimation config ──────────────────────────────────────────
 EST_FILE = os.path.join(os.path.dirname(__file__), "..", "results", "data", "estimated",
                         "est_g6_48xlarge_tp2_pp4.json")
@@ -47,11 +53,7 @@ while bs < MAX_BATCH_SIZE:
     bs *= 2
 SWEEP_BATCH_SIZES.append(MAX_BATCH_SIZE)
 
-# ─── Node assignment (manual) ────────────────────────────────────────
-# Fill in the IP address of the g6.48xlarge node.
-# All 8 GPUs are on a single physical node.
-NODE_IP = ""  # ← Set this to the node IP
-
+# ─── Node layer mapping ──────────────────────────────────────────────
 NODE_LAYER_MAPPING = [
     # stage[0]: 7 layers (TP=2)
     (NODE_IP, 7),
@@ -116,10 +118,6 @@ async def test_benchmark():
     print(f"  Estimated throughput: {EST['estimated_throughput_rps']:.4f} req/s")
     print(f"  Batch sizes: {SWEEP_BATCH_SIZES}")
     print("=" * 70)
-
-    if not NODE_IP:
-        logger.error("NODE_IP is not set! Edit this file and set the node IP address.")
-        return
 
     global_server = GlobalServer()
 
