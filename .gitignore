@@ -20,5 +20,9 @@ submodules/vLLM/vllm/vllm_flash_attn/
 
 # Generated figures from notebooks
 **/results/figures/
+
+# PerformanceEstimation: generated estimation JSONs and benchmark p files
+# Regenerate with: estimate.py and generate_p_files.py
+ArtifactEvaluation/PerformanceEstimation/*/in*-out*/
 ./ArtifactEvaluation/Datasets/*.png
 ./ArtifactEvaluation/Datasets/*.pdf
