@@ -1,0 +1,62 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "instance_type": "g5.48xlarge",
+  "gpu_type": "A10G",
+  "gpu_count": 8,
+  "tp_size": 2,
+  "pp_size": 4,
+  "strategy_label": "tp2_pp4",
+  "parallel_strategy": [
+    2,
+    2,
+    2,
+    2
+  ],
+  "pp_layer_partition": [
+    20,
+    20,
+    20,
+    20
+  ],
+  "pp_layer_partition_str": "20,20,20,20",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232,
+    "max_model_len": 8192
+  },
+  "max_batch_size": 11,
+  "num_blocks": 684,
+  "estimated_throughput_rps": 0.3513109635782837,
+  "estimated_batch_latency_ms": 31311.291534882133,
+  "estimated_single_latency_ms": 28605.457380386135,
+  "gpu_memory_utilization": 0.85,
+  "batch_sweep": [
+    {
+      "batch_size": 1,
+      "throughput_rps": 0.13669070310149897,
+      "batch_latency_ms": 7315.7864968874665
+    },
+    {
+      "batch_size": 2,
+      "throughput_rps": 0.13669070310149897,
+      "batch_latency_ms": 14631.572993774933
+    },
+    {
+      "batch_size": 4,
+      "throughput_rps": 0.13669070310149897,
+      "batch_latency_ms": 29263.145987549866
+    },
+    {
+      "batch_size": 8,
+      "throughput_rps": 0.26286809242098824,
+      "batch_latency_ms": 30433.51487173973
+    },
+    {
+      "batch_size": 11,
+      "throughput_rps": 0.3513109635782837,
+      "batch_latency_ms": 31311.291534882133
+    }
+  ],
+  "feasible": true
+}

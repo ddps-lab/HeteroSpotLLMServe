@@ -1,0 +1,87 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "instance_type": "g6e.48xlarge",
+  "gpu_type": "L40S",
+  "gpu_count": 8,
+  "tp_size": 2,
+  "pp_size": 4,
+  "strategy_label": "tp2_pp4",
+  "parallel_strategy": [
+    2,
+    2,
+    2,
+    2
+  ],
+  "pp_layer_partition": [
+    20,
+    20,
+    20,
+    20
+  ],
+  "pp_layer_partition_str": "20,20,20,20",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232,
+    "max_model_len": 8192
+  },
+  "max_batch_size": 481,
+  "num_blocks": 29912,
+  "estimated_throughput_rps": 5.998905971700939,
+  "estimated_batch_latency_ms": 80181.28676612955,
+  "estimated_single_latency_ms": 19755.861138631168,
+  "gpu_memory_utilization": 0.85,
+  "batch_sweep": [
+    {
+      "batch_size": 1,
+      "throughput_rps": 0.1998658371989788,
+      "batch_latency_ms": 5003.356321492994
+    },
+    {
+      "batch_size": 2,
+      "throughput_rps": 0.1998658371989788,
+      "batch_latency_ms": 10006.712642985987
+    },
+    {
+      "batch_size": 4,
+      "throughput_rps": 0.1998658371989788,
+      "batch_latency_ms": 20013.425285971975
+    },
+    {
+      "batch_size": 8,
+      "throughput_rps": 0.38990197583769554,
+      "batch_latency_ms": 20517.977583499498
+    },
+    {
+      "batch_size": 16,
+      "throughput_rps": 0.7432498221212407,
+      "batch_latency_ms": 21527.082178554552
+    },
+    {
+      "batch_size": 32,
+      "throughput_rps": 1.3590827779089334,
+      "batch_latency_ms": 23545.29136866466
+    },
+    {
+      "batch_size": 64,
+      "throughput_rps": 2.320378271785255,
+      "batch_latency_ms": 27581.709748884874
+    },
+    {
+      "batch_size": 128,
+      "throughput_rps": 3.5900049932347926,
+      "batch_latency_ms": 35654.54650932531
+    },
+    {
+      "batch_size": 256,
+      "throughput_rps": 4.942063949742283,
+      "batch_latency_ms": 51800.22003020616
+    },
+    {
+      "batch_size": 481,
+      "throughput_rps": 5.998905971700939,
+      "batch_latency_ms": 80181.28676612955
+    }
+  ],
+  "feasible": true
+}

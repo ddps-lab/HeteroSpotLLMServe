@@ -752,6 +752,7 @@ def get_single_request_latency(
     node_layer_comb: List[tuple[str, str, int]],
     dtype: torch.dtype = torch.float16,
     head_dim: int = None,
+    tp_sizes: List[int] = None,
 ):
     batch_size = 1 #for single request
 
@@ -767,7 +768,7 @@ def get_single_request_latency(
 
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
-        num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
+        num_gpu = tp_sizes[i] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
         p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
         processed_layers += layer_count
 
@@ -927,6 +928,7 @@ def get_global_batch_size(
     dtype: torch.dtype = torch.float16,
     block_size: int = 16,
     head_dim: int = None,
+    tp_sizes: List[int] = None,
 ):
     global_batch_sizes = []
     cumulative_layers = 0  # Track cumulative layer count
@@ -938,7 +940,7 @@ def get_global_batch_size(
 
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
-        num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
+        num_gpu = tp_sizes[i] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
         GPU_SPEC_info = GPU_SPEC[gpu_type]
         memory_size_per_gpu= GPU_SPEC_info["memory_size"] * 10**6 # MB to Bytes
 
@@ -1057,23 +1059,29 @@ def get_throughput(
     dtype: torch.dtype = torch.float16,
     block_size: int = 16,
     head_dim: int = None,
+    tp_sizes: List[int] = None,
+    batch_override: tuple = None,  # Optional (global_batch_size, num_blocks) to skip estimation
 ):
-    global_batch_size, num_blocks = get_global_batch_size(
-        avg_input_len=avg_input_len,
-        avg_output_len=avg_output_len,
-        max_model_len=max_model_len,
-        hidden_dim=hidden_dim,
-        num_attention_head=num_attention_head,
-        num_kv_cache_head=num_kv_cache_head,
-        total_num_layers=total_num_layers,
-        vocab_size=vocab_size,
-        intermediate_dim=intermediate_dim,
-        gpu_mem_utilization=gpu_mem_utilization,
-        node_layer_comb=node_layer_comb,
-        dtype=dtype,
-        block_size=block_size,
-        head_dim=head_dim,
-    )
+    if batch_override is not None:
+        global_batch_size, num_blocks = batch_override
+    else:
+        global_batch_size, num_blocks = get_global_batch_size(
+            avg_input_len=avg_input_len,
+            avg_output_len=avg_output_len,
+            max_model_len=max_model_len,
+            hidden_dim=hidden_dim,
+            num_attention_head=num_attention_head,
+            num_kv_cache_head=num_kv_cache_head,
+            total_num_layers=total_num_layers,
+            vocab_size=vocab_size,
+            intermediate_dim=intermediate_dim,
+            gpu_mem_utilization=gpu_mem_utilization,
+            node_layer_comb=node_layer_comb,
+            dtype=dtype,
+            block_size=block_size,
+            head_dim=head_dim,
+            tp_sizes=tp_sizes,
+        )
     if global_batch_size == 0:
         return OUT_OF_MEMORY, float("inf"), 0 # global_batch_size being 0 means the memory constraint is not satisfied.
 
@@ -1088,7 +1096,7 @@ def get_throughput(
     
     for stage, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
-        num_gpu = INSTANCE_SPEC[node_type]["gpu_count"]
+        num_gpu = tp_sizes[stage] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
         p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
 
         processed_layers += layer_count
