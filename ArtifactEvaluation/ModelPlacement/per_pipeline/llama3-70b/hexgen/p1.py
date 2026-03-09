@@ -118,6 +118,7 @@ async def test_benchmark():
         "s3_path": f"s3://{S3_BUCKET}/{model_name}",
         "num_gpu_blocks": _pipeline["num_blocks"],
         "max_batch_size": int(_pipeline["max_batch_size"]),
+        "mode": "hexgen",
     }
     estimated_throughput = _pipeline["predicted_throughput_rps"]
     max_batch_size = int(_pipeline["max_batch_size"])
