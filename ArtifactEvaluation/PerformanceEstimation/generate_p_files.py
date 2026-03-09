@@ -41,7 +41,8 @@ from global_server import GlobalServer
 from benchmark_utils import print_benchmark_results, run_latency_benchmark
 
 # ─── Node IP (from shared nodes.py) ──────────────────────────────────
-_pe_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# p file path: {{model}}/{{workload}}/{{instance}}/{{strategy}}.py → 4 levels up = PerformanceEstimation/
+_pe_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, _pe_dir)
 from nodes import get_node_ip
 NODE_IP = get_node_ip("{instance_type}")
@@ -78,7 +79,7 @@ NODE_LAYER_MAPPING = [
 
 def extract_metrics(metrics, batch_size):
     """Extract key metrics from a benchmark run."""
-    return {{
+    result = {{
         "batch_size": batch_size,
         "completed": metrics.completed,
         "total_input": metrics.total_input,
@@ -96,6 +97,12 @@ def extract_metrics(metrics, batch_size):
         "median_e2el_ms": metrics.median_e2el_ms,
         "benchmark_duration": metrics.benchmark_duration,
     }}
+    for attr in ["percentiles_ttft_ms", "percentiles_tpot_ms",
+                 "percentiles_itl_ms", "percentiles_e2el_ms"]:
+        val = getattr(metrics, attr, None)
+        if val:
+            result[attr] = {{str(int(p)): v for p, v in val}}
+    return result
 
 
 def save_results(all_results, output_path, meta):
@@ -252,16 +259,38 @@ if __name__ == "__main__":
 '''
 
 
+def workload_dirname(workload: dict) -> str:
+    """Generate directory name from workload config: in763-out232"""
+    return f"in{workload['input_len']}-out{workload['output_len']}"
+
+
 def generate_for_model(model_key: str):
-    results_dir = os.path.join(BASE_DIR, model_key, "results", "data", "estimated")
+    # Discover all workload directories under the model
+    model_dir = os.path.join(BASE_DIR, model_key)
+    wl_dirs = sorted([
+        d for d in os.listdir(model_dir)
+        if d.startswith("in") and "-out" in d
+           and os.path.isdir(os.path.join(model_dir, d, "results", "data", "estimated"))
+    ]) if os.path.isdir(model_dir) else []
+
+    if not wl_dirs:
+        print(f"  No workload directories for {model_key}. Run estimate.py first.")
+        return
+
+    for wl_dir in wl_dirs:
+        _generate_for_workload(model_key, wl_dir)
+
+
+def _generate_for_workload(model_key: str, wl_dir: str):
+    results_dir = os.path.join(BASE_DIR, model_key, wl_dir, "results", "data", "estimated")
     est_files = sorted(glob.glob(os.path.join(results_dir, "est_*.json")))
 
     if not est_files:
-        print(f"  No estimation results for {model_key}. Run estimate.py first.")
+        print(f"  No estimation results for {model_key}/{wl_dir}. Run estimate.py first.")
         return
 
     print(f"\n{'='*60}")
-    print(f"  Generating p files for {model_key}")
+    print(f"  Generating p files for {model_key}/{wl_dir}")
     print(f"{'='*60}")
 
     for est_file in est_files:
@@ -296,12 +325,12 @@ def generate_for_model(model_key: str):
             node_mapping_block=node_mapping_block,
         )
 
-        out_dir = os.path.join(BASE_DIR, model_key, instance_dir)
+        out_dir = os.path.join(BASE_DIR, model_key, wl_dir, instance_dir)
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{strategy_label}.py")
         with open(out_path, "w") as f:
             f.write(content)
-        print(f"  [created] {model_key}/{instance_dir}/{strategy_label}.py")
+        print(f"  [created] {model_key}/{wl_dir}/{instance_dir}/{strategy_label}.py")
 
 
 def main():
@@ -312,7 +341,12 @@ def main():
 
     model_dirs = [args.model] if args.model else [
         d for d in os.listdir(BASE_DIR)
-        if os.path.isdir(os.path.join(BASE_DIR, d, "results"))
+        if os.path.isdir(os.path.join(BASE_DIR, d))
+        and any(
+            wd.startswith("in") and "-out" in wd
+            for wd in os.listdir(os.path.join(BASE_DIR, d))
+            if os.path.isdir(os.path.join(BASE_DIR, d, wd))
+        )
     ]
 
     for model_key in sorted(model_dirs):
