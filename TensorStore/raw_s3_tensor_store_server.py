@@ -986,7 +986,15 @@ def main():
     
     # Allocate KV cache after model loading
     logging.info("[KV Cache Allocation Phase Started]")
-    # num_gpu_blocks, num_cpu_blocks = determine_num_available_blocks(config_dict)
+
+    # Ensure CACHE_DTYPE is set before allocating KV cache.
+    # determine_num_available_blocks() sets this internally, but the
+    # gpu_num_blocks override path skips that call entirely.
+    global CACHE_DTYPE
+    if CACHE_DTYPE is None:
+        CACHE_DTYPE = DTYPE
+        logging.info(f"[Cache Dtype] Set CACHE_DTYPE to {CACHE_DTYPE} from model weights")
+
     if args.gpu_num_blocks is not None:
         logging.info(f"[GPU Blocks Override] Overriding calculated num_gpu_blocks with provided value: {args.gpu_num_blocks}")
         num_gpu_blocks = args.gpu_num_blocks
