@@ -14,7 +14,7 @@ Each module has its own README with detailed documentation.
 | **Shared Tensor Store** | [`TensorStore/`](TensorStore/) | Downloads model weights from HuggingFace, partitions them for tensor parallelism, serializes in a custom binary format (TRAW), uploads to S3, and serves pre-partitioned weights directly to GPU memory. See [TensorStore/README.md](TensorStore/README.md). |
 | **API Server** | [`InferenceServer/`](InferenceServer/) | FastAPI-based OpenAI-compatible serving endpoint that wraps the vLLM engine. Each pipeline instance runs its own API server. |
 | **Infrastructure as Code** | [`IaC/`](IaC/) | Terraform configuration for provisioning the evaluation cluster on AWS (VPC, security groups, IAM, EC2 GPU instances). See [IaC/README.md](IaC/README.md). |
-| **Artifact Evaluation** | [`ArtifactEvaluation/`](ArtifactEvaluation/) | End-to-end scripts for reproducing the paper's experiments (Figures 7–11), including offline/online throughput and spot interruption scenarios. See [ArtifactEvaluation/README.md](ArtifactEvaluation/README.md). |
+| **Artifact Evaluation** | [`ArtifactEvaluation/`](ArtifactEvaluation/) | End-to-end scripts for reproducing experiments, including offline/online throughput, per-pipeline ranking, and spot interruption scenarios. See [ArtifactEvaluation/README.md](ArtifactEvaluation/README.md). |
 
 ### Directory Structure
 
@@ -29,15 +29,16 @@ ShuntServe/
 │   └── ...
 ├── ModelPlacement/                      # Serving Performance Estimator + Model Placement Optimizer
 │   ├── README.md
-│   ├── shuntserve_optimizer.py
-│   ├── hexgen_optimizer.py
-│   ├── alpaserve_optimizer.py
-│   ├── estimator_utils.py
-│   ├── hardware_specs.py
-│   ├── cluster_pool.py
-│   └── hexgen/                          # HEXGEN baseline implementation
+│   ├── shuntserve_optimizer.py          # ShuntServe beam search DP optimizer
+│   ├── hexgen_optimizer.py              # HEXGEN genetic algorithm optimizer
+│   ├── alpaserve_optimizer.py           # AlpaServe DP layer partitioning (uses official code)
+│   ├── estimator_utils.py              # Profiling-free throughput/latency estimation (roofline model)
+│   ├── hardware_specs.py               # GPU, interconnect, and instance specifications
+│   ├── cluster_pool.py                 # Cluster resource and pricing management
+│   ├── alpaserve_lib/                  # AlpaServe official code (DP, simulator, placement policy)
+│   └── hexgen/                         # HEXGEN internal modules (cost model, GA, simulator)
 ├── submodules/
-│   └── vLLM/                            # Inference Engine (modified vLLM v0.8.1, git submodule)
+│   └── vLLM/                            # Inference Engine (modified vLLM v0.8.1)
 ├── TensorStore/                         # Shared Tensor Store + Remote Storage (S3)
 │   ├── README.md
 │   ├── raw_s3_model_uploader.py
@@ -52,20 +53,36 @@ ShuntServe/
 │   ├── Datasets/
 │   ├── ReferenceData/
 │   ├── ModelPlacement/
-│   │   ├── offline/                     # Figure 7
-│   │   └── online/                      # Figure 8
-│   └── SpotInterruption/
-│       ├── offline/                     # Figures 9, 11
-│       ├── online/                      # Figures 9, 11
+│   │   ├── offline/llama3-70b/          # Offline throughput benchmark
+│   │   ├── online/llama3-70b/           # Online serving benchmark
+│   │   ├── per_pipeline/                # Per-pipeline ranking evaluation
+│   │   │   ├── llama3-70b/              #   Llama-3.1-70B-Instruct
+│   │   │   └── qwen3-32b/              #   Qwen3-32B
+│   │   └── check_module_time/           # Module initialization timing
+│   ├── PerformanceEstimation/           # Estimator accuracy evaluation
+│   └── SpotTolerance/
+│       ├── offline/                     # Offline interruption simulation
+│       ├── online/                      # Online interruption simulation
 │       └── 8B/                          # Simplified 8B test setup
 ├── IaC/                                 # Infrastructure as Code (Terraform)
 │   ├── README.md
 │   ├── main.tf
 │   └── ec2-cluster-module/
 ├── profiling/                           # GPU profiling utilities
+├── install.sh                           # Inference engine installer
 ├── protocols.py                         # Inter-component communication protocols
 └── utils.py                             # SSH and Ray placement group utilities
 ```
+
+## Supported Models
+
+| Model | Parameters | Layers | Architecture |
+|---|---|---|---|
+| Llama-3.1-70B-Instruct | 70B | 80 | GQA, SiLU, RoPE, RMSNorm |
+| Qwen3-32B | 32B | 64 | GQA, SiLU, RoPE, RMSNorm |
+| Llama-3.1-8B-Instruct | 8B | 32 | GQA, SiLU, RoPE, RMSNorm (simplified test only) |
+
+Other models with the same architecture family (GQA + SiLU + RoPE + RMSNorm) should work with minimal changes to the estimator configuration.
 
 ## Prerequisites
 
@@ -135,10 +152,13 @@ source ~/.bashrc
 ```bash
 git clone https://github.com/ddps-lab/ShuntServe.git
 cd ShuntServe
-git submodule update --init --recursive --merge
-cd submodules/vLLM
-git switch main
-VLLM_USE_PRECOMPILED=1 pip install --editable . --break-system-packages
+bash install.sh
+```
+
+The install script installs the modified vLLM in editable mode using a precompiled wheel. After installation, set the following environment variable:
+
+```bash
+export VLLM_USE_V1=0
 ```
 
 ### Step 3 — Install Baseline Packages (Optional)
@@ -162,13 +182,13 @@ ray start --head --port=6379 --disable-usage-stats
 ray start --head --port=6380 --disable-usage-stats
 ```
 
-Once the cluster is ready, follow the [Artifact Evaluation guide](ArtifactEvaluation/README.md) to reproduce the paper's results.
+Once the cluster is ready, follow the [Artifact Evaluation guide](ArtifactEvaluation/README.md) to reproduce the experiments.
 
 ## Getting Started
 
 1. **Upload model weights** — Use the [Tensor Store](TensorStore/README.md) to partition and upload model weights to S3. This step does not require a GPU.
 2. **Run the placement optimizer** — Use the [Model Placement Optimizer](ModelPlacement/README.md) to determine optimal pipeline configurations for your cluster.
 3. **Provision the cluster** — Use the [IaC module](IaC/README.md) or set up GPU instances manually based on the placement result.
-4. **Run experiments** — Follow the [Artifact Evaluation guide](ArtifactEvaluation/README.md) to reproduce the paper's results.
+4. **Run experiments** — Follow the [Artifact Evaluation guide](ArtifactEvaluation/README.md) to reproduce the experiments.
 
 > **Tip:** The full evaluation uses Llama-3.1-70B on 9 instances (24 GPUs), which can be costly. A simplified 8B test setup using Llama-3.1-8B-Instruct on 3x g6.xlarge (single L4 GPU each) is available to verify basic executability at reduced cost. See [Appendix C in ArtifactEvaluation/README.md](ArtifactEvaluation/README.md#appendix-c-simplified-8b-test-setup) for details.
