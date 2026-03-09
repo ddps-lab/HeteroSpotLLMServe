@@ -1,0 +1,83 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "instance_type": "p4d.24xlarge",
+  "gpu_type": "A100_40GB",
+  "gpu_count": 8,
+  "tp_size": 4,
+  "pp_size": 2,
+  "strategy_label": "tp4_pp2",
+  "parallel_strategy": [
+    4,
+    4
+  ],
+  "pp_layer_partition": [
+    40,
+    40
+  ],
+  "pp_layer_partition_str": "40,40",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232,
+    "max_model_len": 8192
+  },
+  "max_batch_size": 395,
+  "num_blocks": 24564,
+  "estimated_throughput_rps": 13.653255878553377,
+  "estimated_batch_latency_ms": 28930.82818585921,
+  "estimated_single_latency_ms": 5532.052137553998,
+  "gpu_memory_utilization": 0.85,
+  "batch_sweep": [
+    {
+      "batch_size": 1,
+      "throughput_rps": 0.3514695014570958,
+      "batch_latency_ms": 2845.197082120284
+    },
+    {
+      "batch_size": 2,
+      "throughput_rps": 0.3514695014570958,
+      "batch_latency_ms": 5690.394164240568
+    },
+    {
+      "batch_size": 4,
+      "throughput_rps": 0.6886491855053223,
+      "batch_latency_ms": 5808.472708879847
+    },
+    {
+      "batch_size": 8,
+      "throughput_rps": 1.323488826799174,
+      "batch_latency_ms": 6044.629798158408
+    },
+    {
+      "batch_size": 16,
+      "throughput_rps": 2.4551384908580762,
+      "batch_latency_ms": 6516.943976715531
+    },
+    {
+      "batch_size": 32,
+      "throughput_rps": 4.287491105962106,
+      "batch_latency_ms": 7463.572333829776
+    },
+    {
+      "batch_size": 64,
+      "throughput_rps": 6.839924045986637,
+      "batch_latency_ms": 9356.829048058267
+    },
+    {
+      "batch_size": 128,
+      "throughput_rps": 9.740252963405181,
+      "batch_latency_ms": 13141.342476515245
+    },
+    {
+      "batch_size": 256,
+      "throughput_rps": 12.360957734673667,
+      "batch_latency_ms": 20710.369333429204
+    },
+    {
+      "batch_size": 395,
+      "throughput_rps": 13.653255878553377,
+      "batch_latency_ms": 28930.82818585921
+    }
+  ],
+  "feasible": true
+}

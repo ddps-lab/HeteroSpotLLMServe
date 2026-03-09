@@ -1,0 +1,83 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "instance_type": "g6e.48xlarge",
+  "gpu_type": "L40S",
+  "gpu_count": 8,
+  "tp_size": 4,
+  "pp_size": 2,
+  "strategy_label": "tp4_pp2",
+  "parallel_strategy": [
+    4,
+    4
+  ],
+  "pp_layer_partition": [
+    40,
+    40
+  ],
+  "pp_layer_partition_str": "40,40",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232,
+    "max_model_len": 8192
+  },
+  "max_batch_size": 499,
+  "num_blocks": 31031,
+  "estimated_throughput_rps": 3.7562709780574846,
+  "estimated_batch_latency_ms": 132844.51598804846,
+  "estimated_single_latency_ms": 9950.774801611879,
+  "gpu_memory_utilization": 0.85,
+  "batch_sweep": [
+    {
+      "batch_size": 1,
+      "throughput_rps": 0.19736717578625432,
+      "batch_latency_ms": 5066.698634239895
+    },
+    {
+      "batch_size": 2,
+      "throughput_rps": 0.19736717578625432,
+      "batch_latency_ms": 10133.39726847979
+    },
+    {
+      "batch_size": 4,
+      "throughput_rps": 0.37691016519859344,
+      "batch_latency_ms": 10612.608439181802
+    },
+    {
+      "batch_size": 8,
+      "throughput_rps": 0.6913817923138365,
+      "batch_latency_ms": 11571.030780585828
+    },
+    {
+      "batch_size": 16,
+      "throughput_rps": 1.1862505732221527,
+      "batch_latency_ms": 13487.87546339388
+    },
+    {
+      "batch_size": 32,
+      "throughput_rps": 1.8407778171848548,
+      "batch_latency_ms": 17383.95568506924
+    },
+    {
+      "batch_size": 64,
+      "throughput_rps": 2.530084276017307,
+      "batch_latency_ms": 25295.600074138485
+    },
+    {
+      "batch_size": 128,
+      "throughput_rps": 3.1129245846075926,
+      "batch_latency_ms": 41118.888852276956
+    },
+    {
+      "batch_size": 256,
+      "throughput_rps": 3.518152396119405,
+      "batch_latency_ms": 72765.46640855391
+    },
+    {
+      "batch_size": 499,
+      "throughput_rps": 3.7562709780574846,
+      "batch_latency_ms": 132844.51598804846
+    }
+  ],
+  "feasible": true
+}

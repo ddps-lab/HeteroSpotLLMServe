@@ -1,0 +1,97 @@
+{
+  "model": "meta-llama/Llama-3.2-3B",
+  "model_key": "llama3-3b",
+  "instance_type": "g6.48xlarge",
+  "gpu_type": "L4",
+  "gpu_count": 8,
+  "tp_size": 2,
+  "pp_size": 4,
+  "strategy_label": "tp2_pp4",
+  "parallel_strategy": [
+    2,
+    2,
+    2,
+    2
+  ],
+  "pp_layer_partition": [
+    7,
+    7,
+    7,
+    7
+  ],
+  "pp_layer_partition_str": "7,7,7,7",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232,
+    "max_model_len": 8192
+  },
+  "max_batch_size": 1253,
+  "num_blocks": 77920,
+  "estimated_throughput_rps": 20.52155100019617,
+  "estimated_batch_latency_ms": 61057.76312852876,
+  "estimated_single_latency_ms": 3293.6408679909205,
+  "gpu_memory_utilization": 0.85,
+  "batch_sweep": [
+    {
+      "batch_size": 1,
+      "throughput_rps": 1.1165247948555317,
+      "batch_latency_ms": 895.6361780836144
+    },
+    {
+      "batch_size": 2,
+      "throughput_rps": 1.1165247948555317,
+      "batch_latency_ms": 1791.2723561672287
+    },
+    {
+      "batch_size": 4,
+      "throughput_rps": 1.1165247948555317,
+      "batch_latency_ms": 3582.5447123344575
+    },
+    {
+      "batch_size": 8,
+      "throughput_rps": 2.1239242550744817,
+      "batch_latency_ms": 3766.6126656289143
+    },
+    {
+      "batch_size": 16,
+      "throughput_rps": 3.8696427897713246,
+      "batch_latency_ms": 4134.748572217829
+    },
+    {
+      "batch_size": 32,
+      "throughput_rps": 6.569465423701102,
+      "batch_latency_ms": 4871.020385395659
+    },
+    {
+      "batch_size": 64,
+      "throughput_rps": 10.088965742513414,
+      "batch_latency_ms": 6343.564011751317
+    },
+    {
+      "batch_size": 128,
+      "throughput_rps": 13.780256826921045,
+      "batch_latency_ms": 9288.651264462633
+    },
+    {
+      "batch_size": 256,
+      "throughput_rps": 16.865599742761592,
+      "batch_latency_ms": 15178.825769885269
+    },
+    {
+      "batch_size": 512,
+      "throughput_rps": 18.99167923960193,
+      "batch_latency_ms": 26959.174780730536
+    },
+    {
+      "batch_size": 1024,
+      "throughput_rps": 20.26925134995444,
+      "batch_latency_ms": 50519.87280242107
+    },
+    {
+      "batch_size": 1253,
+      "throughput_rps": 20.52155100019617,
+      "batch_latency_ms": 61057.76312852876
+    }
+  ],
+  "feasible": true
+}
