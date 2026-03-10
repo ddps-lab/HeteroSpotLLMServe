@@ -138,8 +138,8 @@ def bench_flash_attention(batch: int, seq_len: int, num_heads: int, head_dim: in
     """
     try:
         from flash_attn import flash_attn_func
-    except ImportError:
-        return {"error": "flash_attn not installed (pip install flash-attn)"}
+    except Exception as e:
+        return {"error": f"flash_attn import failed: {e}"}
 
     # GQA: repeat KV heads to match query heads
     kv_repeat = num_heads // num_kv_heads
@@ -264,7 +264,7 @@ def main():
 
     # 1. GEMV (memory-bound)
     if rank == 0:
-        print(f"\n[1/3] GEMV (memory-bound) [{args.gemv_m}x{args.gemv_k}] x [{args.gemv_k}x{args.gemv_n}]")
+        print(f"\n[1/4] GEMV (memory-bound) [{args.gemv_m}x{args.gemv_k}] x [{args.gemv_k}x{args.gemv_n}]")
     gemv = bench_gemv(args.gemv_m, args.gemv_k, args.gemv_n, dtype, args.warmup, args.repeat)
     results["benchmarks"]["gemv"] = gemv
     if rank == 0:
@@ -294,7 +294,7 @@ def main():
 
     # 2. GEMM (compute-bound)
     if rank == 0:
-        print(f"\n[2/3] GEMM (compute-bound) [{args.gemm_m}x{args.gemm_k}] x [{args.gemm_k}x{args.gemm_n}]")
+        print(f"\n[2/4] GEMM (compute-bound) [{args.gemm_m}x{args.gemm_k}] x [{args.gemm_k}x{args.gemm_n}]")
     gemm = bench_gemm(args.gemm_m, args.gemm_k, args.gemm_n, dtype, args.warmup, args.repeat)
     results["benchmarks"]["gemm"] = gemm
     if rank == 0:
