@@ -8,11 +8,11 @@
     "gemv": {
       "workload": "GEMV [1x8192] x [8192x28672]",
       "dtype": "bfloat16",
-      "elapsed_ms": 0.9626,
+      "elapsed_ms": 0.9636,
       "bytes_moved": 469835776,
-      "effective_bw_GBs": 488.11,
+      "effective_bw_GBs": 487.59,
       "flops": 469762048,
-      "effective_tflops": 0.488
+      "effective_tflops": 0.4875
     },
     "gemv_sweep": {
       "sizes": [
@@ -22,19 +22,19 @@
       ],
       "bw_GBs": [
         488.11,
-        448.99,
-        487.82
+        447.45,
+        486.3
       ],
-      "median_bw_GBs": 487.82
+      "median_bw_GBs": 486.3
     },
     "gemm": {
       "workload": "GEMM [2048x8192] x [8192x28672]",
       "dtype": "bfloat16",
-      "elapsed_ms": 14.2705,
+      "elapsed_ms": 14.2715,
       "bytes_moved": 620756992,
       "effective_bw_GBs": 43.5,
       "flops": 962072674304,
-      "effective_tflops": 67.4171
+      "effective_tflops": 67.4122
     },
     "gemm_sweep": {
       "sizes": [
@@ -43,15 +43,55 @@
         "2048x8192x8192"
       ],
       "tflops": [
-        67.4171,
-        68.9432,
-        67.2939
+        67.4219,
+        68.9584,
+        66.6755
       ],
-      "median_tflops": 67.4171
-    }
+      "median_tflops": 67.4219
+    },
+    "flash_attn": {
+      "workload": "FlashAttn B=1 S=763 H=64 Hkv=8 D=128",
+      "dtype": "bfloat16",
+      "elapsed_ms": 0.2365,
+      "attn_flops": 19076513792,
+      "effective_tflops": 80.6468,
+      "batch": 1,
+      "seq_len": 763,
+      "num_heads": 64,
+      "num_kv_heads": 8,
+      "head_dim": 128
+    },
+    "flash_attn_sweep": [
+      {
+        "seq_len": 256,
+        "elapsed_ms": 0.0727,
+        "tflops": 29.5374
+      },
+      {
+        "seq_len": 512,
+        "elapsed_ms": 0.1382,
+        "tflops": 62.1378
+      },
+      {
+        "seq_len": 763,
+        "elapsed_ms": 0.2365,
+        "tflops": 80.6468
+      },
+      {
+        "seq_len": 1024,
+        "elapsed_ms": 0.3656,
+        "tflops": 93.99
+      },
+      {
+        "seq_len": 2048,
+        "elapsed_ms": 1.2042,
+        "tflops": 114.1307
+      }
+    ]
   },
   "summary": {
-    "effective_bw_GBs": 487.82,
-    "effective_tflops": 67.4171
+    "effective_bw_GBs": 486.3,
+    "effective_tflops": 67.4219,
+    "flash_attn_tflops": 80.6468
   }
 }
