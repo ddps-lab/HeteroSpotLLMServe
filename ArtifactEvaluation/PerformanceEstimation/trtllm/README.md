@@ -113,11 +113,12 @@ The process has two stages, with different purposes:
 
 ```bash
 # Inside Docker container
+# Generate enough requests for the largest batch sweep (max_bs=1024, ×10 = 10240)
 python3 benchmarks/cpp/prepare_dataset.py \
   --tokenizer /models/Llama-3.1-70B-Instruct \
   --output /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.json \
   token-norm-dist \
-  --num-requests 1000 \
+  --num-requests 10240 \
   --input-mean 763 --input-stdev 0 \
   --output-mean 232 --output-stdev 0
 ```
@@ -125,6 +126,7 @@ python3 benchmarks/cpp/prepare_dataset.py \
 - `--input-stdev 0` / `--output-stdev 0`: all requests have exactly 763 input tokens and 232 output tokens
 - Random token IDs → no early EOS
 - `output_tokens` field in JSON controls generation length (not `--max_seq_len`)
+- One dataset for all batch sizes — use `--max_num_samples` at runtime to control request count
 
 ### Step 2: Convert Checkpoint
 
@@ -184,18 +186,20 @@ mpirun -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
 
 ### Step 5: Batch Size Sweep
 
-Run Step 4 for each batch size and save results:
+Run Step 4 for each batch size (num_requests = batch_size × 10):
 
 ```bash
 TP=8; PP=1; WORLD=$((TP * PP))
 
-for BS in 1 2 4 8 16 32 64 128; do
-  echo "=== Running bs=$BS ==="
+for BS in 1 2 4 8 16 32 64 128 256 512 1024; do
+  SAMPLES=$((BS * 10))
+  echo "=== Running bs=$BS, samples=$SAMPLES ==="
   mpirun -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
     --engine_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
     --static_emulated_batch_size $BS \
     --static_emulated_timeout 10000 \
     --dataset /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.json \
+    --max_num_samples $SAMPLES \
     --streaming \
     2>&1 | tee /workspace/llama3-70b/in763-out232/measured/trtllm_tp${TP}_pp${PP}_bs${BS}.log
 done
