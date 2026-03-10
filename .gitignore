@@ -24,5 +24,10 @@ submodules/vLLM/vllm/vllm_flash_attn/
 # PerformanceEstimation: generated estimation JSONs and benchmark p files
 # Regenerate with: estimate.py and generate_p_files.py
 ArtifactEvaluation/PerformanceEstimation/*/in*-out*/
+
+# TRT-LLM: datasets, predictions, logs (engines/ckpt/models on ephemeral storage, not in workspace)
+ArtifactEvaluation/PerformanceEstimation/trtllm/*/in*-out*/datasets/
+ArtifactEvaluation/PerformanceEstimation/trtllm/*/in*-out*/predicted/
+ArtifactEvaluation/PerformanceEstimation/trtllm/*/in*-out*/measured/*.log
 ./ArtifactEvaluation/Datasets/*.png
 ./ArtifactEvaluation/Datasets/*.pdf
