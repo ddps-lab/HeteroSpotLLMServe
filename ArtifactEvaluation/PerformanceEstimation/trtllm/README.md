@@ -128,42 +128,105 @@ python3 benchmarks/cpp/prepare_dataset.py \
 - `output_tokens` field in JSON controls generation length (not `--max_seq_len`)
 - One dataset for all batch sizes — use `--max_num_samples` at runtime to control request count
 
-### Step 2: Convert Checkpoint
+### Step 2: Convert Checkpoint (All Strategies, Parallel)
 
-For each (tp, pp) strategy:
+Convert is CPU-only and GPU-independent. All 4 strategies can run in parallel as background jobs.
+Each strategy's `--workers` parallelizes across ranks (tp×pp threads), and the 4 strategies run concurrently.
+
+**Llama 3.1 70B:**
 
 ```bash
-TP=8; PP=1; WORKERS=$((TP * PP))
+CONVERT_SCRIPT=examples/models/core/llama/convert_checkpoint.py
+MODEL=/models/Llama-3.1-70B-Instruct
+DTYPE=bfloat16
 
-python3 examples/models/core/llama/convert_checkpoint.py \
-  --model_dir /models/Llama-3.1-70B-Instruct \
-  --output_dir /trtllm/ckpt/llama3-70b/tp${TP}_pp${PP} \
-  --dtype bfloat16 \
-  --tp_size $TP --pp_size $PP \
-  --workers $WORKERS
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/llama3-70b/tp8_pp1 \
+  --dtype $DTYPE --tp_size 8 --pp_size 1 --workers 8 &
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/llama3-70b/tp4_pp2 \
+  --dtype $DTYPE --tp_size 4 --pp_size 2 --workers 8 &
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/llama3-70b/tp2_pp4 \
+  --dtype $DTYPE --tp_size 2 --pp_size 4 --workers 8 &
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/llama3-70b/tp1_pp8 \
+  --dtype $DTYPE --tp_size 1 --pp_size 8 --workers 8 &
+wait
+echo "All Llama 3.1 70B converts done"
 ```
 
-### Step 3: Build Engine
+**Qwen3 32B:**
 
 ```bash
-TP=8; PP=1; WORKERS=$((TP * PP))
+CONVERT_SCRIPT=examples/models/core/llama/convert_checkpoint.py
+MODEL=/models/Qwen3-32B
+DTYPE=bfloat16
 
-trtllm-build \
-  --checkpoint_dir /trtllm/ckpt/llama3-70b/tp${TP}_pp${PP} \
-  --output_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
-  --gemm_plugin bfloat16 \
-  --gpt_attention_plugin bfloat16 \
-  --max_batch_size 256 \
-  --max_input_len 763 \
-  --max_seq_len 995 \
-  --workers $WORKERS
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/qwen3-32b/tp8_pp1 \
+  --dtype $DTYPE --tp_size 8 --pp_size 1 --workers 8 &
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/qwen3-32b/tp4_pp2 \
+  --dtype $DTYPE --tp_size 4 --pp_size 2 --workers 8 &
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/qwen3-32b/tp2_pp4 \
+  --dtype $DTYPE --tp_size 2 --pp_size 4 --workers 8 &
+python3 $CONVERT_SCRIPT --model_dir $MODEL --output_dir /trtllm/ckpt/qwen3-32b/tp1_pp8 \
+  --dtype $DTYPE --tp_size 1 --pp_size 8 --workers 8 &
+wait
+echo "All Qwen3 32B converts done"
+```
+
+**Notes:**
+- All 4 strategies share the same model via mmap — physical RAM ≈ 1× model size regardless of parallelism.
+- Converted checkpoints are GPU-independent. Upload to S3 once and reuse across all instance types.
+- `convert_checkpoint.py` is the Llama converter but works for Qwen3 as well (same architecture family in TRT-LLM).
+
+### Step 3: Build Engine (Sequential per Strategy)
+
+Build requires GPU — each rank occupies one GPU. Since all 8 GPUs are used per strategy,
+strategies must be built sequentially.
+
+**Llama 3.1 70B:**
+
+```bash
+DTYPE=bfloat16
+
+for STRATEGY in "8 1" "4 2" "2 4" "1 8"; do
+  set -- $STRATEGY; TP=$1; PP=$2
+  echo "=== Building llama3-70b tp${TP}_pp${PP} ==="
+  trtllm-build \
+    --checkpoint_dir /trtllm/ckpt/llama3-70b/tp${TP}_pp${PP} \
+    --output_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
+    --gemm_plugin $DTYPE \
+    --gpt_attention_plugin $DTYPE \
+    --max_batch_size 256 \
+    --max_input_len 763 \
+    --max_seq_len 995 \
+    --workers $((TP * PP))
+done
+```
+
+**Qwen3 32B:**
+
+```bash
+DTYPE=bfloat16
+
+for STRATEGY in "8 1" "4 2" "2 4" "1 8"; do
+  set -- $STRATEGY; TP=$1; PP=$2
+  echo "=== Building qwen3-32b tp${TP}_pp${PP} ==="
+  trtllm-build \
+    --checkpoint_dir /trtllm/ckpt/qwen3-32b/tp${TP}_pp${PP} \
+    --output_dir /trtllm/engines/qwen3-32b/tp${TP}_pp${PP} \
+    --gemm_plugin $DTYPE \
+    --gpt_attention_plugin $DTYPE \
+    --max_batch_size 256 \
+    --max_input_len 763 \
+    --max_seq_len 995 \
+    --workers $((TP * PP))
+done
 ```
 
 **Notes:**
 - `--max_seq_len 995` = 763 (input) + 232 (output). Tight allocation maximizes available GPU memory for larger batch sizes.
 - `--max_batch_size 256`: set to the largest batch size you plan to test.
-- Build time: ~15–30 minutes for 70B model.
+- Build time: ~15–30 minutes per strategy for 70B.
 - **Engine is GPU-architecture-specific.** Must build on the target GPU (A10G, L4, L40S, A100).
+- `--workers` = tp×pp: each worker uses one GPU (`gpu_id = rank % workers`).
 
 ### Step 4: Run Static Batch Benchmark
 
