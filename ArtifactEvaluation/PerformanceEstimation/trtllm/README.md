@@ -261,7 +261,8 @@ for BS in 1 2 4 8 16 32 64 128 256 512 1024; do
     --dataset /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.json \
     --max_num_samples $SAMPLES \
     --streaming \
-    2>&1 | tee /workspace/llama3-70b/in763-out232/measured/trtllm_tp${TP}_pp${PP}_bs${BS}.log
+    --output_csv /workspace/llama3-70b/in763-out232/measured/csv/trtllm_tp${TP}_pp${PP}_bs${BS}.csv \
+    2>&1 | tee /workspace/llama3-70b/in763-out232/measured/log/trtllm_tp${TP}_pp${PP}_bs${BS}.log
 done
 ```
 
