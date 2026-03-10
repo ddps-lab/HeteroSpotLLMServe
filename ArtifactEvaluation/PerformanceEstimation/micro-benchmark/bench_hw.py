@@ -193,7 +193,7 @@ def main():
         dist.init_process_group(backend="nccl")
 
     gpu_name = torch.cuda.get_device_name(local_rank)
-    gpu_mem_gb = torch.cuda.get_device_properties(local_rank).total_mem / 1e9
+    gpu_mem_gb = torch.cuda.get_device_properties(local_rank).total_memory / 1e9
 
     results = {
         "gpu_name": gpu_name,
