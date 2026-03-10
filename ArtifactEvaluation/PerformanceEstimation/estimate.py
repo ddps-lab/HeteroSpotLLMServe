@@ -200,14 +200,17 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
         sweep_sizes.append(batch_size)  # always include max
 
         for bs in sweep_sizes:
-            bs_throughput, bs_latency, _ = get_throughput(
+            bs_throughput, bs_latency, _, latency_detail = get_throughput(
                 max_model_len=WORKLOAD["max_model_len"],
                 gpu_mem_utilization=0.85,
                 node_layer_comb=node_layer_comb,
                 tp_sizes=tp_sizes_list,
                 batch_override=(bs, 0),
+                detail=True,
                 **common_kwargs,
             )
+            prefill_ms = latency_detail["prefill_latency_ms"]
+            decode_ms = latency_detail["decode_latency_ms"]
 
             # Pipeline bubble correction: when batch_size < PP,
             # the estimator assumes full pipeline utilization but
@@ -216,12 +219,22 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
             if bs < pp_size:
                 correction = pp_size / bs
                 bs_latency *= correction
+                prefill_ms *= correction
+                decode_ms *= correction
                 bs_throughput = bs / (bs_latency / 1000)
+
+            # TPOT = decode_latency / (output_len * batch_size)
+            # (total decode time spread across all tokens of all requests)
+            tpot_ms = decode_ms / (WORKLOAD["output_len"] * bs) if bs > 0 else 0
 
             batch_sweep.append({
                 "batch_size": bs,
                 "throughput_rps": bs_throughput,
                 "batch_latency_ms": bs_latency,
+                "ttft_ms": prefill_ms,
+                "tpot_ms": tpot_ms,
+                "prefill_latency_ms": prefill_ms,
+                "decode_latency_ms": decode_ms,
             })
 
     result = {

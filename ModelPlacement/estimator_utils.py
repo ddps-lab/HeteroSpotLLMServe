@@ -1061,6 +1061,7 @@ def get_throughput(
     head_dim: int = None,
     tp_sizes: List[int] = None,
     batch_override: tuple = None,  # Optional (global_batch_size, num_blocks) to skip estimation
+    detail: bool = False,  # If True, return additional dict with prefill/decode latency breakdown
 ):
     if batch_override is not None:
         global_batch_size, num_blocks = batch_override
@@ -1422,6 +1423,11 @@ def get_throughput(
     logging.debug(f"End to End Latency per Global Batch: {total_latency_per_global_batch:.2f} ms")
     logging.debug(f"Throughput: {throughput:.2f} reqs/s")
 
+    if detail:
+        return throughput, total_latency_per_global_batch, num_blocks, {
+            "prefill_latency_ms": max_prefill_latency,
+            "decode_latency_ms": max_decoding_latency,
+        }
     return throughput, total_latency_per_global_batch, num_blocks
 
 
