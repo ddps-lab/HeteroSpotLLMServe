@@ -63,7 +63,7 @@ def get_dtype(name: str):
 # ── Benchmarks ───────────────────────────────────────────────────────
 
 def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
-    """GEMV-like: [M, K] × [K, N] where M is small (memory-bound).
+    """GEMV-like: [M, K] x [K, N] where M is small (memory-bound).
 
     Measures effective HBM bandwidth.
     M=1 is pure GEMV; M=2-4 also memory-bound on most GPUs.
@@ -76,7 +76,7 @@ def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
 
     elapsed = gpu_timer(fn, warmup, repeat)
 
-    # Memory traffic: read A (M×K) + read B (K×N) + write C (M×N)
+    # Memory traffic: read A (MxK) + read B (KxN) + write C (MxN)
     elem_bytes = A.element_size()
     bytes_moved = (M * K + K * N + M * N) * elem_bytes
     bw_GBs = bytes_moved / elapsed / 1e9
@@ -86,7 +86,7 @@ def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
     tflops = flops / elapsed / 1e12
 
     return {
-        "workload": f"GEMV [{M}×{K}] × [{K}×{N}]",
+        "workload": f"GEMV [{M}x{K}] x [{K}x{N}]",
         "dtype": str(dtype).replace("torch.", ""),
         "elapsed_ms": round(elapsed * 1000, 4),
         "bytes_moved": bytes_moved,
@@ -97,7 +97,7 @@ def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
 
 
 def bench_gemm(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
-    """Large GEMM: [M, K] × [K, N] where M is large (compute-bound).
+    """Large GEMM: [M, K] x [K, N] where M is large (compute-bound).
 
     Measures effective TFLOPS.
     """
@@ -118,7 +118,7 @@ def bench_gemm(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
     bw_GBs = bytes_moved / elapsed / 1e9
 
     return {
-        "workload": f"GEMM [{M}×{K}] × [{K}×{N}]",
+        "workload": f"GEMM [{M}x{K}] x [{K}x{N}]",
         "dtype": str(dtype).replace("torch.", ""),
         "elapsed_ms": round(elapsed * 1000, 4),
         "bytes_moved": bytes_moved,
@@ -143,12 +143,12 @@ def bench_allreduce(size_bytes: int, dtype, warmup: int, repeat: int) -> dict:
     elapsed = gpu_timer(fn, warmup, repeat)
 
     world_size = dist.get_world_size()
-    # Ring all-reduce: each GPU sends/receives 2 × (n-1)/n × data
+    # Ring all-reduce: each GPU sends/receives 2 x (n-1)/n x data
     algo_bytes = 2 * (world_size - 1) / world_size * size_bytes
     bw_GBs = algo_bytes / elapsed / 1e9
 
     return {
-        "workload": f"AllReduce {size_bytes / 1e6:.1f}MB × {world_size} GPUs",
+        "workload": f"AllReduce {size_bytes / 1e6:.1f}MB x {world_size} GPUs",
         "dtype": str(dtype).replace("torch.", ""),
         "elapsed_ms": round(elapsed * 1000, 4),
         "data_bytes": size_bytes,
@@ -213,7 +213,7 @@ def main():
 
     # 1. GEMV (memory-bound)
     if rank == 0:
-        print(f"\n[1/3] GEMV (memory-bound) [{args.gemv_m}×{args.gemv_k}] × [{args.gemv_k}×{args.gemv_n}]")
+        print(f"\n[1/3] GEMV (memory-bound) [{args.gemv_m}x{args.gemv_k}] x [{args.gemv_k}x{args.gemv_n}]")
     gemv = bench_gemv(args.gemv_m, args.gemv_k, args.gemv_n, dtype, args.warmup, args.repeat)
     results["benchmarks"]["gemv"] = gemv
     if rank == 0:
@@ -232,9 +232,9 @@ def main():
         r = bench_gemv(m, k, n, dtype, args.warmup, args.repeat)
         gemv_bws.append(r["effective_bw_GBs"])
         if rank == 0:
-            print(f"  [{m}×{k}]×[{k}×{n}]: {r['effective_bw_GBs']:.2f} GB/s")
+            print(f"  [{m}x{k}]x[{k}x{n}]: {r['effective_bw_GBs']:.2f} GB/s")
     results["benchmarks"]["gemv_sweep"] = {
-        "sizes": [f"{m}×{k}×{n}" for m, k, n in gemv_sizes],
+        "sizes": [f"{m}x{k}x{n}" for m, k, n in gemv_sizes],
         "bw_GBs": gemv_bws,
         "median_bw_GBs": round(sorted(gemv_bws)[len(gemv_bws) // 2], 2),
     }
@@ -243,7 +243,7 @@ def main():
 
     # 2. GEMM (compute-bound)
     if rank == 0:
-        print(f"\n[2/3] GEMM (compute-bound) [{args.gemm_m}×{args.gemm_k}] × [{args.gemm_k}×{args.gemm_n}]")
+        print(f"\n[2/3] GEMM (compute-bound) [{args.gemm_m}x{args.gemm_k}] x [{args.gemm_k}x{args.gemm_n}]")
     gemm = bench_gemm(args.gemm_m, args.gemm_k, args.gemm_n, dtype, args.warmup, args.repeat)
     results["benchmarks"]["gemm"] = gemm
     if rank == 0:
@@ -262,9 +262,9 @@ def main():
         r = bench_gemm(m, k, n, dtype, args.warmup, args.repeat)
         gemm_tflops.append(r["effective_tflops"])
         if rank == 0:
-            print(f"  [{m}×{k}]×[{k}×{n}]: {r['effective_tflops']:.4f} TFLOPS")
+            print(f"  [{m}x{k}]x[{k}x{n}]: {r['effective_tflops']:.4f} TFLOPS")
     results["benchmarks"]["gemm_sweep"] = {
-        "sizes": [f"{m}×{k}×{n}" for m, k, n in gemm_sizes],
+        "sizes": [f"{m}x{k}x{n}" for m, k, n in gemm_sizes],
         "tflops": gemm_tflops,
         "median_tflops": round(sorted(gemm_tflops)[len(gemm_tflops) // 2], 4),
     }
