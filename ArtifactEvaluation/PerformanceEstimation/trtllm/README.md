@@ -237,13 +237,11 @@ BS=32  # exact batch size
 mpirun --allow-run-as-root -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
   --engine_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
   --static_emulated_batch_size $BS \
-  --static_emulated_timeout 5000 \
   --dataset /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.json \
   --streaming
 ```
 
 - `--static_emulated_batch_size N`: waits for exactly N requests, submits as one batch, waits for completion, then next batch.
-- `--static_emulated_timeout 5000`: timeout (ms) if N requests don't arrive (set high enough).
 - `--streaming`: enables per-token ITL measurement.
 - `--request_rate -1`: (optional) submit all requests immediately.
 
@@ -260,7 +258,6 @@ for BS in 1 2 4 8 16 32 64 128 256 512 1024; do
   mpirun --allow-run-as-root -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
     --engine_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
     --static_emulated_batch_size $BS \
-    --static_emulated_timeout 10000 \
     --dataset /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.json \
     --max_num_samples $SAMPLES \
     --streaming \
