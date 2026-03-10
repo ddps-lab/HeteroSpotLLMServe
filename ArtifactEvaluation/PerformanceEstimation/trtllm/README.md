@@ -38,15 +38,13 @@ docker run --rm -it --ipc host --gpus all \
 ### Download Models (on ephemeral storage)
 
 ```bash
-# On host, before Docker
-pip install huggingface_hub
+# Inside Docker container (or on host — both write to the same mounted path)
 huggingface-cli login
-
 huggingface-cli download meta-llama/Llama-3.1-70B-Instruct \
-  --local-dir /local/models/Llama-3.1-70B-Instruct
+  --local-dir /models/Llama-3.1-70B-Instruct
 
 huggingface-cli download Qwen/Qwen3-32B \
-  --local-dir /local/models/Qwen3-32B
+  --local-dir /models/Qwen3-32B
 ```
 
 ## Directory Structure
