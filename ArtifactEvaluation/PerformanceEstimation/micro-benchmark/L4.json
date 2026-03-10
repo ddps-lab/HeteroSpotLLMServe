@@ -1,0 +1,57 @@
+{
+  "gpu_name": "NVIDIA L4",
+  "gpu_memory_gb": 23.66,
+  "dtype": "bfloat16",
+  "warmup": 10,
+  "repeat": 100,
+  "benchmarks": {
+    "gemv": {
+      "workload": "GEMV [1\u00d78192] \u00d7 [8192\u00d728672]",
+      "dtype": "bfloat16",
+      "elapsed_ms": 1.8207,
+      "bytes_moved": 469835776,
+      "effective_bw_GBs": 258.06,
+      "flops": 469762048,
+      "effective_tflops": 0.258
+    },
+    "gemv_sweep": {
+      "sizes": [
+        "1\u00d78192\u00d728672",
+        "1\u00d78192\u00d78192",
+        "4\u00d78192\u00d728672"
+      ],
+      "bw_GBs": [
+        257.77,
+        253.1,
+        256.45
+      ],
+      "median_bw_GBs": 256.45
+    },
+    "gemm": {
+      "workload": "GEMM [2048\u00d78192] \u00d7 [8192\u00d728672]",
+      "dtype": "bfloat16",
+      "elapsed_ms": 17.6538,
+      "bytes_moved": 620756992,
+      "effective_bw_GBs": 35.16,
+      "flops": 962072674304,
+      "effective_tflops": 54.4968
+    },
+    "gemm_sweep": {
+      "sizes": [
+        "2048\u00d78192\u00d728672",
+        "4096\u00d78192\u00d728672",
+        "2048\u00d78192\u00d78192"
+      ],
+      "tflops": [
+        55.3573,
+        57.4369,
+        55.9357
+      ],
+      "median_tflops": 55.9357
+    }
+  },
+  "summary": {
+    "effective_bw_GBs": 256.45,
+    "effective_tflops": 55.9357
+  }
+}
