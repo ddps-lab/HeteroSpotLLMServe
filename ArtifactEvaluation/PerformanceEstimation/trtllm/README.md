@@ -341,9 +341,192 @@ Estimator RPS    ↔ TRT-LLM Request Throughput
 
 **Use BF16/FP16 for all benchmarks** (consistent with estimator assumptions).
 
-## Important Notes
+## Important Notes (gptManagerBenchmark)
 
 - **Engine is GPU-specific:** An engine built on A10G will NOT run on L4. Rebuild on each GPU type.
 - **Checkpoint can be shared:** The converted checkpoint is GPU-independent. Only the engine build is architecture-specific.
 - **Engines are large:** ~70B model engine ≈ 30–70GB per strategy. Use ephemeral storage, not workspace.
 - **Static batching = no PagedAttention:** KV cache is contiguous, matching the estimator's assumption.
+
+---
+
+# Alternative: trtllm-bench (PyTorch Backend)
+
+A faster alternative that **skips engine build entirely**. Uses PyTorch kernels (no TRT compilation)
+with TRT-LLM's C++ scheduling — closer to roofline assumptions than TRT-optimized kernels.
+
+## trtllm-bench vs gptManagerBenchmark
+
+| | gptManagerBenchmark (static) | trtllm-bench (PyTorch) |
+|---|---|---|
+| Engine build | **Required** (~30 min/strategy) | **Not needed** |
+| Kernels | TRT-optimized (fusion, custom GEMM) | Standard PyTorch (cuBLAS) |
+| KV cache | Contiguous (no PagedAttention) | PagedAttention (~10% overhead) |
+| Batch control | Exact (`--static_emulated_batch_size`) | Indirect (`--concurrency`) |
+| Output format | stdout log (parse manually) | `--report_json` (native JSON) |
+| Roofline match | KV cache ✅, kernels ❌ (too optimized) | KV cache ❌, kernels ✅ (standard) |
+| Setup time | ~2 hours (convert + build all) | ~5 minutes |
+
+**Recommendation:** Start with trtllm-bench PyTorch backend. If results are close to estimator (MAPE < 20%),
+CPU overhead was the main gap. If not, use gptManagerBenchmark for deeper analysis.
+
+## Dataset Preparation (trtllm-bench format)
+
+trtllm-bench uses **JSONL format** (one JSON object per line), different from gptManagerBenchmark's JSON array.
+
+```bash
+# Inside Docker container
+python3 benchmarks/cpp/prepare_dataset.py \
+  --stdout \
+  --tokenizer /models/Llama-3.1-70B-Instruct \
+  token-norm-dist \
+  --num-requests 10240 \
+  --input-mean 763 --input-stdev 0 \
+  --output-mean 232 --output-stdev 0 \
+  > /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.jsonl
+
+python3 benchmarks/cpp/prepare_dataset.py \
+  --stdout \
+  --tokenizer /models/Qwen3-32B \
+  token-norm-dist \
+  --num-requests 10240 \
+  --input-mean 763 --input-stdev 0 \
+  --output-mean 232 --output-stdev 0 \
+  > /workspace/qwen3-32b/in763-out232/datasets/synthetic_763_232.jsonl
+```
+
+## GPU Setup (Before Benchmarking)
+
+```bash
+# On host, before Docker (or inside with --privileged)
+sudo nvidia-smi -pm 1                    # Persistence mode
+sudo nvidia-smi -rgc                     # Reset GPU clocks (let GPU auto-boost)
+sudo nvidia-smi -pl $(nvidia-smi -q -d POWER | grep "Max Power" | head -1 | awk '{print $5}')  # Max power
+```
+
+## Running trtllm-bench (PyTorch Backend)
+
+### Single Run
+
+```bash
+trtllm-bench \
+  --model meta-llama/Llama-3.1-70B-Instruct \
+  --model_path /models/Llama-3.1-70B-Instruct \
+  throughput \
+  --backend pytorch \
+  --dataset /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.jsonl \
+  --tp 8 --pp 1 \
+  --concurrency 32 \
+  --num_requests 320 \
+  --streaming \
+  --report_json /workspace/llama3-70b/in763-out232/measured/trtllm-bench_tp8_pp1_c32.json
+```
+
+**Key options:**
+- `--backend pytorch`: Use PyTorch kernels, skip engine build
+- `--model_path`: Path to local HF model (avoids re-download)
+- `--concurrency N`: Maximum concurrent requests (≈ batch size)
+- `--num_requests`: Total requests to process (= concurrency × 10)
+- `--streaming`: Enables per-token ITL measurement
+- `--report_json`: Save detailed results as JSON
+
+### Batch Size Sweep — Llama 3.1 70B
+
+```bash
+MODEL=meta-llama/Llama-3.1-70B-Instruct
+MODEL_PATH=/models/Llama-3.1-70B-Instruct
+DATASET=/workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.jsonl
+OUTDIR=/workspace/llama3-70b/in763-out232/measured
+
+for STRATEGY in "8 1" "4 2" "2 4" "1 8"; do
+  set -- $STRATEGY; TP=$1; PP=$2
+  for C in 1 2 4 8 16 32 64 128 256 512 1024; do
+    N=$((C * 10))
+    echo "=== tp${TP}_pp${PP} concurrency=$C requests=$N ==="
+    trtllm-bench \
+      --model $MODEL \
+      --model_path $MODEL_PATH \
+      throughput \
+      --backend pytorch \
+      --dataset $DATASET \
+      --tp $TP --pp $PP \
+      --concurrency $C \
+      --num_requests $N \
+      --streaming \
+      --report_json ${OUTDIR}/trtllm-bench_tp${TP}_pp${PP}_c${C}.json
+  done
+done
+```
+
+### Batch Size Sweep — Qwen3 32B
+
+```bash
+MODEL=Qwen/Qwen3-32B
+MODEL_PATH=/models/Qwen3-32B
+DATASET=/workspace/qwen3-32b/in763-out232/datasets/synthetic_763_232.jsonl
+OUTDIR=/workspace/qwen3-32b/in763-out232/measured
+
+for STRATEGY in "8 1" "4 2" "2 4" "1 8"; do
+  set -- $STRATEGY; TP=$1; PP=$2
+  for C in 1 2 4 8 16 32 64 128 256 512 1024; do
+    N=$((C * 10))
+    echo "=== tp${TP}_pp${PP} concurrency=$C requests=$N ==="
+    trtllm-bench \
+      --model $MODEL \
+      --model_path $MODEL_PATH \
+      throughput \
+      --backend pytorch \
+      --dataset $DATASET \
+      --tp $TP --pp $PP \
+      --concurrency $C \
+      --num_requests $N \
+      --streaming \
+      --report_json ${OUTDIR}/trtllm-bench_tp${TP}_pp${PP}_c${C}.json
+  done
+done
+```
+
+## trtllm-bench Output Metrics
+
+With `--report_json`, output includes:
+
+```json
+{
+  "metadata": {
+    "model": "meta-llama/Llama-3.1-70B-Instruct",
+    "tp_size": 8,
+    "pp_size": 1,
+    "dtype": "bfloat16"
+  },
+  "summary": {
+    "request_throughput": 43.21,
+    "total_output_throughput": 5530.74,
+    "avg_ttft_ms": 512.03,
+    "avg_tpot_ms": 18.96,
+    "avg_e2el_ms": 4903.45
+  },
+  "percentiles": {
+    "ttft_ms": { "p50": ..., "p90": ..., "p95": ..., "p99": ... },
+    "tpot_ms": { "p50": ..., "p90": ..., "p95": ..., "p99": ... },
+    "itl_ms":  { "p50": ..., "p90": ..., "p95": ..., "p99": ... },
+    "e2el_ms": { "p50": ..., "p90": ..., "p95": ..., "p99": ... }
+  },
+  "request_metrics": [
+    {
+      "request_id": 0,
+      "ttft_ms": 391.76,
+      "e2el_ms": 4189.08,
+      "output_tokens": 232,
+      "inter_token_latencies_ms": [1.59, 1.61, ...]
+    }
+  ]
+}
+```
+
+## Important Notes (trtllm-bench)
+
+- **`--concurrency` ≠ exact batch size:** Inflight batching may schedule fewer or more requests per step depending on available KV cache. With fixed-length requests, concurrency ≈ batch size in practice.
+- **PagedAttention is always on:** ~10% overhead vs contiguous KV cache (vAttention paper). This is a known difference from the estimator.
+- **First run is slow:** PyTorch backend compiles CUDA graphs on first iteration. Subsequent runs are faster. trtllm-bench runs a warmup automatically.
+- **Model stays in GPU memory between concurrency levels:** Within the same `trtllm-bench` invocation, the model is loaded once. But the sweep script above restarts per concurrency level, so model is reloaded each time. This is acceptable for correctness.
+- **PP support in PyTorch backend:** Verify `--pp > 1` works; some versions may have limitations.
