@@ -72,7 +72,7 @@ def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
     B = torch.randn(K, N, dtype=dtype, device="cuda")
 
     def fn():
-        torch.mm(A, B)
+        torch.matmul(A, B)
 
     elapsed = gpu_timer(fn, warmup, repeat)
 
@@ -105,7 +105,7 @@ def bench_gemm(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
     B = torch.randn(K, N, dtype=dtype, device="cuda")
 
     def fn():
-        torch.mm(A, B)
+        torch.matmul(A, B)
 
     elapsed = gpu_timer(fn, warmup, repeat)
 
