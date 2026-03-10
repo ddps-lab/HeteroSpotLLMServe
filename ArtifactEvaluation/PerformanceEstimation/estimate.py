@@ -121,12 +121,21 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
     results_dir = os.path.join(base_dir, model_key, wl_dir, "results", "data", "estimated")
     os.makedirs(results_dir, exist_ok=True)
 
+    # Also output to trtllm/predicted/ directory
+    trtllm_dir = os.path.join(base_dir, "trtllm", model_key, wl_dir, "predicted")
+    os.makedirs(trtllm_dir, exist_ok=True)
+    trtllm_file = os.path.join(trtllm_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
+
     output_file = os.path.join(results_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
 
     # Check cache
     if os.path.exists(output_file) and not force:
         with open(output_file) as f:
             cached = json.load(f)
+        # Ensure trtllm/predicted/ also has the cached result
+        if not os.path.exists(trtllm_file):
+            with open(trtllm_file, "w") as f:
+                json.dump(cached, f, indent=2)
         print(f"  [cached] {instance_type} {strategy_label}")
         return cached
 
@@ -261,6 +270,10 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
     }
 
     with open(output_file, "w") as f:
+        json.dump(result, f, indent=2)
+
+    # Copy to trtllm/predicted/
+    with open(trtllm_file, "w") as f:
         json.dump(result, f, indent=2)
 
     status = "✓" if batch_size > 0 else "✗ infeasible"
