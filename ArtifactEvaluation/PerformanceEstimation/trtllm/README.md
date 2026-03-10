@@ -234,7 +234,7 @@ done
 TP=8; PP=1; WORLD=$((TP * PP))
 BS=32  # exact batch size
 
-mpirun -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
+mpirun --allow-run-as-root -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
   --engine_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
   --static_emulated_batch_size $BS \
   --static_emulated_timeout 5000 \
@@ -257,7 +257,7 @@ TP=8; PP=1; WORLD=$((TP * PP))
 for BS in 1 2 4 8 16 32 64 128 256 512 1024; do
   SAMPLES=$((BS * 10))
   echo "=== Running bs=$BS, samples=$SAMPLES ==="
-  mpirun -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
+  mpirun --allow-run-as-root -n $WORLD ./benchmarks/cpp/gptManagerBenchmark \
     --engine_dir /trtllm/engines/llama3-70b/tp${TP}_pp${PP} \
     --static_emulated_batch_size $BS \
     --static_emulated_timeout 10000 \
