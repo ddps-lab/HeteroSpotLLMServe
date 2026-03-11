@@ -174,14 +174,23 @@ def bench_flash_attention_decode(batch: int, kv_len: int, num_heads: int,
 
             elapsed = gpu_timer(fn, warmup, repeat)
 
-            # FLOPs: 2 * batch * heads * 1 * kv_len * head_dim * 2 (QK + AV)
-            attn_flops = 4 * batch * num_heads * 1 * kv_len * head_dim
-            tflops = attn_flops / elapsed / 1e12
+            # Memory traffic (memory-bound): read Q, K_cache, V_cache + write O
+            # Q: batch * 1 * num_heads * head_dim
+            # K_cache, V_cache: batch * kv_len * num_kv_heads * head_dim (each)
+            # O: batch * 1 * num_heads * head_dim
+            elem = Q.element_size()
+            bytes_moved = (
+                batch * 1 * num_heads * head_dim  # Q read
+                + batch * kv_len * num_kv_heads * head_dim * 2  # K + V cache read
+                + batch * 1 * num_heads * head_dim  # O write
+            ) * elem
+            bw_GBs = bytes_moved / elapsed / 1e9
 
             return {
                 "batch": batch, "kv_len": kv_len,
                 "elapsed_ms": round(elapsed * 1000, 4),
-                "effective_tflops": round(tflops, 4),
+                "bytes_moved": bytes_moved,
+                "effective_bw_GBs": round(bw_GBs, 2),
                 "method": "flash_attn_func",
             }
         except Exception as e:
@@ -197,13 +206,19 @@ def bench_flash_attention_decode(batch: int, kv_len: int, num_heads: int,
 
     elapsed = gpu_timer(fn, warmup, repeat)
 
-    attn_flops = 4 * batch * num_heads * 1 * kv_len * head_dim
-    tflops = attn_flops / elapsed / 1e12
+    elem = Q.element_size()
+    bytes_moved = (
+        batch * 1 * num_heads * head_dim
+        + batch * kv_len * num_kv_heads * head_dim * 2
+        + batch * 1 * num_heads * head_dim
+    ) * elem
+    bw_GBs = bytes_moved / elapsed / 1e9
 
     return {
         "batch": batch, "kv_len": kv_len,
         "elapsed_ms": round(elapsed * 1000, 4),
-        "effective_tflops": round(tflops, 4),
+        "bytes_moved": bytes_moved,
+        "effective_bw_GBs": round(bw_GBs, 2),
         "method": "flash_attn_with_kvcache",
     }
 
@@ -314,7 +329,7 @@ def main():
 
     if rank == 0:
         # ── 1. GEMV (memory-bound, decode-like) ─────────────────────
-        print(f"\n[1/5] GEMV (memory-bound) — sweep batch sizes")
+        print(f"\n[1/6] GEMV (memory-bound) — sweep batch sizes")
         print(f"      [{H}] x [{H}x{I}]  (hidden → intermediate)")
         print(f"      {'BS':>6}  {'Time (ms)':>10}  {'BW (GB/s)':>10}  {'TFLOPS':>8}")
         gemv_results = []
@@ -325,7 +340,7 @@ def main():
         results["benchmarks"]["gemv"] = gemv_results
 
         # ── 2. GEMM (compute-bound, prefill-like) ───────────────────
-        print(f"\n[2/5] GEMM (compute-bound) — sweep batch sizes")
+        print(f"\n[2/6] GEMM (compute-bound) — sweep batch sizes")
         print(f"      [BS*{args.attn_seq}, {H}] x [{H}, {I}]  (prefill-like)")
         print(f"      {'BS':>6}  {'M':>8}  {'Time (ms)':>10}  {'TFLOPS':>8}")
         gemm_results = []
@@ -339,7 +354,7 @@ def main():
 
         # ── 3. FlashAttention prefill ────────────────────────────────
         if not args.no_flash_attn:
-            print(f"\n[3/5] FlashAttention (prefill) — sweep batch sizes")
+            print(f"\n[3/6] FlashAttention (prefill) — sweep batch sizes")
             print(f"      S={args.attn_seq} H={args.attn_heads} Hkv={args.attn_kv_heads} D={args.attn_head_dim}")
             print(f"      {'BS':>6}  {'Time (ms)':>10}  {'TFLOPS':>8}")
             fa_prefill_results = []
@@ -357,9 +372,9 @@ def main():
             results["benchmarks"]["flash_attn_prefill"] = fa_prefill_results
 
             # ── 4. FlashAttention decode ─────────────────────────────
-            print(f"\n[4/5] FlashAttention (decode) — sweep batch sizes")
+            print(f"\n[4/6] FlashAttention (decode) — sweep batch sizes")
             print(f"      Q_len=1 KV_len={args.kv_len} H={args.attn_heads} Hkv={args.attn_kv_heads} D={args.attn_head_dim}")
-            print(f"      {'BS':>6}  {'Time (ms)':>10}  {'TFLOPS':>8}")
+            print(f"      {'BS':>6}  {'Time (ms)':>10}  {'BW (GB/s)':>10}")
             fa_decode_results = []
             for bs in bs_list:
                 r = bench_flash_attention_decode(
@@ -371,11 +386,11 @@ def main():
                     print(f"      {bs:>6}  ERROR: {r['error']}")
                     break
                 else:
-                    print(f"      {bs:>6}  {r['elapsed_ms']:>10.4f}  {r['effective_tflops']:>8.4f}")
+                    print(f"      {bs:>6}  {r['elapsed_ms']:>10.4f}  {r['effective_bw_GBs']:>10.2f}")
             results["benchmarks"]["flash_attn_decode"] = fa_decode_results
         else:
-            print(f"\n[3/5] FlashAttention prefill — skipped")
-            print(f"\n[4/5] FlashAttention decode — skipped")
+            print(f"\n[3/6] FlashAttention prefill — skipped")
+            print(f"[4/6] FlashAttention decode — skipped")
 
     # Synchronize all ranks before AllReduce
     if is_distributed:
@@ -438,8 +453,8 @@ def main():
             print(f"  Peak FlashAttn prefill: {peak_fa:.4f} TFLOPS")
         fa_decode = results["benchmarks"].get("flash_attn_decode", [])
         if fa_decode and "error" not in fa_decode[0]:
-            peak_fd = max(r["effective_tflops"] for r in fa_decode if "error" not in r)
-            print(f"  Peak FlashAttn decode:  {peak_fd:.4f} TFLOPS")
+            peak_fd_bw = max(r["effective_bw_GBs"] for r in fa_decode if "error" not in r)
+            print(f"  Peak FlashAttn decode:  {peak_fd_bw:.2f} GB/s")
         ar_dec = results["benchmarks"].get("allreduce_decode", [])
         if ar_dec:
             peak_ar_dec = max(r["effective_bw_GBs"] for r in ar_dec)
