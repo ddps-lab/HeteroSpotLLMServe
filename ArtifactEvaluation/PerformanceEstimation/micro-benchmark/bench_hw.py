@@ -381,26 +381,41 @@ def main():
     if is_distributed:
         dist.barrier()
 
-    # ── 5. AllReduce (communication, all ranks participate) ──────────
+    # ── 5. AllReduce decode (communication, all ranks participate) ────
     if is_distributed and dist.get_world_size() > 1:
         if rank == 0:
-            print(f"\n[5/5] AllReduce ({dist.get_world_size()} GPUs) — sweep batch sizes")
-            print(f"      data_size = BS × hidden_dim × {elem_bytes} bytes")
+            print(f"\n[5/6] AllReduce decode ({dist.get_world_size()} GPUs) — sweep batch sizes")
+            print(f"      data_size = BS × {H} × {elem_bytes} bytes")
             print(f"      {'BS':>6}  {'Size (MB)':>10}  {'Time (ms)':>10}  {'BW (GB/s)':>10}")
-        ar_results = []
+        ar_decode_results = []
         for bs in bs_list:
-            # AllReduce size = batch_size * hidden_dim * element_size
-            # This matches the actual AllReduce payload in transformer decode
             ar_bytes = bs * H * elem_bytes
             r = bench_allreduce(ar_bytes, dtype, args.warmup, args.repeat)
             r["batch"] = bs
-            ar_results.append(r)
+            ar_decode_results.append(r)
             if rank == 0:
                 print(f"      {bs:>6}  {ar_bytes / 1e6:>10.2f}  {r['elapsed_ms']:>10.4f}  {r['effective_bw_GBs']:>10.2f}")
-        results["benchmarks"]["allreduce"] = ar_results
+        results["benchmarks"]["allreduce_decode"] = ar_decode_results
+
+        # ── 6. AllReduce prefill (communication, all ranks participate) ──
+        seq = args.attn_seq
+        if rank == 0:
+            print(f"\n[6/6] AllReduce prefill ({dist.get_world_size()} GPUs) — sweep batch sizes")
+            print(f"      data_size = BS × {seq} × {H} × {elem_bytes} bytes")
+            print(f"      {'BS':>6}  {'Size (MB)':>10}  {'Time (ms)':>10}  {'BW (GB/s)':>10}")
+        ar_prefill_results = []
+        for bs in bs_list:
+            ar_bytes = bs * seq * H * elem_bytes
+            r = bench_allreduce(ar_bytes, dtype, args.warmup, args.repeat)
+            r["batch"] = bs
+            ar_prefill_results.append(r)
+            if rank == 0:
+                print(f"      {bs:>6}  {ar_bytes / 1e6:>10.2f}  {r['elapsed_ms']:>10.4f}  {r['effective_bw_GBs']:>10.2f}")
+        results["benchmarks"]["allreduce_prefill"] = ar_prefill_results
     else:
         if rank == 0:
-            print(f"\n[5/5] AllReduce — skipped (single GPU or not distributed)")
+            print(f"\n[5/6] AllReduce decode — skipped (single GPU or not distributed)")
+            print(f"[6/6] AllReduce prefill — skipped (single GPU or not distributed)")
 
     # ── Summary ──────────────────────────────────────────────────────
     if rank == 0:
@@ -425,10 +440,14 @@ def main():
         if fa_decode and "error" not in fa_decode[0]:
             peak_fd = max(r["effective_tflops"] for r in fa_decode if "error" not in r)
             print(f"  Peak FlashAttn decode:  {peak_fd:.4f} TFLOPS")
-        ar = results["benchmarks"].get("allreduce", [])
-        if ar:
-            peak_ar = max(r["effective_bw_GBs"] for r in ar)
-            print(f"  Peak AllReduce BW:      {peak_ar:.2f} GB/s")
+        ar_dec = results["benchmarks"].get("allreduce_decode", [])
+        if ar_dec:
+            peak_ar_dec = max(r["effective_bw_GBs"] for r in ar_dec)
+            print(f"  Peak AR BW (decode):    {peak_ar_dec:.2f} GB/s")
+        ar_pre = results["benchmarks"].get("allreduce_prefill", [])
+        if ar_pre:
+            peak_ar_pre = max(r["effective_bw_GBs"] for r in ar_pre)
+            print(f"  Peak AR BW (prefill):   {peak_ar_pre:.2f} GB/s")
 
         print(f"{'='*70}")
 
