@@ -8,6 +8,7 @@ Run inside the NVIDIA PyTorch container to ensure compatible CUDA, NCCL, and Fla
 
 ```bash
 docker run --gpus all -it --rm \
+  --ipc=host \
   -v ~/ShuntServe:/workspace/ShuntServe \
   nvcr.io/nvidia/pytorch:24.12-py3
 ```
