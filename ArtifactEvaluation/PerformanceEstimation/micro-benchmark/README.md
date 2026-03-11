@@ -1,53 +1,66 @@
 # Hardware Micro-Benchmark
 
-Measures **effective** HBM bandwidth, TFLOPS, and inter-GPU communication bandwidth
-using saturated workloads. These values replace peak spec-sheet numbers in the
-roofline estimator for more accurate cross-GPU performance predictions.
+Measures **effective** HBM bandwidth, TFLOPS, FlashAttention throughput (prefill & decode), and inter-GPU communication bandwidth using saturated workloads. All benchmarks sweep batch sizes from 1 to `--max-batch` (powers of 2).
+
+## Environment Setup
+
+Run inside the NVIDIA PyTorch container to ensure compatible CUDA, NCCL, and FlashAttention versions:
+
+```bash
+docker run --gpus all -it --rm \
+  -v ~/ShuntServe:/workspace/ShuntServe \
+  nvcr.io/nvidia/pytorch:24.12-py3
+```
+
+Then inside the container:
+
+```bash
+cd /workspace/ShuntServe/ArtifactEvaluation/PerformanceEstimation/micro-benchmark
+pip install flash-attn --no-build-isolation
+```
 
 ## What It Measures
 
 | Benchmark | Metric | Workload | Regime |
 |-----------|--------|----------|--------|
-| GEMV | Effective HBM BW (GB/s) | `[1, 8192] × [8192, 28672]` | Memory-bound (decode FFN) |
-| GEMM | Effective TFLOPS | `[2048, 8192] × [8192, 28672]` | Compute-bound (prefill FFN) |
-| AllReduce | Effective Comm BW (GB/s) | 64MB all-reduce across GPUs | TP communication |
+| GEMV | Effective HBM BW (GB/s) | `[BS, H] × [H, I]` | Memory-bound (decode FFN) |
+| GEMM | Effective TFLOPS | `[BS*seq, H] × [H, I]` | Compute-bound (prefill FFN) |
+| FlashAttn prefill | Effective TFLOPS | `B=BS, S=seq_len, GQA` | Fused attention (prefill) |
+| FlashAttn decode | Effective TFLOPS | `B=BS, Q=1, KV=kv_len, GQA` | Fused attention (decode w/ KV cache) |
+| AllReduce | Effective Comm BW (GB/s) | `BS × H × dtype_bytes` | TP communication |
 
-Each benchmark also sweeps multiple sizes to verify saturation stability.
+All benchmarks sweep batch sizes from 1, 2, 4, ..., `--max-batch`.  
+`H` = hidden_dim, `I` = intermediate_dim (from `--hidden-dim`, `--intermediate-dim`).
 
 ## Usage
 
-### Single GPU (BW + FLOPS only)
+### Single GPU
 
 ```bash
-python bench_hw.py --dtype bfloat16
+python bench_hw.py --max-batch 256
 ```
 
 ### Multi-GPU (includes AllReduce)
 
 ```bash
-torchrun --nproc_per_node=8 bench_hw.py --dtype bfloat16
+torchrun --nproc_per_node=4 bench_hw.py --max-batch 256
+```
+
+### Custom Model Dimensions
+
+```bash
+# Llama-3.1-70B (default)
+python bench_hw.py --hidden-dim 8192 --intermediate-dim 28672 --max-batch 256
+
+# Qwen3-32B
+python bench_hw.py --hidden-dim 5120 --intermediate-dim 25600 \
+  --attn-heads 64 --attn-kv-heads 8 --attn-head-dim 128 --max-batch 256
 ```
 
 ### Save Results
 
 ```bash
-# Single GPU
-python bench_hw.py --output results/g6_48xlarge.json
-
-# Multi-GPU
-torchrun --nproc_per_node=8 bench_hw.py --output results/g6_48xlarge.json
-```
-
-### Custom Parameters
-
-```bash
-python bench_hw.py \
-  --warmup 20 \
-  --repeat 100 \
-  --dtype bfloat16 \
-  --gemv-k 8192 --gemv-n 28672 \
-  --gemm-m 4096 --gemm-k 8192 --gemm-n 28672 \
-  --ar-size-mb 128
+torchrun --nproc_per_node=4 bench_hw.py --max-batch 256 --output results/g6_48xlarge.json
 ```
 
 ## Output Format

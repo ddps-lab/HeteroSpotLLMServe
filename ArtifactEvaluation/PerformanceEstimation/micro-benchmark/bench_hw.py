@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 """Hardware micro-benchmark: measure effective BW, FLOPS, attention, and comm bandwidth.
 
-Runs four workloads on the current GPU(s) and reports:
+Runs workloads on the current GPU(s) and reports:
   1. GEMV  (memory-bound)  -> effective HBM bandwidth (GB/s)
   2. GEMM  (compute-bound) -> effective TFLOPS
   3. FlashAttention prefill -> effective attention throughput (ms, TFLOPS)
-  4. AllReduce (comm)       -> effective inter-GPU bandwidth (GB/s)
+  4. FlashAttention decode  -> effective decode throughput with KV cache (ms, TFLOPS)
+  5. AllReduce (comm)       -> effective inter-GPU bandwidth (GB/s)
+
+All benchmarks sweep batch sizes from 1 to --max-batch (powers of 2).
 
 Usage:
-  # Single-GPU (GEMV + GEMM only)
+  # Single-GPU (GEMV + GEMM + FlashAttention only)
   python bench_hw.py
 
   # Multi-GPU (includes AllReduce)
-  torchrun --nproc_per_node=8 bench_hw.py
+  torchrun --nproc_per_node=4 bench_hw.py
 
-  # Custom parameters
-  python bench_hw.py --warmup 20 --repeat 100 --dtype bfloat16
+  # Custom model dimensions (Qwen3-32B example)
+  python bench_hw.py --hidden-dim 5120 --intermediate-dim 25600 \\
+      --attn-heads 64 --attn-kv-heads 8 --attn-head-dim 128 --max-batch 256
 
   # Save results
   python bench_hw.py --output results.json
@@ -24,7 +28,6 @@ Usage:
 import argparse
 import json
 import os
-import time
 
 import torch
 import torch.distributed as dist
@@ -53,7 +56,6 @@ def gpu_timer(fn, warmup: int = 10, repeat: int = 50) -> float:
         times.append(start.elapsed_time(end) / 1000.0)  # ms → sec
 
     times.sort()
-    # Use median
     return times[len(times) // 2]
 
 
@@ -61,14 +63,23 @@ def get_dtype(name: str):
     return {"float16": torch.float16, "bfloat16": torch.bfloat16, "float32": torch.float32}[name]
 
 
+def batch_sizes_list(max_batch: int) -> list:
+    """Generate batch sizes: 1, 2, 4, 8, ..., max_batch."""
+    sizes = []
+    bs = 1
+    while bs <= max_batch:
+        sizes.append(bs)
+        bs *= 2
+    # Include max_batch if not a power of 2
+    if sizes[-1] != max_batch:
+        sizes.append(max_batch)
+    return sizes
+
+
 # ── Benchmarks ───────────────────────────────────────────────────────
 
 def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
-    """GEMV-like: [M, K] x [K, N] where M is small (memory-bound).
-
-    Measures effective HBM bandwidth.
-    M=1 is pure GEMV; M=2-4 also memory-bound on most GPUs.
-    """
+    """GEMV-like: [M, K] x [K, N] where M is small (memory-bound)."""
     A = torch.randn(M, K, dtype=dtype, device="cuda")
     B = torch.randn(K, N, dtype=dtype, device="cuda")
 
@@ -77,31 +88,22 @@ def bench_gemv(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
 
     elapsed = gpu_timer(fn, warmup, repeat)
 
-    # Memory traffic: read A (MxK) + read B (KxN) + write C (MxN)
     elem_bytes = A.element_size()
     bytes_moved = (M * K + K * N + M * N) * elem_bytes
     bw_GBs = bytes_moved / elapsed / 1e9
-
-    # FLOPs (for reference)
     flops = 2 * M * K * N
     tflops = flops / elapsed / 1e12
 
     return {
-        "workload": f"GEMV [{M}x{K}] x [{K}x{N}]",
-        "dtype": str(dtype).replace("torch.", ""),
+        "M": M, "K": K, "N": N,
         "elapsed_ms": round(elapsed * 1000, 4),
-        "bytes_moved": bytes_moved,
         "effective_bw_GBs": round(bw_GBs, 2),
-        "flops": flops,
         "effective_tflops": round(tflops, 4),
     }
 
 
 def bench_gemm(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
-    """Large GEMM: [M, K] x [K, N] where M is large (compute-bound).
-
-    Measures effective TFLOPS.
-    """
+    """Large GEMM: [M, K] x [K, N] (compute-bound)."""
     A = torch.randn(M, K, dtype=dtype, device="cuda")
     B = torch.randn(K, N, dtype=dtype, device="cuda")
 
@@ -113,36 +115,21 @@ def bench_gemm(M: int, K: int, N: int, dtype, warmup: int, repeat: int) -> dict:
     flops = 2 * M * K * N
     tflops = flops / elapsed / 1e12
 
-    # BW for reference
-    elem_bytes = A.element_size()
-    bytes_moved = (M * K + K * N + M * N) * elem_bytes
-    bw_GBs = bytes_moved / elapsed / 1e9
-
     return {
-        "workload": f"GEMM [{M}x{K}] x [{K}x{N}]",
-        "dtype": str(dtype).replace("torch.", ""),
+        "M": M, "K": K, "N": N,
         "elapsed_ms": round(elapsed * 1000, 4),
-        "bytes_moved": bytes_moved,
-        "effective_bw_GBs": round(bw_GBs, 2),
-        "flops": flops,
         "effective_tflops": round(tflops, 4),
     }
 
 
-def bench_flash_attention(batch: int, seq_len: int, num_heads: int, head_dim: int,
-                          num_kv_heads: int, dtype, warmup: int, repeat: int) -> dict:
-    """FlashAttention prefill benchmark.
-
-    Measures actual fused attention kernel throughput, which varies
-    significantly across GPU architectures (SM86 vs SM89 etc.).
-    """
+def bench_flash_attention_prefill(batch: int, seq_len: int, num_heads: int,
+                                  head_dim: int, num_kv_heads: int,
+                                  dtype, warmup: int, repeat: int) -> dict:
+    """FlashAttention prefill benchmark."""
     try:
         from flash_attn import flash_attn_func
     except Exception as e:
         return {"error": f"flash_attn import failed: {e}"}
-
-    # GQA: repeat KV heads to match query heads
-    kv_repeat = num_heads // num_kv_heads
 
     Q = torch.randn(batch, seq_len, num_heads, head_dim, dtype=dtype, device="cuda")
     K = torch.randn(batch, seq_len, num_kv_heads, head_dim, dtype=dtype, device="cuda")
@@ -153,29 +140,76 @@ def bench_flash_attention(batch: int, seq_len: int, num_heads: int, head_dim: in
 
     elapsed = gpu_timer(fn, warmup, repeat)
 
-    # Attention FLOPs (approximate): 2 * batch * heads * seq^2 * head_dim * 2 (QK + AV)
+    # Attention FLOPs: 2 * batch * heads * seq^2 * head_dim * 2 (QK + AV)
     attn_flops = 4 * batch * num_heads * seq_len * seq_len * head_dim
     tflops = attn_flops / elapsed / 1e12
 
     return {
-        "workload": f"FlashAttn B={batch} S={seq_len} H={num_heads} Hkv={num_kv_heads} D={head_dim}",
-        "dtype": str(dtype).replace("torch.", ""),
+        "batch": batch, "seq_len": seq_len,
         "elapsed_ms": round(elapsed * 1000, 4),
-        "attn_flops": attn_flops,
         "effective_tflops": round(tflops, 4),
-        "batch": batch,
-        "seq_len": seq_len,
-        "num_heads": num_heads,
-        "num_kv_heads": num_kv_heads,
-        "head_dim": head_dim,
+    }
+
+
+def bench_flash_attention_decode(batch: int, kv_len: int, num_heads: int,
+                                 head_dim: int, num_kv_heads: int,
+                                 dtype, warmup: int, repeat: int) -> dict:
+    """FlashAttention decode benchmark (single query token with KV cache).
+
+    Simulates autoregressive decode: Q has seq_len=1, K/V have seq_len=kv_len.
+    """
+    try:
+        from flash_attn import flash_attn_with_kvcache
+    except ImportError:
+        try:
+            # Fallback: use flash_attn_func with seq_len=1 for Q
+            from flash_attn import flash_attn_func
+
+            Q = torch.randn(batch, 1, num_heads, head_dim, dtype=dtype, device="cuda")
+            K = torch.randn(batch, kv_len, num_kv_heads, head_dim, dtype=dtype, device="cuda")
+            V = torch.randn(batch, kv_len, num_kv_heads, head_dim, dtype=dtype, device="cuda")
+
+            def fn():
+                flash_attn_func(Q, K, V, causal=True)
+
+            elapsed = gpu_timer(fn, warmup, repeat)
+
+            # FLOPs: 2 * batch * heads * 1 * kv_len * head_dim * 2 (QK + AV)
+            attn_flops = 4 * batch * num_heads * 1 * kv_len * head_dim
+            tflops = attn_flops / elapsed / 1e12
+
+            return {
+                "batch": batch, "kv_len": kv_len,
+                "elapsed_ms": round(elapsed * 1000, 4),
+                "effective_tflops": round(tflops, 4),
+                "method": "flash_attn_func",
+            }
+        except Exception as e:
+            return {"error": f"flash_attn import failed: {e}"}
+
+    # Preferred: flash_attn_with_kvcache
+    Q = torch.randn(batch, 1, num_heads, head_dim, dtype=dtype, device="cuda")
+    K_cache = torch.randn(batch, kv_len, num_kv_heads, head_dim, dtype=dtype, device="cuda")
+    V_cache = torch.randn(batch, kv_len, num_kv_heads, head_dim, dtype=dtype, device="cuda")
+
+    def fn():
+        flash_attn_with_kvcache(Q, K_cache, V_cache, causal=True)
+
+    elapsed = gpu_timer(fn, warmup, repeat)
+
+    attn_flops = 4 * batch * num_heads * 1 * kv_len * head_dim
+    tflops = attn_flops / elapsed / 1e12
+
+    return {
+        "batch": batch, "kv_len": kv_len,
+        "elapsed_ms": round(elapsed * 1000, 4),
+        "effective_tflops": round(tflops, 4),
+        "method": "flash_attn_with_kvcache",
     }
 
 
 def bench_allreduce(size_bytes: int, dtype, warmup: int, repeat: int) -> dict:
-    """AllReduce benchmark across all GPUs in the process group.
-
-    Measures effective inter-GPU bandwidth.
-    """
+    """AllReduce benchmark across all GPUs in the process group."""
     elem_bytes = torch.tensor([], dtype=dtype).element_size()
     num_elements = size_bytes // elem_bytes
     tensor = torch.randn(num_elements, dtype=dtype, device="cuda")
@@ -191,12 +225,10 @@ def bench_allreduce(size_bytes: int, dtype, warmup: int, repeat: int) -> dict:
     bw_GBs = algo_bytes / elapsed / 1e9
 
     return {
-        "workload": f"AllReduce {size_bytes / 1e6:.1f}MB x {world_size} GPUs",
-        "dtype": str(dtype).replace("torch.", ""),
-        "elapsed_ms": round(elapsed * 1000, 4),
         "data_bytes": size_bytes,
-        "algo_bytes": round(algo_bytes),
+        "data_MB": round(size_bytes / 1e6, 2),
         "world_size": world_size,
+        "elapsed_ms": round(elapsed * 1000, 4),
         "effective_bw_GBs": round(bw_GBs, 2),
     }
 
@@ -207,33 +239,39 @@ def main():
     parser = argparse.ArgumentParser(description="Hardware micro-benchmark")
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--repeat", type=int, default=50)
-    parser.add_argument("--dtype", type=str, default="bfloat16", choices=["float16", "bfloat16", "float32"])
-    parser.add_argument("--output", type=str, default=None, help="Save results to JSON file")
+    parser.add_argument("--dtype", type=str, default="bfloat16",
+                        choices=["float16", "bfloat16", "float32"])
+    parser.add_argument("--output", type=str, default=None,
+                        help="Save results to JSON file")
 
-    # GEMV dimensions (memory-bound, decode-like)
-    parser.add_argument("--gemv-m", type=int, default=1, help="GEMV M dimension (batch, keep small)")
-    parser.add_argument("--gemv-k", type=int, default=8192, help="GEMV K dimension (hidden_dim)")
-    parser.add_argument("--gemv-n", type=int, default=28672, help="GEMV N dimension (intermediate_dim)")
+    # Model dimensions
+    parser.add_argument("--hidden-dim", type=int, default=8192,
+                        help="Hidden dimension (default: 8192 for Llama-70B)")
+    parser.add_argument("--intermediate-dim", type=int, default=28672,
+                        help="MLP intermediate dimension (default: 28672 for Llama-70B)")
 
-    # GEMM dimensions (compute-bound, prefill-like)
-    parser.add_argument("--gemm-m", type=int, default=2048, help="GEMM M dimension (large batch)")
-    parser.add_argument("--gemm-k", type=int, default=8192, help="GEMM K dimension (hidden_dim)")
-    parser.add_argument("--gemm-n", type=int, default=28672, help="GEMM N dimension (intermediate_dim)")
+    # Batch size sweep
+    parser.add_argument("--max-batch", type=int, default=512,
+                        help="Maximum batch size for sweep (powers of 2 from 1 to max)")
 
-    # FlashAttention dimensions (prefill-like)
-    parser.add_argument("--attn-batch", type=int, default=1, help="Attention batch size")
-    parser.add_argument("--attn-seq", type=int, default=763, help="Attention sequence length")
-    parser.add_argument("--attn-heads", type=int, default=64, help="Number of query heads")
-    parser.add_argument("--attn-kv-heads", type=int, default=8, help="Number of KV heads (GQA)")
-    parser.add_argument("--attn-head-dim", type=int, default=128, help="Head dimension")
-    parser.add_argument("--no-flash-attn", action="store_true", help="Skip FlashAttention benchmark")
-
-    # AllReduce size
-    parser.add_argument("--ar-size-mb", type=float, default=64, help="AllReduce data size in MB")
+    # FlashAttention dimensions
+    parser.add_argument("--attn-seq", type=int, default=763,
+                        help="Prefill sequence length (default: 763)")
+    parser.add_argument("--attn-heads", type=int, default=64,
+                        help="Number of query heads")
+    parser.add_argument("--attn-kv-heads", type=int, default=8,
+                        help="Number of KV heads (GQA)")
+    parser.add_argument("--attn-head-dim", type=int, default=128,
+                        help="Head dimension")
+    parser.add_argument("--kv-len", type=int, default=763,
+                        help="KV cache length for decode benchmark (default: 763)")
+    parser.add_argument("--no-flash-attn", action="store_true",
+                        help="Skip FlashAttention benchmarks")
 
     args = parser.parse_args()
 
     dtype = get_dtype(args.dtype)
+    elem_bytes = torch.tensor([], dtype=dtype).element_size()
     is_distributed = "RANK" in os.environ
     rank = int(os.environ.get("RANK", 0))
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
@@ -246,168 +284,153 @@ def main():
     gpu_name = torch.cuda.get_device_name(local_rank)
     gpu_mem_gb = torch.cuda.get_device_properties(local_rank).total_memory / 1e9
 
+    H = args.hidden_dim
+    I = args.intermediate_dim
+    bs_list = batch_sizes_list(args.max_batch)
+
     results = {
         "gpu_name": gpu_name,
         "gpu_memory_gb": round(gpu_mem_gb, 2),
         "dtype": args.dtype,
+        "hidden_dim": H,
+        "intermediate_dim": I,
+        "max_batch": args.max_batch,
+        "batch_sizes": bs_list,
         "warmup": args.warmup,
         "repeat": args.repeat,
         "benchmarks": {},
     }
 
     if rank == 0:
-        print(f"{'='*60}")
+        print(f"{'='*70}")
         print(f"Hardware Micro-Benchmark")
         print(f"GPU: {gpu_name} ({gpu_mem_gb:.1f} GB)")
-        print(f"dtype: {args.dtype}, warmup: {args.warmup}, repeat: {args.repeat}")
-        print(f"{'='*60}")
+        print(f"dtype: {args.dtype}, hidden_dim: {H}, intermediate_dim: {I}")
+        print(f"Batch sizes: {bs_list}")
+        print(f"{'='*70}")
 
-    # 1. GEMV (memory-bound)
-    if rank == 0:
-        print(f"\n[1/4] GEMV (memory-bound) [{args.gemv_m}x{args.gemv_k}] x [{args.gemv_k}x{args.gemv_n}]")
-    gemv = bench_gemv(args.gemv_m, args.gemv_k, args.gemv_n, dtype, args.warmup, args.repeat)
-    results["benchmarks"]["gemv"] = gemv
-    if rank == 0:
-        print(f"  Time: {gemv['elapsed_ms']:.4f} ms")
-        print(f"  Effective BW:    {gemv['effective_bw_GBs']:.2f} GB/s")
-        print(f"  Effective FLOPS: {gemv['effective_tflops']:.4f} TFLOPS")
+    # ── Single-GPU benchmarks (rank 0 only) ────────────────────────────
+    # Other ranks wait at barrier before AllReduce.
 
-    # Run additional GEMV sizes for stability check
-    gemv_sizes = [
-        (1, args.gemv_k, args.gemv_n),
-        (1, args.gemv_k, args.gemv_k),  # square-ish weight
-        (4, args.gemv_k, args.gemv_n),  # small batch
-    ]
-    gemv_bws = []
-    for m, k, n in gemv_sizes:
-        r = bench_gemv(m, k, n, dtype, args.warmup, args.repeat)
-        gemv_bws.append(r["effective_bw_GBs"])
-        if rank == 0:
-            print(f"  [{m}x{k}]x[{k}x{n}]: {r['effective_bw_GBs']:.2f} GB/s")
-    results["benchmarks"]["gemv_sweep"] = {
-        "sizes": [f"{m}x{k}x{n}" for m, k, n in gemv_sizes],
-        "bw_GBs": gemv_bws,
-        "median_bw_GBs": round(sorted(gemv_bws)[len(gemv_bws) // 2], 2),
-    }
     if rank == 0:
-        print(f"  Median BW across sizes: {results['benchmarks']['gemv_sweep']['median_bw_GBs']:.2f} GB/s")
+        # ── 1. GEMV (memory-bound, decode-like) ─────────────────────
+        print(f"\n[1/5] GEMV (memory-bound) — sweep batch sizes")
+        print(f"      [{H}] x [{H}x{I}]  (hidden → intermediate)")
+        print(f"      {'BS':>6}  {'Time (ms)':>10}  {'BW (GB/s)':>10}  {'TFLOPS':>8}")
+        gemv_results = []
+        for bs in bs_list:
+            r = bench_gemv(bs, H, I, dtype, args.warmup, args.repeat)
+            gemv_results.append(r)
+            print(f"      {bs:>6}  {r['elapsed_ms']:>10.4f}  {r['effective_bw_GBs']:>10.2f}  {r['effective_tflops']:>8.4f}")
+        results["benchmarks"]["gemv"] = gemv_results
 
-    # 2. GEMM (compute-bound)
-    if rank == 0:
-        print(f"\n[2/4] GEMM (compute-bound) [{args.gemm_m}x{args.gemm_k}] x [{args.gemm_k}x{args.gemm_n}]")
-    gemm = bench_gemm(args.gemm_m, args.gemm_k, args.gemm_n, dtype, args.warmup, args.repeat)
-    results["benchmarks"]["gemm"] = gemm
-    if rank == 0:
-        print(f"  Time: {gemm['elapsed_ms']:.4f} ms")
-        print(f"  Effective FLOPS: {gemm['effective_tflops']:.4f} TFLOPS")
-        print(f"  Effective BW:    {gemm['effective_bw_GBs']:.2f} GB/s")
+        # ── 2. GEMM (compute-bound, prefill-like) ───────────────────
+        print(f"\n[2/5] GEMM (compute-bound) — sweep batch sizes")
+        print(f"      [BS*{args.attn_seq}, {H}] x [{H}, {I}]  (prefill-like)")
+        print(f"      {'BS':>6}  {'M':>8}  {'Time (ms)':>10}  {'TFLOPS':>8}")
+        gemm_results = []
+        for bs in bs_list:
+            M = bs * args.attn_seq
+            r = bench_gemm(M, H, I, dtype, args.warmup, args.repeat)
+            r["batch"] = bs
+            gemm_results.append(r)
+            print(f"      {bs:>6}  {M:>8}  {r['elapsed_ms']:>10.4f}  {r['effective_tflops']:>8.4f}")
+        results["benchmarks"]["gemm"] = gemm_results
 
-    # Additional GEMM sizes
-    gemm_sizes = [
-        (2048, args.gemm_k, args.gemm_n),
-        (4096, args.gemm_k, args.gemm_n),
-        (2048, args.gemm_k, args.gemm_k),
-    ]
-    gemm_tflops = []
-    for m, k, n in gemm_sizes:
-        r = bench_gemm(m, k, n, dtype, args.warmup, args.repeat)
-        gemm_tflops.append(r["effective_tflops"])
-        if rank == 0:
-            print(f"  [{m}x{k}]x[{k}x{n}]: {r['effective_tflops']:.4f} TFLOPS")
-    results["benchmarks"]["gemm_sweep"] = {
-        "sizes": [f"{m}x{k}x{n}" for m, k, n in gemm_sizes],
-        "tflops": gemm_tflops,
-        "median_tflops": round(sorted(gemm_tflops)[len(gemm_tflops) // 2], 4),
-    }
-    if rank == 0:
-        print(f"  Median FLOPS across sizes: {results['benchmarks']['gemm_sweep']['median_tflops']:.4f} TFLOPS")
-
-    # 3. FlashAttention (prefill)
-    if not args.no_flash_attn:
-        if rank == 0:
-            print(f"\n[3/4] FlashAttention (prefill) B={args.attn_batch} S={args.attn_seq} "
-                  f"H={args.attn_heads} Hkv={args.attn_kv_heads} D={args.attn_head_dim}")
-        fa = bench_flash_attention(
-            args.attn_batch, args.attn_seq, args.attn_heads, args.attn_head_dim,
-            args.attn_kv_heads, dtype, args.warmup, args.repeat,
-        )
-        results["benchmarks"]["flash_attn"] = fa
-        if rank == 0:
-            if "error" in fa:
-                print(f"  SKIPPED: {fa['error']}")
-            else:
-                print(f"  Time: {fa['elapsed_ms']:.4f} ms")
-                print(f"  Effective TFLOPS: {fa['effective_tflops']:.4f} TFLOPS")
-
-        # Sweep sequence lengths
-        if "error" not in fa:
-            fa_seqs = [256, 512, 763, 1024, 2048]
-            fa_results = []
-            for s in fa_seqs:
-                r = bench_flash_attention(
-                    args.attn_batch, s, args.attn_heads, args.attn_head_dim,
+        # ── 3. FlashAttention prefill ────────────────────────────────
+        if not args.no_flash_attn:
+            print(f"\n[3/5] FlashAttention (prefill) — sweep batch sizes")
+            print(f"      S={args.attn_seq} H={args.attn_heads} Hkv={args.attn_kv_heads} D={args.attn_head_dim}")
+            print(f"      {'BS':>6}  {'Time (ms)':>10}  {'TFLOPS':>8}")
+            fa_prefill_results = []
+            for bs in bs_list:
+                r = bench_flash_attention_prefill(
+                    bs, args.attn_seq, args.attn_heads, args.attn_head_dim,
                     args.attn_kv_heads, dtype, args.warmup, args.repeat,
                 )
-                fa_results.append({"seq_len": s, "elapsed_ms": r["elapsed_ms"], "tflops": r["effective_tflops"]})
-                if rank == 0:
-                    print(f"  S={s}: {r['elapsed_ms']:.4f} ms, {r['effective_tflops']:.4f} TFLOPS")
-            results["benchmarks"]["flash_attn_sweep"] = fa_results
-    else:
-        if rank == 0:
-            print(f"\n[3/4] FlashAttention — skipped (--no-flash-attn)")
+                fa_prefill_results.append(r)
+                if "error" in r:
+                    print(f"      {bs:>6}  ERROR: {r['error']}")
+                    break
+                else:
+                    print(f"      {bs:>6}  {r['elapsed_ms']:>10.4f}  {r['effective_tflops']:>8.4f}")
+            results["benchmarks"]["flash_attn_prefill"] = fa_prefill_results
 
-    # 4. AllReduce (communication)
+            # ── 4. FlashAttention decode ─────────────────────────────
+            print(f"\n[4/5] FlashAttention (decode) — sweep batch sizes")
+            print(f"      Q_len=1 KV_len={args.kv_len} H={args.attn_heads} Hkv={args.attn_kv_heads} D={args.attn_head_dim}")
+            print(f"      {'BS':>6}  {'Time (ms)':>10}  {'TFLOPS':>8}")
+            fa_decode_results = []
+            for bs in bs_list:
+                r = bench_flash_attention_decode(
+                    bs, args.kv_len, args.attn_heads, args.attn_head_dim,
+                    args.attn_kv_heads, dtype, args.warmup, args.repeat,
+                )
+                fa_decode_results.append(r)
+                if "error" in r:
+                    print(f"      {bs:>6}  ERROR: {r['error']}")
+                    break
+                else:
+                    print(f"      {bs:>6}  {r['elapsed_ms']:>10.4f}  {r['effective_tflops']:>8.4f}")
+            results["benchmarks"]["flash_attn_decode"] = fa_decode_results
+        else:
+            print(f"\n[3/5] FlashAttention prefill — skipped")
+            print(f"\n[4/5] FlashAttention decode — skipped")
+
+    # Synchronize all ranks before AllReduce
+    if is_distributed:
+        dist.barrier()
+
+    # ── 5. AllReduce (communication, all ranks participate) ──────────
     if is_distributed and dist.get_world_size() > 1:
-        ar_bytes = int(args.ar_size_mb * 1e6)
         if rank == 0:
-            print(f"\n[4/4] AllReduce ({args.ar_size_mb:.0f} MB, {dist.get_world_size()} GPUs)")
-        ar = bench_allreduce(ar_bytes, dtype, args.warmup, args.repeat)
-        results["benchmarks"]["allreduce"] = ar
-        if rank == 0:
-            print(f"  Time: {ar['elapsed_ms']:.4f} ms")
-            print(f"  Effective BW: {ar['effective_bw_GBs']:.2f} GB/s")
-
-        # Sweep sizes
-        ar_sizes_mb = [1, 8, 32, 64, 128]
-        ar_bws = []
-        for sz in ar_sizes_mb:
-            r = bench_allreduce(int(sz * 1e6), dtype, args.warmup, args.repeat)
-            ar_bws.append(r["effective_bw_GBs"])
+            print(f"\n[5/5] AllReduce ({dist.get_world_size()} GPUs) — sweep batch sizes")
+            print(f"      data_size = BS × hidden_dim × {elem_bytes} bytes")
+            print(f"      {'BS':>6}  {'Size (MB)':>10}  {'Time (ms)':>10}  {'BW (GB/s)':>10}")
+        ar_results = []
+        for bs in bs_list:
+            # AllReduce size = batch_size * hidden_dim * element_size
+            # This matches the actual AllReduce payload in transformer decode
+            ar_bytes = bs * H * elem_bytes
+            r = bench_allreduce(ar_bytes, dtype, args.warmup, args.repeat)
+            r["batch"] = bs
+            ar_results.append(r)
             if rank == 0:
-                print(f"  {sz}MB: {r['effective_bw_GBs']:.2f} GB/s")
-        results["benchmarks"]["allreduce_sweep"] = {
-            "sizes_mb": ar_sizes_mb,
-            "bw_GBs": ar_bws,
-            "max_bw_GBs": round(max(ar_bws), 2),
-        }
-        if rank == 0:
-            print(f"  Max BW (saturated): {max(ar_bws):.2f} GB/s")
+                print(f"      {bs:>6}  {ar_bytes / 1e6:>10.2f}  {r['elapsed_ms']:>10.4f}  {r['effective_bw_GBs']:>10.2f}")
+        results["benchmarks"]["allreduce"] = ar_results
     else:
         if rank == 0:
-            print(f"\n[4/4] AllReduce — skipped (single GPU or not distributed)")
+            print(f"\n[5/5] AllReduce — skipped (single GPU or not distributed)")
 
-    # Summary
+    # ── Summary ──────────────────────────────────────────────────────
     if rank == 0:
-        print(f"\n{'='*60}")
+        print(f"\n{'='*70}")
         print(f"SUMMARY — {gpu_name}")
-        print(f"{'='*60}")
-        print(f"  Effective HBM BW:   {results['benchmarks']['gemv_sweep']['median_bw_GBs']:.2f} GB/s")
-        print(f"  Effective TFLOPS:   {results['benchmarks']['gemm_sweep']['median_tflops']:.4f} TFLOPS")
-        fa_bench = results["benchmarks"].get("flash_attn", {})
-        if fa_bench and "error" not in fa_bench:
-            print(f"  FlashAttn TFLOPS:   {fa_bench['effective_tflops']:.4f} TFLOPS (S={fa_bench['seq_len']})")
-        if "allreduce_sweep" in results["benchmarks"]:
-            print(f"  Effective Comm BW:  {results['benchmarks']['allreduce_sweep']['max_bw_GBs']:.2f} GB/s")
-        print(f"{'='*60}")
+        print(f"{'='*70}")
 
-        results["summary"] = {
-            "effective_bw_GBs": results["benchmarks"]["gemv_sweep"]["median_bw_GBs"],
-            "effective_tflops": results["benchmarks"]["gemm_sweep"]["median_tflops"],
-        }
-        if fa_bench and "error" not in fa_bench:
-            results["summary"]["flash_attn_tflops"] = fa_bench["effective_tflops"]
-        if "allreduce_sweep" in results["benchmarks"]:
-            results["summary"]["effective_comm_bw_GBs"] = results["benchmarks"]["allreduce_sweep"]["max_bw_GBs"]
+        # Peak values from sweeps
+        gemv_data = results["benchmarks"].get("gemv", [])
+        if gemv_data:
+            peak_bw = max(r["effective_bw_GBs"] for r in gemv_data)
+            print(f"  Peak HBM BW (GEMV):     {peak_bw:.2f} GB/s")
+        gemm_data = results["benchmarks"].get("gemm", [])
+        if gemm_data:
+            peak_tflops = max(r["effective_tflops"] for r in gemm_data)
+            print(f"  Peak TFLOPS (GEMM):     {peak_tflops:.4f} TFLOPS")
+        fa_prefill = results["benchmarks"].get("flash_attn_prefill", [])
+        if fa_prefill and "error" not in fa_prefill[0]:
+            peak_fa = max(r["effective_tflops"] for r in fa_prefill if "error" not in r)
+            print(f"  Peak FlashAttn prefill: {peak_fa:.4f} TFLOPS")
+        fa_decode = results["benchmarks"].get("flash_attn_decode", [])
+        if fa_decode and "error" not in fa_decode[0]:
+            peak_fd = max(r["effective_tflops"] for r in fa_decode if "error" not in r)
+            print(f"  Peak FlashAttn decode:  {peak_fd:.4f} TFLOPS")
+        ar = results["benchmarks"].get("allreduce", [])
+        if ar:
+            peak_ar = max(r["effective_bw_GBs"] for r in ar)
+            print(f"  Peak AllReduce BW:      {peak_ar:.2f} GB/s")
+
+        print(f"{'='*70}")
 
         if args.output:
             os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
