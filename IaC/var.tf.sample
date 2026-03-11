@@ -34,6 +34,12 @@ variable "head_instance_type" {
   default = "m5.large"
 }
 
+variable "root_volume_size" {
+  type        = number
+  description = "The root EBS volume size in GB for EC2 instances"
+  default     = 100
+}
+
 variable "hf_token" {
   type        = string
   description = "HuggingFace API token for accessing gated models (e.g. Llama)"

@@ -24,6 +24,10 @@ module "shunt-head-instance" {
   user_data            = local.hf_user_data
   iam_instance_profile = var.s3_instance_profile_name
 
+  root_block_device = {
+    volume_size = var.root_volume_size
+  }
+
   tags = {
     Name = "${var.prefix}-shunt-head-instance"
   }
@@ -44,6 +48,10 @@ module "shunt-worker-instance" {
 
   user_data            = local.hf_user_data
   iam_instance_profile = var.s3_instance_profile_name
+
+  root_block_device = {
+    volume_size = var.root_volume_size
+  }
 
   tags = {
     Name         = "${var.prefix}-shunt-worker-${each.key}"

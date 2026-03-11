@@ -8,3 +8,4 @@ variable "s3_instance_profile_name" {}
 
 variable "head_instance_type" {}
 variable "hf_token" {}
+variable "root_volume_size" {}
