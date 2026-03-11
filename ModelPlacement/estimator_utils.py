@@ -1,7 +1,7 @@
 from typing import List, Optional
 import torch
 import logging
-from hardware_specs import GPU_SPEC, INTERCONNECT_SPEC, INSTANCE_SPEC
+from hardware_specs import GPU_SPEC, INSTANCE_SPEC
 
 import sys
 import os
@@ -524,10 +524,10 @@ def get_prefill_compute_logit_latency(
         return 0
 
     compute_logit_ops = get_prefill_compute_logit_ops(
-        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+        1, hidden_dim, vocab_size, gpu_count, batch_size
     )
     compute_logit_memory_access = get_prefill_compute_logit_memory_access_count(
-        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+        1, hidden_dim, vocab_size, gpu_count, batch_size
     ) * dtype.itemsize  # Convert to Bytes
 
     GPU_SPEC_info = GPU_SPEC[gpu_type]
@@ -769,7 +769,7 @@ def get_single_request_latency(
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
         num_gpu = tp_sizes[i] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
-        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
+        p2p_bandwidth = INSTANCE_SPEC[node_type]["interconnect_bandwidth"]
         processed_layers += layer_count
 
         prefill_computation_laytency = get_prefill_computation_latency_per_layer(
@@ -1098,7 +1098,7 @@ def get_throughput(
     for stage, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
         num_gpu = tp_sizes[stage] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
-        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
+        p2p_bandwidth = INSTANCE_SPEC[node_type]["interconnect_bandwidth"]
 
         processed_layers += layer_count
 
@@ -1411,8 +1411,31 @@ def get_throughput(
 
     logging.debug(f"Prefill latencies per Stage : {prefill_latencies}")
     logging.debug(f"Decoding latencies per Stage : {decoding_latencies}")
+
+    pp_size = len(node_layer_comb)
     max_prefill_latency = max(prefill_latencies)
     max_decoding_latency = max(decoding_latencies)
+
+    # Pipeline bubble correction.
+    # K = number of micro-batches (capped at pp_size).
+    # When K < PP, a single stage cannot represent full E2E — scale by pp//K.
+    # Pipeline filling overhead (one TTFT or TPOT) is always added when K > 1.
+    K = min(global_batch_size, pp_size)
+    stage_multiplier = pp_size // K
+    max_prefill_latency *= stage_multiplier
+    max_decoding_latency *= stage_multiplier
+
+    if K > 1:
+        per_mb_prefill = [lat / K for lat in prefill_latencies]
+        per_mb_decode = [lat / K for lat in decoding_latencies]
+        ttft = max(per_mb_prefill)
+        tpot = max(per_mb_decode) / avg_output_len
+        filling_overhead = (K - 1) * max(ttft, tpot)
+        if ttft >= tpot:
+            max_prefill_latency += filling_overhead
+        else:
+            max_decoding_latency += filling_overhead
+        logging.debug(f"Pipeline bubble (K={K}, PP={pp_size}): stage_multiplier={stage_multiplier}, filling={filling_overhead:.2f}ms")
 
     total_latency_per_global_batch = max_prefill_latency + max_decoding_latency
 

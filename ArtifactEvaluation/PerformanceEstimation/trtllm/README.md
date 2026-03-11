@@ -115,7 +115,7 @@ The process has two stages, with different purposes:
 # Inside Docker container
 # Generate enough requests for the largest batch sweep (max_bs=1024, ×10 = 10240)
 python3 benchmarks/cpp/prepare_dataset.py \
-  --tokenizer /models/Llama-3.1-70B-Instruct \
+  --tokenizer meta-llama/Llama-3.1-70B-Instruct \
   --output /workspace/llama3-70b/in763-out232/datasets/synthetic_763_232.json \
   token-norm-dist \
   --num-requests 10240 \

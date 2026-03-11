@@ -146,7 +146,7 @@ def run_hexgen(config):
 
 
 def run_alpaserve(config, cluster):
-    from hardware_specs import INSTANCE_SPEC, INTERCONNECT_SPEC
+    from hardware_specs import INSTANCE_SPEC
     from alpaserve_optimizer import AlpaServeOptimizer
     from shuntserve_optimizer import Pipeline, get_minimum_latency
     from cluster_pool import ClusterPool
@@ -173,9 +173,7 @@ def run_alpaserve(config, cluster):
 
         gpu_type = INSTANCE_SPEC[base_instance_type]['gpu_type']
         tp_size = INSTANCE_SPEC[base_instance_type]['gpu_count']
-        interconnect_bandwidth = INTERCONNECT_SPEC[
-            INSTANCE_SPEC[base_instance_type]['interconnect']
-        ]['bandwidth']
+        interconnect_bandwidth = INSTANCE_SPEC[base_instance_type]['interconnect_bandwidth']
 
         alpaserve_config = {
             **config,
