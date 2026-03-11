@@ -17,7 +17,7 @@ del _d
 import torch
 from transformers import AutoConfig
 from alpaserve_optimizer import AlpaServeOptimizer
-from hardware_specs import INSTANCE_SPEC, INTERCONNECT_SPEC
+from hardware_specs import INSTANCE_SPEC
 from estimator_utils import get_throughput, get_global_batch_size
 
 
@@ -30,7 +30,7 @@ def run_alpaserve_optimizer(instance_type, num_instances, model_name, model_conf
     """
     gpu_type = INSTANCE_SPEC[instance_type]['gpu_type']
     tp_size = INSTANCE_SPEC[instance_type]['gpu_count']
-    interconnect_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[instance_type]['interconnect']]['bandwidth']
+    interconnect_bandwidth = INSTANCE_SPEC[instance_type]['interconnect_bandwidth']
 
     config = {
         "expected_input_len": 763,
@@ -112,9 +112,9 @@ def main():
     print("=" * 80)
 
     groups = [
-        ("g6.12xlarge", 3, 0.85),
+        ("g6.12xlarge", 2, 0.85),
         ("g5.12xlarge", 2, 0.85),
-        ("g6e.xlarge", 4, 0.9),
+        ("g6e.xlarge", 4, 0.85),
     ]
 
     total_throughput = 0

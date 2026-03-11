@@ -17,7 +17,7 @@ del _d
 import torch
 from transformers import AutoConfig
 from alpaserve_optimizer import AlpaServeOptimizer
-from hardware_specs import INSTANCE_SPEC, INTERCONNECT_SPEC
+from hardware_specs import INSTANCE_SPEC
 from estimator_utils import get_throughput, get_global_batch_size
 
 # Import the shared runner from llama3-70b (same logic, just different model)
