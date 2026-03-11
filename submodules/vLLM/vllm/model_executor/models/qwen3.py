@@ -329,7 +329,8 @@ class Qwen3Model(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        if get_pp_group().is_first_rank:
+        # if get_pp_group().is_first_rank:
+        if is_first_stage(get_pp_group().rank):
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
             else:
@@ -345,7 +346,8 @@ class Qwen3Model(nn.Module):
                 hidden_states,
                 residual,
             )
-        if not get_pp_group().is_last_rank:
+        # if not get_pp_group().is_last_rank:
+        if not is_last_stage(get_pp_group().rank):
             return IntermediateTensors({
                 "hidden_states": hidden_states,
                 "residual": residual

@@ -68,28 +68,6 @@ MODELS = {
         "max_position_embeddings": 40960,
         "head_dim": 128,
     },
-    "llama3-3b": {
-        "model_name": "meta-llama/Llama-3.2-3B",
-        "hidden_size": 3072,
-        "num_hidden_layers": 28,
-        "num_attention_heads": 24,
-        "num_key_value_heads": 8,
-        "intermediate_size": 8192,
-        "vocab_size": 128256,
-        "max_position_embeddings": 131072,
-        "head_dim": 128,
-    },
-    "qwen3-4b": {
-        "model_name": "Qwen/Qwen3-4B",
-        "hidden_size": 2560,
-        "num_hidden_layers": 36,
-        "num_attention_heads": 32,
-        "num_key_value_heads": 8,
-        "intermediate_size": 9728,
-        "vocab_size": 151936,
-        "max_position_embeddings": 40960,
-        "head_dim": 128,
-    },
 }
 
 WORKLOAD = {
@@ -97,6 +75,11 @@ WORKLOAD = {
     "output_len": 232,
     "max_model_len": 8192,
 }
+
+
+def workload_dirname(workload: dict) -> str:
+    """Generate directory name from workload config: in763-out232"""
+    return f"in{workload['input_len']}-out{workload['output_len']}"
 
 
 def instance_to_dirname(instance_type: str) -> str:
@@ -134,7 +117,8 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
     """
     model = MODELS[model_key]
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    results_dir = os.path.join(base_dir, model_key, "results", "data", "estimated")
+    wl_dir = workload_dirname(WORKLOAD)
+    results_dir = os.path.join(base_dir, model_key, wl_dir, "results", "data", "estimated")
     os.makedirs(results_dir, exist_ok=True)
 
     output_file = os.path.join(results_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
@@ -224,6 +208,16 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
                 batch_override=(bs, 0),
                 **common_kwargs,
             )
+
+            # Pipeline bubble correction: when batch_size < PP,
+            # the estimator assumes full pipeline utilization but
+            # micro-batching cannot fill all stages simultaneously.
+            # Correction factor = PP / batch_size.
+            if bs < pp_size:
+                correction = pp_size / bs
+                bs_latency *= correction
+                bs_throughput = bs / (bs_latency / 1000)
+
             batch_sweep.append({
                 "batch_size": bs,
                 "throughput_rps": bs_throughput,
@@ -284,7 +278,8 @@ def run_all_for_model(model_key: str, force: bool = False):
 
     # Save combined summary
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    summary_file = os.path.join(base_dir, model_key, "results", "data", "estimated", "estimation_summary.json")
+    wl_dir = workload_dirname(WORKLOAD)
+    summary_file = os.path.join(base_dir, model_key, wl_dir, "results", "data", "estimated", "estimation_summary.json")
     with open(summary_file, "w") as f:
         json.dump({
             "model": model["model_name"],
