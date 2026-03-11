@@ -23,7 +23,7 @@ from estimator_utils import (
     get_memory_size_decoder_layer_weight_bytes,
     get_memory_size_embedding_or_lm_head_weight_bytes,
 )
-from hardware_specs import GPU_SPEC, INTERCONNECT_SPEC, INSTANCE_SPEC
+from hardware_specs import GPU_SPEC, INSTANCE_SPEC
 
 # ── Original AlpaServe code ──
 # Use local copy at ModelPlacement/alpaserve_lib (from mms repository)
@@ -374,9 +374,7 @@ if __name__ == "__main__":
     num_stage = 4
     gpu_type = INSTANCE_SPEC[instance_type]["gpu_type"]
     tp_size = INSTANCE_SPEC[instance_type]["gpu_count"]
-    interconnect_bandwidth = INTERCONNECT_SPEC[
-        INSTANCE_SPEC[instance_type]["interconnect"]
-    ]["bandwidth"]
+    interconnect_bandwidth = INSTANCE_SPEC[instance_type]["interconnect_bandwidth"]
 
     model_name = "meta-llama/Llama-3.1-70B-Instruct"
     model_config = AutoConfig.from_pretrained(model_name)

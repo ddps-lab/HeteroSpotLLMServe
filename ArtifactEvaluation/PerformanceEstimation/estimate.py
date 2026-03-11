@@ -221,17 +221,6 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
             prefill_ms = latency_detail["prefill_latency_ms"]
             decode_ms = latency_detail["decode_latency_ms"]
 
-            # Pipeline bubble correction: when batch_size < PP,
-            # the estimator assumes full pipeline utilization but
-            # micro-batching cannot fill all stages simultaneously.
-            # Correction factor = PP / batch_size.
-            if bs < pp_size:
-                correction = pp_size / bs
-                bs_latency *= correction
-                prefill_ms *= correction
-                decode_ms *= correction
-                bs_throughput = bs / (bs_latency / 1000)
-
             # TPOT = decode_latency / (output_len * batch_size)
             # (total decode time spread across all tokens of all requests)
             tpot_ms = decode_ms / (WORKLOAD["output_len"] * bs) if bs > 0 else 0

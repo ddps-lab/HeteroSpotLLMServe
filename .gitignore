@@ -31,5 +31,4 @@ ArtifactEvaluation/PerformanceEstimation/trtllm/*/in*-out*/predicted/
 ArtifactEvaluation/PerformanceEstimation/trtllm/*/in*-out*/measured/*.log
 ./ArtifactEvaluation/Datasets/*.png
 ./ArtifactEvaluation/Datasets/*.pdf
-# Micro-benchmark results (regenerate per instance)
-ArtifactEvaluation/PerformanceEstimation/micro-benchmark/results/*.json
+
