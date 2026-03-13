@@ -1,18 +1,17 @@
 """
-HexGen Evaluate: Parse HexGen GA results, then use ShuntServe's estimator
-to find optimal layer partition and predict throughput for each pipeline.
+HexGen Evaluate: HexGen GA determines model placement (which nodes, TP degrees),
+then ShuntServe's DP optimizer determines the optimal layer partition.
 
-HexGen GA determines: stage definitions (which GPU types, TP degrees).
-ShuntServe optimizer determines: optimal layer partition + batched throughput.
+HexGen GA determines: stage definitions (which GPU types, TP degrees per pipeline)
+ShuntServe optimizer: finds optimal layer partition for the given nodes (only_throughput mode)
 
-This gives HexGen the benefit of ShuntServe's estimator while keeping
-HexGen's stage/TP decisions. Uses only_throughput mode to ensure all
-nodes in each pipeline are used.
-
-Run: python3 evaluate.py
+Run: python3 optimizer.py
 """
 import sys
 import os
+import json
+import logging
+from collections import Counter
 
 # Add ModelPlacement to path
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -22,13 +21,40 @@ sys.path.insert(0, os.path.join(_d, "ModelPlacement"))
 del _d
 
 import torch
-import json
-import logging
 from transformers import AutoConfig
 from hexgen_optimizer import main as hexgen_main
 from hardware_specs import INSTANCE_SPEC
 from shuntserve_optimizer import run_test_case
 from cluster_pool import ClusterPool
+
+
+"""
+Map HexGen TP degree to an equivalent ShuntServe instance type.
+"""
+_TP_TO_INSTANCE = {
+    ("g5.12xlarge", 4): "(spot)g5.12xlarge",
+    ("g5.12xlarge", 2): "(spot)g5.12xlarge(half)",
+    ("g5.12xlarge", 1): "(spot)g5.xlarge",
+    ("g6.12xlarge", 4): "(spot)g6.12xlarge",
+    ("g6.12xlarge", 2): "(spot)g6.12xlarge(half)",
+    ("g6.12xlarge", 1): "(spot)g6.xlarge",
+    ("g6e.xlarge", 1): "(spot)g6e.xlarge",
+    ("g6e.12xlarge", 4): "(spot)g6e.12xlarge",
+    ("g6e.12xlarge", 2): "(spot)g6e.12xlarge(half)",
+    ("g6e.12xlarge", 1): "(spot)g6e.xlarge",
+}
+
+PRICES = {
+    "(spot)g5.12xlarge": 2.2915,
+    "(spot)g5.12xlarge(half)": 2.2915 / 2,
+    "(spot)g5.xlarge": 2.2915 / 4,
+    "(spot)g6.12xlarge": 1.9445,
+    "(spot)g6.12xlarge(half)": 1.9445 / 2,
+    "(spot)g6.xlarge": 1.9445 / 4,
+    "(spot)g6e.xlarge": 0.7040,
+    "(spot)g6e.12xlarge": 0.7040 * 4,
+    "(spot)g6e.12xlarge(half)": 0.7040 * 2,
+}
 
 
 def resolve_stage_mapping(genes_pipeline, plan_pipeline, pp_partition, cluster_config_flatten):
@@ -60,64 +86,11 @@ def resolve_stage_mapping(genes_pipeline, plan_pipeline, pp_partition, cluster_c
     return stages
 
 
-"""
-Map HexGen TP degree to an equivalent ShuntServe instance type.
+def main():
+    logging.basicConfig(level=logging.WARNING, format='%(message)s', force=True)
 
-ShuntServe requires TP = instance gpu_count, so we map:
-  TP=4 on g5.12xlarge  → (spot)g5.12xlarge       (4 GPU)
-  TP=2 on g5.12xlarge  → (spot)g5.12xlarge(half)  (2 GPU)
-  TP=1 on g5.12xlarge  → (spot)g5.xlarge           (1 GPU)
-  TP=1 on g6e.xlarge   → (spot)g6e.xlarge          (1 GPU, already 1)
-"""
-_TP_TO_INSTANCE = {
-    # g5.12xlarge (A10G, 4 GPU base)
-    ("g5.12xlarge", 4): "(spot)g5.12xlarge",
-    ("g5.12xlarge", 2): "(spot)g5.12xlarge(half)",
-    ("g5.12xlarge", 1): "(spot)g5.xlarge",
-    # g6.12xlarge (L4, 4 GPU base)
-    ("g6.12xlarge", 4): "(spot)g6.12xlarge",
-    ("g6.12xlarge", 2): "(spot)g6.12xlarge(half)",
-    ("g6.12xlarge", 1): "(spot)g6.xlarge",
-    # g6e.xlarge (L40S, 1 GPU base) — TP can only be 1
-    ("g6e.xlarge", 1): "(spot)g6e.xlarge",
-    # g6e.12xlarge (L40S, 4 GPU base)
-    ("g6e.12xlarge", 4): "(spot)g6e.12xlarge",
-    ("g6e.12xlarge", 2): "(spot)g6e.12xlarge(half)",
-    ("g6e.12xlarge", 1): "(spot)g6e.xlarge",
-}
-
-
-def stages_to_cluster(stages):
-    """
-    Convert HexGen pipeline stages into a ClusterPool for ShuntServe optimizer.
-
-    Each stage is mapped to a virtual instance whose gpu_count = TP degree.
-    ShuntServe optimizer will then determine the optimal layer partition.
-    """
-    from collections import Counter
-    node_counts = Counter()
-    for s in stages:
-        key = (s["instance_type"], s["tp_degree"])
-        mapped = _TP_TO_INSTANCE.get(key)
-        if mapped is None:
-            raise ValueError(f"No instance mapping for {s['instance_type']} TP={s['tp_degree']}")
-        node_counts[mapped] += 1
-
-    available = dict(node_counts)
-    # Dummy prices — only_throughput mode ignores cost
-    prices = {k: 1.0 for k in available}
-    return available, prices
-
-
-def evaluate_pipeline_with_shuntserve(stages, model_config, head_dim=None):
-    """
-    Use ShuntServe optimizer to find optimal layer partition for a HexGen pipeline.
-    
-    The pipeline's stage structure (instance types) is fixed by HexGen GA.
-    ShuntServe optimizer finds the best layer partition using only_throughput mode
-    (all nodes must be used).
-    """
-    available, prices = stages_to_cluster(stages)
+    model_name = "meta-llama/Llama-3.1-70B-Instruct"
+    model_config = AutoConfig.from_pretrained(model_name)
 
     config = {
         "expected_input_len": 763,
@@ -132,37 +105,10 @@ def evaluate_pipeline_with_shuntserve(stages, model_config, head_dim=None):
         "dtype": torch.float16,
         "max_model_len": 8192,
         "gpu_mem_utilization": 0.85,
-        "head_dim": head_dim,
     }
 
-    cluster_pool = ClusterPool(
-        available_spot_nodes=available,
-        spot_prices=prices
-    )
-
-    max_stages = len(stages)
-
-    results, _, opt_time = run_test_case(
-        config, budget=9999, latency_slo=99999999,
-        cluster_pool=cluster_pool, max_stages=max_stages, top_k=1,
-        optimization_mode="only_throughput"
-    )
-
-    if not results:
-        return None, opt_time
-
-    best = results[0]
-    return best, opt_time
-
-
-def main():
-    logging.basicConfig(level=logging.WARNING, format='%(message)s', force=True)
-
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
-    model_config = AutoConfig.from_pretrained(model_name)
-
     print("=" * 80)
-    print("HexGen Optimizer + ShuntServe Estimator Evaluation")
+    print("HexGen Optimizer (HexGen placement + ShuntServe layer partition)")
     print(f"Model: {model_name}")
     print("Cluster: g6.12xlarge×3, g5.12xlarge×2, g6e.xlarge×4")
     print("=" * 80)
@@ -175,12 +121,15 @@ def main():
     plans_all = best_ind.plan[1][0]
     pp_partitions_all = best_ind.pp_partition[0]
 
-    # Step 2: For each pipeline, use ShuntServe optimizer
+    # Step 2: For each pipeline, extract nodes and use ShuntServe's optimizer
     print(f"\n{'=' * 80}")
-    print("[Step 2] ShuntServe estimator — optimal layer partition & throughput")
+    print("[Step 2] Apply ShuntServe layer optimization to HexGen's placement")
     print(f"{'=' * 80}")
 
     total_throughput = 0
+    output_pipelines = []
+    pipeline_count = 0
+
     for pipeline_idx in range(len(genes_all)):
         stages = resolve_stage_mapping(
             genes_all[pipeline_idx], plans_all[pipeline_idx],
@@ -192,45 +141,53 @@ def main():
         print(f"  HexGen stages:")
         for j, s in enumerate(stages):
             print(f"    Stage {j}: {s['instance_type']} (Node {s['node_idx']}), "
-                  f"TP={s['tp_degree']}, HexGen layers={s['layer_count']}")
-        print(f"  HexGen TP strategy: {[s['tp_degree'] for s in stages]}")
-        print(f"  HexGen layer partition: {[s['layer_count'] for s in stages]}")
+                  f"TP={s['tp_degree']}, layers={s['layer_count']}")
+        print(f"  TP strategy: {[s['tp_degree'] for s in stages]}")
+        print(f"  Layer partition (GA original): {[s['layer_count'] for s in stages]}")
 
-        # Run ShuntServe optimizer on this pipeline's cluster
-        best, opt_time = evaluate_pipeline_with_shuntserve(stages, model_config)
+        # Convert HexGen stages to ShuntServe instance types and count them
+        ss_nodes = Counter()
+        for s in stages:
+            key = (s["instance_type"], s["tp_degree"])
+            mapped_inst = _TP_TO_INSTANCE.get(key)
+            if mapped_inst is None:
+                print(f"  ❌ No instance mapping for {s['instance_type']} TP={s['tp_degree']}")
+                continue
+            ss_nodes[mapped_inst] += 1
 
-        if best is None:
-            print(f"  ❌ No feasible pipeline found by ShuntServe optimizer")
+        print(f"  ShuntServe equivalent nodes: {dict(ss_nodes)}")
+
+        # Create cluster pool with these specific nodes
+        cluster_pool = ClusterPool(
+            available_spot_nodes=dict(ss_nodes),
+            spot_prices=PRICES
+        )
+
+        # Run ShuntServe optimizer (only_throughput mode) for layer partitioning
+        results, optimizer, opt_time = run_test_case(
+            config, budget=9999, latency_slo=99999999,
+            cluster_pool=cluster_pool, max_stages=len(stages) + 2,
+            top_k=3, optimization_mode="only_throughput"
+        )
+
+        if not results or results[0].throughput <= 0:
+            print(f"  ❌ ShuntServe optimizer found no feasible partition for these nodes")
             continue
 
+        best = results[0]
         tp_list = [INSTANCE_SPEC[inst]['gpu_count'] for inst in best.stages]
-        print(f"\n  ShuntServe optimized result ({opt_time:.1f}s):")
+
+        print(f"\n  ShuntServe optimized partition (optimization: {opt_time:.1f}s):")
         print(f"    Stages: {list(best.stages)}")
         print(f"    TP strategy: {tp_list}")
         print(f"    Layer partition: {list(best.layer_per_stage)}")
         print(f"    Throughput: {best.throughput:.4f} req/s")
         print(f"    Global batch size: {best.global_batch_size}")
         print(f"    Num GPU blocks: {best.num_blocks}")
-        print(f"    Single request latency: {best.single_request_latency:.2f} ms")
 
         total_throughput += best.throughput
-
-    print(f"\n{'=' * 60}")
-    print(f"Total system throughput (HexGen stages + ShuntServe estimator): {total_throughput:.4f} req/s")
-
-    # ─── Save results to JSON ────────────────────────────────────────────
-    output_pipelines = []
-    pipeline_count = 0
-    for pipeline_idx in range(len(genes_all)):
-        stages = resolve_stage_mapping(
-            genes_all[pipeline_idx], plans_all[pipeline_idx],
-            pp_partitions_all[pipeline_idx], cluster_config_flatten
-        )
-        best, _ = evaluate_pipeline_with_shuntserve(stages, model_config)
-        if best is None:
-            continue
         pipeline_count += 1
-        tp_list = [INSTANCE_SPEC[inst]['gpu_count'] for inst in best.stages]
+
         stages_list = [[inst, int(layers)] for inst, layers in zip(best.stages, best.layer_per_stage)]
         output_pipelines.append({
             "label": f"HX-P{pipeline_count}",
@@ -249,6 +206,10 @@ def main():
             ],
         })
 
+    print(f"\n{'=' * 60}")
+    print(f"Total system throughput: {total_throughput:.4f} req/s")
+
+    # Save results
     output = {
         "model": model_name,
         "workload": {"input_len": 763, "output_len": 232},

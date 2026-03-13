@@ -108,11 +108,11 @@ def main():
     print("=" * 80)
     print("AlpaServe Optimizer Result (original AlpaServe placement algorithm)")
     print(f"Model: {model_name}")
-    print("Cluster: g6.12xlarge×3, g5.12xlarge×2, g6e.xlarge×4")
+    print("Cluster: g6.12xlarge×2, g5.12xlarge×2, g6e.xlarge×4")
     print("=" * 80)
 
     groups = [
-        ("g6.12xlarge", 2, 0.85),
+        ("g6.12xlarge", 3, 0.85),
         ("g5.12xlarge", 2, 0.85),
         ("g6e.xlarge", 4, 0.85),
     ]

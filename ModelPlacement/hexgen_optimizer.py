@@ -229,7 +229,7 @@ def evaluate(individual):
 
 # Default weight size for validity check (FP16 model weight in GB).
 # Override via set_model_weight_size() for different models.
-_model_weight_size_gb = 120  # Llama-3.1-70B default
+_model_weight_size_gb = 144  # Llama-3.1-70B default
 
 
 def set_model_weight_size(weight_size_gb: float):
@@ -241,8 +241,7 @@ def set_model_weight_size(weight_size_gb: float):
 def is_group_valid(group, gpu_mem_list):
     """Check if the given group is valid based on the multiplication criterion"""
     MULTIPLIER_ARRAY = gpu_mem_list
-    # The threshold is weight_size + weight_size (extra memory for batch/KV cache).
-    VALID_THRESHOLD = _model_weight_size_gb + _model_weight_size_gb
+    VALID_THRESHOLD = _model_weight_size_gb
     total = sum(a*b for a, b in zip(group, MULTIPLIER_ARRAY))
     return total >= VALID_THRESHOLD
 

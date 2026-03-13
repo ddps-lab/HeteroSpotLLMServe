@@ -1,6 +1,12 @@
 """
-HexGen Pipeline 3 (qwen3-32b)
-Config loaded from optimizer results (predicted_hexgen_*.json)
+HexGen Pipeline 3 (HX-P3)
+HexGen GA placement → ShuntServe layer partition
+2 stages: 2×g6e.xlarge(TP=1)
+Layers=[32,32]
+
+Physical node allocation:
+  g6e.xlarge #2: stage 0 (TP=1)
+  g6e.xlarge #3: stage 1 (TP=1)
 """
 import asyncio
 import concurrent.futures
@@ -19,39 +25,34 @@ del _d
 from global_server import GlobalServer
 from benchmark_utils import print_benchmark_results, run_latency_benchmark
 from save_results import save_benchmark_results
-
 from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
+
 PIPELINE_INDEX = 2  # HX-P3
+STAGE_LAYER_COUNT_IDX = 1
+
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 PREDICTED_FILE = [f for f in os.listdir(RESULTS_DIR) if f.startswith("predicted_hexgen_")][0]
+
 with open(os.path.join(RESULTS_DIR, PREDICTED_FILE)) as f:
     _data = json.load(f)
 _pipeline = _data["pipelines"][PIPELINE_INDEX]
 
-# Stage field index: stages[i] = [instance_type, layer_count]
-STAGE_LAYER_COUNT_IDX = 1
-
 S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(RESULTS_DIR, "hexgen_p3.json")
 
-# ─── Node assignment (manual) ────────────────────────────────────────
-# Pipeline-exclusive: each physical node belongs to exactly one pipeline.
-# (half) = 2 GPUs from a 4-GPU node; xlarge = 1 GPU standalone instance.
+# ─── Node assignment ─────────────────────────────────────────────────
+# g6e.xlarge #2: stage 0 — TP=1
+# g6e.xlarge #3: stage 1 — TP=1
+
 NODE_LAYER_MAPPING = [
-    # stage[0]: (spot)g6e.xlarge (TP=1, 1 GPU)
-    (g6e_xlarge_node_ip_3, int(_pipeline['stages'][0][STAGE_LAYER_COUNT_IDX])),
-    # stage[1]: (spot)g6e.xlarge (TP=1, 1 GPU)
-    (g6e_xlarge_node_ip_4, int(_pipeline['stages'][1][STAGE_LAYER_COUNT_IDX])),
-    # stage[2]: (spot)g6.xlarge (TP=1, 1 GPU)
-    (g6_xlarge_node_ip_1, int(_pipeline['stages'][2][STAGE_LAYER_COUNT_IDX])),
-    # stage[3]: (spot)g5.xlarge (TP=1, 1 GPU)
-    (g5_xlarge_node_ip_1, int(_pipeline['stages'][3][STAGE_LAYER_COUNT_IDX])),
-    # stage[4]: (spot)g5.xlarge (TP=1, 1 GPU)
-    (g5_xlarge_node_ip_2, int(_pipeline['stages'][4][STAGE_LAYER_COUNT_IDX])),
+    (g6e_xlarge_node_ip_2, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: g6e.xlarge TP=1
+    (g6e_xlarge_node_ip_3, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),  # stage 1: g6e.xlarge TP=1
 ]
 
+
+# ─── Benchmark ───────────────────────────────────────────────────────
 
 async def test_benchmark():
     logger = logging.getLogger(__name__)
@@ -59,8 +60,10 @@ async def test_benchmark():
     logger.handlers.clear()
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter(
+        '[%(asctime)s] %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.propagate = False
@@ -68,17 +71,14 @@ async def test_benchmark():
     model_name = _data["model"]
 
     print("=" * 70)
-    print(f"HexGen Pipeline 3 — Config loaded from {PREDICTED_FILE}")
-    print(f"  Model: {model_name}")
-    print(f"  Label: {_pipeline['label']}")
+    print(f"HexGen Pipeline 3 — {PREDICTED_FILE}")
     print(f"  Stages: {_pipeline['stages']}")
-    print(f"  PP layer partition: {_pipeline['pp_layer_partition']}")
-    print(f"  Parallel strategy: {_pipeline['parallel_strategy']}")
-    print(f"  Predicted throughput: {_pipeline['predicted_throughput_rps']:.3f} req/s")
+    print(f"  PP: {_pipeline['pp_layer_partition']}  TP: {_pipeline['parallel_strategy']}")
+    print(f"  Predicted: {_pipeline['predicted_throughput_rps']:.3f} req/s")
     print(f"  Max batch size: {_pipeline['max_batch_size']}")
     print(f"  Num GPU blocks: {_pipeline['num_blocks']}")
     if "hexgen_original_stages" in _pipeline:
-        print(f"  HexGen original stages:")
+        print(f"  HexGen GA original placement:")
         for s in _pipeline["hexgen_original_stages"]:
             print(f"    {s['instance_type']} TP={s['tp_degree']} layers={s['layer_count']}")
     print(f"  Node mapping:")
@@ -112,6 +112,7 @@ async def test_benchmark():
         "max_batch_size": int(_pipeline["max_batch_size"]),
         "mode": "hexgen",
     }
+
     estimated_throughput = _pipeline["predicted_throughput_rps"]
     max_batch_size = int(_pipeline["max_batch_size"])
 
@@ -127,7 +128,7 @@ async def test_benchmark():
 
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=max_batch_size * 10,
+            num_requests=max_batch_size * 5,
             input_len=_data["workload"]["input_len"],
             output_len=_data["workload"]["output_len"],
             request_rate=float('inf'),
@@ -139,6 +140,7 @@ async def test_benchmark():
         )
 
         print_benchmark_results(metrics)
+
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
             "system": "HexGen",
             "pipeline": f"P{PIPELINE_INDEX + 1}",
@@ -147,8 +149,9 @@ async def test_benchmark():
             "stages": _pipeline["stages"],
             "input_len": _data["workload"]["input_len"],
             "output_len": _data["workload"]["output_len"],
-            "num_requests": max_batch_size * 10,
+            "num_requests": max_batch_size * 5,
             "predicted_throughput_rps": estimated_throughput,
+            "percentiles": [10, 25, 50, 75, 90, 99],
         })
 
     except KeyboardInterrupt:

@@ -101,13 +101,13 @@ def main():
     print("=" * 80)
     print("vLLM Pipeline Config (even partition per homogeneous group)")
     print(f"Model: {model_name}")
-    print("Cluster: g6.12xlarge×3, g5.12xlarge×2, g6e.xlarge×4")
+    print("Cluster: g6.12xlarge×2, g5.12xlarge×2, g6e.xlarge×4")
     print("=" * 80)
 
     groups = [
-        ("g6.12xlarge", 3, 0.85),   # Pipeline 1: L4×4 × 3
+        ("g6.12xlarge", 3, 0.85),   # Pipeline 1: L4×4 × 2
         ("g5.12xlarge", 2, 0.85),   # Pipeline 2: A10G×4 × 2
-        ("g6e.xlarge", 4, 0.9),     # Pipeline 3: L40S×1 × 4
+        ("g6e.xlarge", 4, 0.85),     # Pipeline 3: L40S×1 × 4
     ]
 
     total_throughput = 0

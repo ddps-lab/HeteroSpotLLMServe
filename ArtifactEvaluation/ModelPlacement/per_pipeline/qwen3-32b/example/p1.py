@@ -36,7 +36,7 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 #   throughput = 14.20 req/s, latency = 8239.63 ms
 MAX_BATCH_SIZE = 117
 NUM_GPU_BLOCKS = 4212
-NUM_REQUESTS = MAX_BATCH_SIZE * 10
+NUM_REQUESTS = MAX_BATCH_SIZE * 5
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 OUTPUT_PATH = os.path.join(RESULTS_DIR, "example_Qwen3-4B.json")
@@ -113,7 +113,6 @@ async def test_benchmark():
             output_len=OUTPUT_LEN,
             request_rate=float('inf'),
             model_name=MODEL_NAME,
-            max_concurrency=MAX_BATCH_SIZE,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
             run_initial_test=True,
@@ -135,6 +134,7 @@ async def test_benchmark():
             "max_batch_size": MAX_BATCH_SIZE,
             "num_gpu_blocks": NUM_GPU_BLOCKS,
             "estimated_throughput_rps": estimated_throughput,
+            "percentiles": [10, 25, 50, 75, 90, 99],
         })
 
     except KeyboardInterrupt:

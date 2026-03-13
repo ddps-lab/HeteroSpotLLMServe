@@ -58,7 +58,8 @@ def main():
         "(spot)g6e.xlarge": 0.7040,
     }
 
-    TOP_K = 1  # Beam width & number of candidates to show per iteration
+
+    TOP_K = 5  # Beam width & number of candidates to show per iteration
 
     print("=" * 80)
     print("ShuntServe Optimizer — Iterative Pipeline Search")
@@ -96,8 +97,67 @@ def main():
             optimization_mode="soft_slo"
         )
 
+        # Treat infeasible results (throughput <= 0) as no results
+        if results and results[0].throughput <= 0:
+            print(f"  Best candidate is infeasible (throughput={results[0].throughput:.3f}). Treating as no feasible pipeline.")
+            results = []
+
         if not results:
-            print(f"  No feasible pipeline found with remaining resources.")
+            # ─── Residual resource merging ────────────────────────────────
+            # Remaining nodes can't form an independent pipeline.
+            # Merge them into the last pipeline and re-optimize for throughput.
+            if all_pipelines and any(v > 0 for v in remaining_nodes.values()):
+                residual = {k: v for k, v in remaining_nodes.items() if v > 0}
+                print(f"  No independent pipeline feasible. Merging residual {residual} into Pipeline {iteration - 1}.")
+
+                # Reconstruct the cluster for the last pipeline + residual nodes
+                last_pipeline = all_pipelines[-1]
+                last_used = Counter(last_pipeline.stages)
+
+                merged_nodes = dict(remaining_nodes)  # start with residual
+                for inst, count in last_used.items():
+                    merged_nodes[inst] = merged_nodes.get(inst, 0) + count
+
+                print(f"  Merged cluster for re-optimization:")
+                for inst, count in merged_nodes.items():
+                    if count > 0:
+                        print(f"    {inst}: {count}")
+
+                merged_pool = ClusterPool(
+                    available_spot_nodes=merged_nodes,
+                    spot_prices=prices
+                )
+
+                merged_results, _, merged_opt_time = run_test_case(
+                    config, budget=9999, latency_slo=99999999,
+                    cluster_pool=merged_pool, max_stages=13, top_k=TOP_K,
+                    optimization_mode="only_throughput"
+                )
+
+                if merged_results:
+                    merged_best = merged_results[0]
+                    tp_list_old = [INSTANCE_SPEC[inst]['gpu_count'] for inst in last_pipeline.stages]
+                    tp_list_new = [INSTANCE_SPEC[inst]['gpu_count'] for inst in merged_best.stages]
+                    print(f"\n  Re-optimized Pipeline {iteration - 1} (optimization: {merged_opt_time:.1f}s):")
+                    print(f"    Before: TP={tp_list_old}, Layers={list(last_pipeline.layer_per_stage)}, "
+                          f"Throughput={last_pipeline.throughput:.3f} req/s")
+                    print(f"    After:  TP={tp_list_new}, Layers={list(merged_best.layer_per_stage)}, "
+                          f"Throughput={merged_best.throughput:.3f} req/s")
+
+                    # Replace the last pipeline
+                    all_pipelines[-1] = merged_best
+
+                    # All residual resources consumed
+                    for k in remaining_nodes:
+                        remaining_nodes[k] = 0
+
+                    # Also subtract the merged pipeline's usage from the conceptual pool
+                    # (already zeroed above, so just for bookkeeping)
+                    print(f"  ✓ Residual nodes merged into Pipeline {iteration - 1}")
+                else:
+                    print(f"  ⚠ Re-optimization with merged resources also failed.")
+            else:
+                print(f"  No feasible pipeline found with remaining resources.")
             break
 
         # Show all candidates

@@ -1162,17 +1162,6 @@ def get_throughput(
                     inter_node_bandwidth=None  # intra region bandwidth
                 )
                 max_batch_prefill_pp_communication_latency += max_batch_prefill_pp_communication_send_latency
-            if stage != 0 and num_gpu > 1: # If not the first stage and tp size is greater than 1, need to broadcast.
-                max_batch_prefill_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                    batch_size=max_prefill_batch_size,
-                    sequence_len=avg_input_len,
-                    hidden_dim=hidden_dim,
-                    tp_size=num_gpu,
-                    p2p_bandwidth=p2p_bandwidth,
-                    p2p_latency_ms=None,
-                    dtype=dtype
-                )
-                max_batch_prefill_pp_communication_latency += max_batch_prefill_pp_communication_broadcast_latency
             
             # TP Communication Latency of Prefill (max_batch)
             max_batch_prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
@@ -1260,17 +1249,6 @@ def get_throughput(
                         dtype=dtype
                     )
                     tmp_prefill_pp_communication_latency += tmp_prefill_pp_communication_send_latency
-                if stage != 0 and num_gpu > 1:  # If not the first stage and tp size is greater than 1, need to broadcast.
-                    tmp_prefill_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                        batch_size=tmp_batch_size,
-                        sequence_len=avg_input_len,
-                        hidden_dim=hidden_dim,
-                        tp_size=num_gpu,
-                        p2p_bandwidth=p2p_bandwidth,
-                        p2p_latency_ms=None,
-                        dtype=dtype
-                    )
-                    tmp_prefill_pp_communication_latency += tmp_prefill_pp_communication_broadcast_latency
                 
                 tmp_prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
                     tp_size=num_gpu,
@@ -1353,17 +1331,6 @@ def get_throughput(
                     dtype=dtype
                 ) * avg_output_len
                 tmp_decoding_pp_communication_latency += tmp_decoding_pp_communication_send_latency
-            if stage != 0 and num_gpu > 1:  # If not the first stage and tp size is greater than 1, need to broadcast.
-                tmp_decoding_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                    batch_size=decoding_batch_size,
-                    sequence_len=1,
-                    hidden_dim=hidden_dim,
-                    tp_size=num_gpu,
-                    p2p_bandwidth=p2p_bandwidth,
-                    p2p_latency_ms=None,
-                    dtype=dtype
-                ) * avg_output_len
-                tmp_decoding_pp_communication_latency += tmp_decoding_pp_communication_broadcast_latency
 
             tmp_decoding_tp_communication_latency = get_tp_communication_latency_per_layer(
                 tp_size=num_gpu,
@@ -1426,7 +1393,8 @@ def get_throughput(
     max_decoding_latency *= stage_multiplier
 
     if K > 1:
-        per_mb_prefill = [lat / K for lat in prefill_latencies]
+        num_prefill_mbs = max(int(global_batch_size // max_prefill_batch_size), K)
+        per_mb_prefill = [lat / num_prefill_mbs for lat in prefill_latencies]
         per_mb_decode = [lat / K for lat in decoding_latencies]
         ttft = max(per_mb_prefill)
         tpot = max(per_mb_decode) / avg_output_len
