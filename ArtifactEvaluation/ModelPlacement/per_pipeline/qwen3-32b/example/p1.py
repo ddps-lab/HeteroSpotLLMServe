@@ -35,7 +35,7 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 
 # Estimator results for g6.xlarge (1× L4, 22494 MB):
 #   max_batch_size = 117, num_blocks = 4212
-#   throughput = 14.20 req/s, latency = 8239.63 ms
+#   throughput = 8.72 req/s, latency = 13421.60 ms
 MAX_BATCH_SIZE = 117
 NUM_GPU_BLOCKS = 4212
 NUM_REQUESTS = MAX_BATCH_SIZE * 5
