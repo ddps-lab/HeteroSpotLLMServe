@@ -21,7 +21,7 @@ from hardware_specs import INSTANCE_SPEC
 from estimator_utils import get_throughput, get_global_batch_size
 
 # Import the shared runner from llama3-70b (same logic, just different model)
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "llama3-70b", "alpaserve"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "llama3-70b"))
 from optimizer import run_alpaserve_optimizer
 
 
@@ -105,7 +105,7 @@ def main():
         "total_throughput_rps": total_throughput,
     }
 
-    results_dir = os.path.join(os.path.dirname(__file__), "..", "results")
+    results_dir = os.path.join(os.path.dirname(__file__), "..", "results", "qwen3-32b", "estimated")
     os.makedirs(results_dir, exist_ok=True)
     output_file = os.path.join(results_dir, f"predicted_alpaserve_{model_short}.json")
     with open(output_file, "w") as f:

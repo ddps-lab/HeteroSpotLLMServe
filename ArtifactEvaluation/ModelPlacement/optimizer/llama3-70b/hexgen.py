@@ -217,7 +217,7 @@ def main():
         "total_throughput_rps": total_throughput,
     }
 
-    results_dir = os.path.join(os.path.dirname(__file__), "..", "results")
+    results_dir = os.path.join(os.path.dirname(__file__), "..", "results", "llama3-70b", "estimated")
     os.makedirs(results_dir, exist_ok=True)
     model_short = model_name.split("/")[-1]
     output_file = os.path.join(results_dir, f"predicted_hexgen_{model_short}.json")

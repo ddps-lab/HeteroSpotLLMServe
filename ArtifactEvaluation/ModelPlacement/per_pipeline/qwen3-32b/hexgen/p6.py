@@ -1,12 +1,15 @@
 """
-HexGen Pipeline 3 (HX-P3)
+HexGen Pipeline 6 (HX-P6)
 HexGen GA placement → ShuntServe layer partition
-2 stages: 2×g6e.xlarge(TP=1)
-Layers=[32,32]
+4 stages: 1×g6.12xlarge-half(TP=2) + 2×g5.xlarge(TP=1) + 1×g6.xlarge(TP=1)
+Layers=[26,13,13,12]
 
-Physical node allocation:
-  g6e.xlarge #2: stage 0 (TP=1)
-  g6e.xlarge #3: stage 1 (TP=1)
+Identical configuration to P1.
+
+Physical node allocation (extra nodes for parallel execution with P1):
+  EXTRA_G6_12XLARGE_1 (3 of 4 L4 GPUs): stage 0 (TP=2, 2GPU) + stage 3 (TP=1, 1GPU)
+  EXTRA_G5_XLARGE_4 (1× A10G): stage 1 (TP=1)
+  EXTRA_G5_XLARGE_5 (1× A10G): stage 2 (TP=1)
 """
 import asyncio
 import concurrent.futures
@@ -31,7 +34,7 @@ from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
 
-PIPELINE_INDEX = 2  # HX-P3
+PIPELINE_INDEX = 5  # HX-P6
 STAGE_LAYER_COUNT_IDX = 1
 
 PREDICTED_DIR = os.path.join(
@@ -50,15 +53,23 @@ with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
 _pipeline = _data["pipelines"][PIPELINE_INDEX]
 
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p3.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p6.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
-# g6e.xlarge #2: stage 0 — TP=1
-# g6e.xlarge #3: stage 1 — TP=1
+# Extra nodes for parallel execution with P1 (identical config).
+#
+# EXTRA_G6_12XLARGE_1 (3 of 4 GPUs):
+#   stage 0 — TP=2, 2 GPUs (g6.12xlarge-half)
+#   stage 3 — TP=1, 1 GPU (g6.xlarge)
+#
+# EXTRA_G5_XLARGE_4: stage 1 — TP=1 (g5.xlarge)
+# EXTRA_G5_XLARGE_5: stage 2 — TP=1 (g5.xlarge)
 
 NODE_LAYER_MAPPING = [
-    (g6e_xlarge_node_ip_2, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: g6e.xlarge TP=1
-    (g6e_xlarge_node_ip_3, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),  # stage 1: g6e.xlarge TP=1
+    (EXTRA_G6_12XLARGE_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: g6.12xl-half TP=2
+    (EXTRA_G5_XLARGE_4, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),    # stage 1: g5.xlarge TP=1
+    (EXTRA_G5_XLARGE_5, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),    # stage 2: g5.xlarge TP=1
+    (EXTRA_G6_12XLARGE_1, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),  # stage 3: g6.xlarge TP=1
 ]
 
 
@@ -81,7 +92,7 @@ async def test_benchmark():
     model_name = _data["model"]
 
     print("=" * 70)
-    print(f"HexGen Pipeline 3 — {PREDICTED_FILE}")
+    print(f"HexGen Pipeline 6 — {PREDICTED_FILE}")
     print(f"  Stages: {_pipeline['stages']}")
     print(f"  PP: {_pipeline['pp_layer_partition']}  TP: {_pipeline['parallel_strategy']}")
     print(f"  Predicted: {_pipeline['predicted_throughput_rps']:.3f} req/s")

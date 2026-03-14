@@ -41,3 +41,6 @@ EXTRA_G5_XLARGE_1 = ""  # Extra: standalone g5.xlarge (1× A10G) — used by Lla
 
 EXTRA_G5_XLARGE_2 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P5 stage 1
 EXTRA_G5_XLARGE_3 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P5 stage 2
+EXTRA_G6_12XLARGE_1 = ""  # Extra: standalone g6.12xlarge (4× L4)  — Qwen3 HX-P6 stages 0,3
+EXTRA_G5_XLARGE_4 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P6 stage 1
+EXTRA_G5_XLARGE_5 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P6 stage 2

@@ -14,7 +14,8 @@ _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+_REPO_ROOT = _d
 del _d
 
 from global_server import GlobalServer
@@ -27,15 +28,23 @@ from nodes import *
 PIPELINE_INDEX = 3  # SS-P4
 STAGE_LAYER_COUNT_IDX = 1
 
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
-PREDICTED_FILE = [f for f in os.listdir(RESULTS_DIR) if f.startswith("predicted_shuntserve_")][0]
+PREDICTED_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "qwen3-32b", "estimated"
+)
+OUTPUT_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "qwen3-32b", "measured"
+)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+PREDICTED_FILE = [f for f in os.listdir(PREDICTED_DIR) if f.startswith("predicted_shuntserve_")][0]
 
-with open(os.path.join(RESULTS_DIR, PREDICTED_FILE)) as f:
+with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
     _data = json.load(f)
 _pipeline = _data["pipelines"][PIPELINE_INDEX]
 
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(RESULTS_DIR, "shuntserve_p4.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "shuntserve_p4.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
 # SS-P4: g5.12xlarge×1 (single node, TP=4)
@@ -101,6 +110,12 @@ async def test_benchmark():
         "max_batch_size": int(_pipeline["max_batch_size"]),
     }
 
+
+    # Validate layer count
+    total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in _pipeline["stages"])
+    assert total_layers == config["total_num_layers"], (
+        f"Layer mismatch: stages sum={total_layers} != config total={config['total_num_layers']}"
+    )
     estimated_throughput = _pipeline["predicted_throughput_rps"]
     max_batch_size = int(_pipeline["max_batch_size"])
 

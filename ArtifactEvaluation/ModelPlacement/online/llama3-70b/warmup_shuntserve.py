@@ -1,6 +1,6 @@
 """
-Online benchmark — ShuntServe (Llama-3.1-70B)
-All pipelines loaded from predicted JSON, Azure Trace with time_scale=5.0 (offline).
+Online warmup — ShuntServe (Llama-3.1-70B)
+All pipelines loaded from predicted JSON, Azure Trace warmup (time_scale=4.0, 15s) (offline).
 """
 import asyncio
 import concurrent.futures
@@ -44,7 +44,7 @@ with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
     _data = json.load(f)
 
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"online_{SYSTEM}.json")
+# Warmup does not save results — just primes the pipelines
 
 # ─── Node assignments per pipeline ───────────────────────────────────
 # SS-P1: g6.12xl#1, g6.12xl#2, g6e.xl×4
@@ -155,14 +155,14 @@ async def test_benchmark():
         logger.info("All pipelines are ready!")
 
         start_time = 0
-        end_time = 3 * 60  # 3 minutes
+        end_time = 15  # 15 seconds
 
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"modelplacement_online_{SYSTEM}",
+            trace_output_prefix=f"modelplacement_online_warmup_{SYSTEM}",
             num_requests=None,
-            time_scale=5.0,
+            time_scale=4.0,
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
@@ -173,13 +173,7 @@ async def test_benchmark():
 
         print_benchmark_results(metrics)
 
-        save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
-            "benchmark_type": "online",
-            "num_pipelines": len(pipelines),
-            "predicted_total_throughput_rps": _data["total_throughput_rps"],
-            "percentiles": [10, 25, 50, 75, 90, 99],
-        })
+        # Warmup complete — no results saved
 
     except KeyboardInterrupt:
         logger.info("\nBenchmark interrupted by user")

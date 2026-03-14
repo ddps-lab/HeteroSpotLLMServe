@@ -1,6 +1,6 @@
 """
-Online benchmark — ShuntServe (Llama-3.1-70B)
-All pipelines loaded from predicted JSON, Azure Trace with time_scale=5.0 (offline).
+Online warmup — HexGen (Llama-3.1-70B)
+All pipelines loaded from predicted JSON, Azure Trace warmup (time_scale=4.0, 15s) (offline).
 """
 import asyncio
 import concurrent.futures
@@ -26,7 +26,7 @@ from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
 
-SYSTEM = "shuntserve"
+SYSTEM = "hexgen"
 STAGE_LAYER_COUNT_IDX = 1
 
 PREDICTED_DIR = os.path.join(
@@ -44,27 +44,43 @@ with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
     _data = json.load(f)
 
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"online_{SYSTEM}.json")
+# Warmup does not save results — just primes the pipelines
 
 # ─── Node assignments per pipeline ───────────────────────────────────
-# SS-P1: g6.12xl#1, g6.12xl#2, g6e.xl×4
-# SS-P2: g5.12xl#1, g5.12xl#2, g6.12xl#3
+# HX-P1: g6.12xl#1 (stages 0-2, 4 GPUs) + g6.12xl#3 (stages 3-6, 4 GPUs) + EXTRA_G5_XLARGE_1 (stage 7)
+# HX-P2: g6.12xl#2 (stages 0,4) + g6e.xl#1-3 (stages 1-3)
+# HX-P3: g5.12xl#1 (stages 0-3) + g5.12xl#2 (stages 4-5,7) + g6e.xl#4 (stage 6)
 
 NODE_MAPPINGS = [
-    # P1
+    # P1: 8 stages
     [
         (g6_12xlarge_node_ip_1, 0),
-        (g6_12xlarge_node_ip_2, 1),
-        (g6e_xlarge_node_ip_1, 2),
-        (g6e_xlarge_node_ip_2, 3),
-        (g6e_xlarge_node_ip_3, 4),
-        (g6e_xlarge_node_ip_4, 5),
+        (g6_12xlarge_node_ip_1, 1),
+        (g6_12xlarge_node_ip_1, 2),
+        (g6_12xlarge_node_ip_3, 3),
+        (g6_12xlarge_node_ip_3, 4),
+        (g6_12xlarge_node_ip_3, 5),
+        (g6_12xlarge_node_ip_3, 6),
+        (EXTRA_G5_XLARGE_1, 7),
     ],
-    # P2
+    # P2: 5 stages
+    [
+        (g6_12xlarge_node_ip_2, 0),
+        (g6e_xlarge_node_ip_1, 1),
+        (g6e_xlarge_node_ip_2, 2),
+        (g6e_xlarge_node_ip_3, 3),
+        (g6_12xlarge_node_ip_2, 4),
+    ],
+    # P3: 8 stages
     [
         (g5_12xlarge_node_ip_1, 0),
-        (g5_12xlarge_node_ip_2, 1),
-        (g6_12xlarge_node_ip_3, 2),
+        (g5_12xlarge_node_ip_1, 1),
+        (g5_12xlarge_node_ip_1, 2),
+        (g5_12xlarge_node_ip_1, 3),
+        (g5_12xlarge_node_ip_2, 4),
+        (g5_12xlarge_node_ip_2, 5),
+        (g6e_xlarge_node_ip_4, 6),
+        (g5_12xlarge_node_ip_2, 7),
     ],
 ]
 
@@ -89,7 +105,7 @@ async def test_benchmark():
     pipelines = _data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe — {PREDICTED_FILE}")
+    print(f"Offline Benchmark — HexGen — {PREDICTED_FILE}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
         print(f"  P{i+1}: TP={p['parallel_strategy']}  layers={p['pp_layer_partition']}"
@@ -118,7 +134,6 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
-    # Build pipeline configs and node mappings
     pipeline_tasks = []
     for i, p in enumerate(pipelines):
         config = {
@@ -134,6 +149,7 @@ async def test_benchmark():
             "s3_path": f"s3://{S3_BUCKET}/{model_name}",
             "num_gpu_blocks": p["num_blocks"],
             "max_batch_size": int(p["max_batch_size"]),
+            "mode": "hexgen",
         }
 
         node_layer_mapping = [
@@ -155,14 +171,14 @@ async def test_benchmark():
         logger.info("All pipelines are ready!")
 
         start_time = 0
-        end_time = 3 * 60  # 3 minutes
+        end_time = 15  # 15 seconds
 
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"modelplacement_online_{SYSTEM}",
+            trace_output_prefix=f"modelplacement_online_warmup_{SYSTEM}",
             num_requests=None,
-            time_scale=5.0,
+            time_scale=4.0,
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
@@ -173,13 +189,7 @@ async def test_benchmark():
 
         print_benchmark_results(metrics)
 
-        save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
-            "benchmark_type": "online",
-            "num_pipelines": len(pipelines),
-            "predicted_total_throughput_rps": _data["total_throughput_rps"],
-            "percentiles": [10, 25, 50, 75, 90, 99],
-        })
+        # Warmup complete — no results saved
 
     except KeyboardInterrupt:
         logger.info("\nBenchmark interrupted by user")

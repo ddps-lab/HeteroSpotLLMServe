@@ -16,7 +16,8 @@ _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+_REPO_ROOT = _d
 del _d
 
 from global_server import GlobalServer
@@ -39,8 +40,12 @@ MAX_BATCH_SIZE = 117
 NUM_GPU_BLOCKS = 4212
 NUM_REQUESTS = MAX_BATCH_SIZE * 5
 
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
-OUTPUT_PATH = os.path.join(RESULTS_DIR, "example_Qwen3-4B.json")
+OUTPUT_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "qwen3-32b", "measured"
+)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "example_Qwen3-4B.json")
 
 # Single GPU — all layers on one node
 NODE_LAYER_MAPPING = [
@@ -95,6 +100,12 @@ async def test_benchmark():
         "num_gpu_blocks": NUM_GPU_BLOCKS,
         "max_batch_size": MAX_BATCH_SIZE,
     }
+
+    # Validate layer count
+    _total = sum(layers for _, layers in NODE_LAYER_MAPPING)
+    assert _total == config["total_num_layers"], (
+        f"Layer mismatch: node mapping sum={_total} != config total={config['total_num_layers']}"
+    )
     estimated_throughput = 14.20
 
     pipeline_task = asyncio.create_task(

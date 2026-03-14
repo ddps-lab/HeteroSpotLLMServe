@@ -263,9 +263,10 @@ def main():
         "model": model_name,
         "workload": {"input_len": 763, "output_len": 232},
         "pipelines": output_pipelines,
+        "total_throughput_rps": total_throughput,
     }
 
-    results_dir = os.path.join(os.path.dirname(__file__), "..", "results")
+    results_dir = os.path.join(os.path.dirname(__file__), "..", "results", "qwen3-32b", "estimated")
     os.makedirs(results_dir, exist_ok=True)
     output_file = os.path.join(results_dir, f"predicted_hexgen_{model_short}.json")
     with open(output_file, "w") as f:

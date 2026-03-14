@@ -1,5 +1,5 @@
 """
-Online benchmark — ShuntServe (Llama-3.1-70B)
+Online benchmark — HexGen (Qwen3-32B)
 All pipelines loaded from predicted JSON, Azure Trace with time_scale=5.0 (offline).
 """
 import asyncio
@@ -26,16 +26,16 @@ from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
 
-SYSTEM = "shuntserve"
+SYSTEM = "hexgen"
 STAGE_LAYER_COUNT_IDX = 1
 
 PREDICTED_DIR = os.path.join(
     _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
-    "optimizer", "results", "llama3-70b", "estimated"
+    "optimizer", "results", "qwen3-32b", "estimated"
 )
 OUTPUT_DIR = os.path.join(
     _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
-    "optimizer", "results", "llama3-70b", "measured"
+    "optimizer", "results", "qwen3-32b", "measured"
 )
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -47,24 +47,53 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"online_{SYSTEM}.json")
 
 # ─── Node assignments per pipeline ───────────────────────────────────
-# SS-P1: g6.12xl#1, g6.12xl#2, g6e.xl×4
-# SS-P2: g5.12xl#1, g5.12xl#2, g6.12xl#3
+# HX-P1: g6.12xl#1 (stages 0,3) + g5.12xl#1 (stages 1,2)
+# HX-P2: g6e.xl#1 (stage 0) + g6.12xl#2 (stages 1-3)
+# HX-P3: g6e.xl#2, g6e.xl#3
+# HX-P4: g5.12xl#2 (stages 0,1) + g6.12xl#3 (stages 2-4)
+# HX-P5: g6e.xl#4 + EXTRA_G5_XLARGE_2 + EXTRA_G5_XLARGE_3
+# HX-P6: EXTRA_G6_12XLARGE_1 (stages 0,3) + EXTRA_G5_XLARGE_4 + EXTRA_G5_XLARGE_5
 
 NODE_MAPPINGS = [
-    # P1
+    # P1: 4 stages
     [
         (g6_12xlarge_node_ip_1, 0),
-        (g6_12xlarge_node_ip_2, 1),
-        (g6e_xlarge_node_ip_1, 2),
-        (g6e_xlarge_node_ip_2, 3),
-        (g6e_xlarge_node_ip_3, 4),
-        (g6e_xlarge_node_ip_4, 5),
+        (g5_12xlarge_node_ip_1, 1),
+        (g5_12xlarge_node_ip_1, 2),
+        (g6_12xlarge_node_ip_1, 3),
     ],
-    # P2
+    # P2: 4 stages
     [
-        (g5_12xlarge_node_ip_1, 0),
+        (g6e_xlarge_node_ip_1, 0),
+        (g6_12xlarge_node_ip_2, 1),
+        (g6_12xlarge_node_ip_2, 2),
+        (g6_12xlarge_node_ip_2, 3),
+    ],
+    # P3: 2 stages
+    [
+        (g6e_xlarge_node_ip_2, 0),
+        (g6e_xlarge_node_ip_3, 1),
+    ],
+    # P4: 5 stages
+    [
+        (g5_12xlarge_node_ip_2, 0),
         (g5_12xlarge_node_ip_2, 1),
         (g6_12xlarge_node_ip_3, 2),
+        (g6_12xlarge_node_ip_3, 3),
+        (g6_12xlarge_node_ip_3, 4),
+    ],
+    # P5: 3 stages
+    [
+        (g6e_xlarge_node_ip_4, 0),
+        (EXTRA_G5_XLARGE_2, 1),
+        (EXTRA_G5_XLARGE_3, 2),
+    ],
+    # P6: 4 stages (identical config to P1, extra nodes for parallel execution)
+    [
+        (EXTRA_G6_12XLARGE_1, 0),
+        (EXTRA_G5_XLARGE_4, 1),
+        (EXTRA_G5_XLARGE_5, 2),
+        (EXTRA_G6_12XLARGE_1, 3),
     ],
 ]
 
@@ -89,7 +118,7 @@ async def test_benchmark():
     pipelines = _data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe — {PREDICTED_FILE}")
+    print(f"Offline Benchmark — HexGen — {PREDICTED_FILE}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
         print(f"  P{i+1}: TP={p['parallel_strategy']}  layers={p['pp_layer_partition']}"
@@ -97,7 +126,7 @@ async def test_benchmark():
     print(f"  Total predicted: {_data['total_throughput_rps']:.3f} req/s")
     print("=" * 70)
 
-    # ─── Validate layer counts ───────────────────────────────────────
+    # Validate layer counts
     for i, p in enumerate(pipelines):
         total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in p["stages"])
         assert total_layers == sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in pipelines[0]["stages"]), (
@@ -118,7 +147,6 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
-    # Build pipeline configs and node mappings
     pipeline_tasks = []
     for i, p in enumerate(pipelines):
         config = {
@@ -134,6 +162,7 @@ async def test_benchmark():
             "s3_path": f"s3://{S3_BUCKET}/{model_name}",
             "num_gpu_blocks": p["num_blocks"],
             "max_batch_size": int(p["max_batch_size"]),
+            "mode": "hexgen",
         }
 
         node_layer_mapping = [
@@ -174,7 +203,7 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
+            "system": "HexGen",
             "benchmark_type": "online",
             "num_pipelines": len(pipelines),
             "predicted_total_throughput_rps": _data["total_throughput_rps"],

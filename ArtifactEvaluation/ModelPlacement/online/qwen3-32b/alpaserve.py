@@ -1,5 +1,5 @@
 """
-Online benchmark — ShuntServe (Llama-3.1-70B)
+Online benchmark — AlpaServe (Qwen3-32B)
 All pipelines loaded from predicted JSON, Azure Trace with time_scale=5.0 (offline).
 """
 import asyncio
@@ -26,16 +26,16 @@ from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
 
-SYSTEM = "shuntserve"
+SYSTEM = "alpaserve"
 STAGE_LAYER_COUNT_IDX = 1
 
 PREDICTED_DIR = os.path.join(
     _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
-    "optimizer", "results", "llama3-70b", "estimated"
+    "optimizer", "results", "qwen3-32b", "estimated"
 )
 OUTPUT_DIR = os.path.join(
     _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
-    "optimizer", "results", "llama3-70b", "measured"
+    "optimizer", "results", "qwen3-32b", "measured"
 )
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -47,24 +47,34 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"online_{SYSTEM}.json")
 
 # ─── Node assignments per pipeline ───────────────────────────────────
-# SS-P1: g6.12xl#1, g6.12xl#2, g6e.xl×4
-# SS-P2: g5.12xl#1, g5.12xl#2, g6.12xl#3
+# AP-P1: g6.12xl#1                         (TP=4)
+# AP-P2: g6.12xl#2                         (TP=4)
+# AP-P3: g6.12xl#3                         (TP=4)
+# AP-P4: g5.12xl#1                         (TP=4)
+# AP-P5: g5.12xl#2                         (TP=4)
+# AP-P6: g6e.xl#1, g6e.xl#2               (TP=1 each)
+# AP-P7: g6e.xl#3, g6e.xl#4               (TP=1 each)
 
 NODE_MAPPINGS = [
-    # P1
+    # P1: 1 stage
+    [(g6_12xlarge_node_ip_1, 0)],
+    # P2: 1 stage
+    [(g6_12xlarge_node_ip_2, 0)],
+    # P3: 1 stage
+    [(g6_12xlarge_node_ip_3, 0)],
+    # P4: 1 stage
+    [(g5_12xlarge_node_ip_1, 0)],
+    # P5: 1 stage
+    [(g5_12xlarge_node_ip_2, 0)],
+    # P6: 2 stages
     [
-        (g6_12xlarge_node_ip_1, 0),
-        (g6_12xlarge_node_ip_2, 1),
-        (g6e_xlarge_node_ip_1, 2),
-        (g6e_xlarge_node_ip_2, 3),
-        (g6e_xlarge_node_ip_3, 4),
-        (g6e_xlarge_node_ip_4, 5),
+        (g6e_xlarge_node_ip_1, 0),
+        (g6e_xlarge_node_ip_2, 1),
     ],
-    # P2
+    # P7: 2 stages
     [
-        (g5_12xlarge_node_ip_1, 0),
-        (g5_12xlarge_node_ip_2, 1),
-        (g6_12xlarge_node_ip_3, 2),
+        (g6e_xlarge_node_ip_3, 0),
+        (g6e_xlarge_node_ip_4, 1),
     ],
 ]
 
@@ -89,7 +99,7 @@ async def test_benchmark():
     pipelines = _data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe — {PREDICTED_FILE}")
+    print(f"Offline Benchmark — AlpaServe — {PREDICTED_FILE}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
         print(f"  P{i+1}: TP={p['parallel_strategy']}  layers={p['pp_layer_partition']}"
@@ -97,7 +107,7 @@ async def test_benchmark():
     print(f"  Total predicted: {_data['total_throughput_rps']:.3f} req/s")
     print("=" * 70)
 
-    # ─── Validate layer counts ───────────────────────────────────────
+    # Validate layer counts
     for i, p in enumerate(pipelines):
         total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in p["stages"])
         assert total_layers == sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in pipelines[0]["stages"]), (
@@ -118,7 +128,6 @@ async def test_benchmark():
             )
         logger.info("Pipeline creation completed")
 
-    # Build pipeline configs and node mappings
     pipeline_tasks = []
     for i, p in enumerate(pipelines):
         config = {
@@ -174,7 +183,7 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
+            "system": "AlpaServe",
             "benchmark_type": "online",
             "num_pipelines": len(pipelines),
             "predicted_total_throughput_rps": _data["total_throughput_rps"],
