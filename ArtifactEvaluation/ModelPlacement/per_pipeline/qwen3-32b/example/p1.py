@@ -49,7 +49,7 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, "example_Qwen3-4B.json")
 
 # Single GPU — all layers on one node
 NODE_LAYER_MAPPING = [
-    (g6_xlarge_node_ip_1, TOTAL_LAYERS),  # g6.xlarge: 1× L4 GPU
+    (g6_xlarge_node_ip_2, TOTAL_LAYERS),  # g6.xlarge: 1× L4 GPU
 ]
 
 

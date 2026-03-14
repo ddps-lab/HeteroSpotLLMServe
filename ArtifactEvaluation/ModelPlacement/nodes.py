@@ -13,7 +13,8 @@ g6e_xlarge_node_ip_3  = ""   # g6e.xlarge  #3 (1× L40S)
 g6e_xlarge_node_ip_4  = ""   # g6e.xlarge  #4 (1× L40S)
 
 # ─── Unit test node (example pipeline) ───────────────────────────────
-g6_xlarge_node_ip_1   = ""   # g6.xlarge   #1 (1× L4) — used by example/p1.py
+g6_xlarge_node_ip_1   = ""   # g6.xlarge   #1 (1× L4) — used by llama3-70b/example/p1.py
+g6_xlarge_node_ip_2   = ""   # g6.xlarge   #1 (1× L4) — used by qwen3-32b/example/p1.py
 
 # ─── Extra standalone instances (HexGen) ─────────────────────────────
 # HexGen splits multi-GPU nodes across pipelines at sub-node granularity.
