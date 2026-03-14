@@ -10,6 +10,7 @@ import json
 import logging
 import sys
 import os
+import argparse
 
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
@@ -106,16 +107,29 @@ async def test_benchmark():
         await pipeline_task
         logger.info("Pipeline is ready!")
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--single-request", action="store_true",
+                            help="Run 5 requests sequentially (max_concurrency=1)")
+        args = parser.parse_args()
+
+        if args.single_request:
+            num_requests = 5
+            max_concurrency = 1
+        else:
+            num_requests = NUM_REQUESTS
+            max_concurrency = None
+
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=NUM_REQUESTS,
+            num_requests=num_requests,
             input_len=INPUT_LEN,
             output_len=OUTPUT_LEN,
             request_rate=float('inf'),
             model_name=MODEL_NAME,
+            max_concurrency=max_concurrency,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
-            run_initial_test=True,
+            run_initial_test=False,
             test_requests_per_pipeline=2,
         )
 
@@ -130,7 +144,7 @@ async def test_benchmark():
             "parallel_strategy": [1],
             "input_len": INPUT_LEN,
             "output_len": OUTPUT_LEN,
-            "num_requests": NUM_REQUESTS,
+            "num_requests": num_requests,
             "max_batch_size": MAX_BATCH_SIZE,
             "num_gpu_blocks": NUM_GPU_BLOCKS,
             "estimated_throughput_rps": estimated_throughput,

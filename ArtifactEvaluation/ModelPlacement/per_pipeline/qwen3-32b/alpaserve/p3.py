@@ -8,6 +8,7 @@ import json
 import logging
 import sys
 import os
+import argparse
 
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
@@ -113,16 +114,29 @@ async def test_benchmark():
         await pipeline_task
         logger.info("Pipeline is ready!")
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--single-request", action="store_true",
+                            help="Run 5 requests sequentially (max_concurrency=1)")
+        args = parser.parse_args()
+
+        if args.single_request:
+            num_requests = 5
+            max_concurrency = 1
+        else:
+            num_requests = max_batch_size * 5
+            max_concurrency = None
+
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=max_batch_size * 5,
+            num_requests=num_requests,
             input_len=_data["workload"]["input_len"],
             output_len=_data["workload"]["output_len"],
             request_rate=float('inf'),
             model_name=model_name,
+            max_concurrency=max_concurrency,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
-            run_initial_test=True,
+            run_initial_test=False,
             test_requests_per_pipeline=2,
         )
 
@@ -136,7 +150,7 @@ async def test_benchmark():
             "stages": _pipeline["stages"],
             "input_len": _data["workload"]["input_len"],
             "output_len": _data["workload"]["output_len"],
-            "num_requests": max_batch_size * 5,
+            "num_requests": num_requests,
             "predicted_throughput_rps": estimated_throughput,
             "percentiles": [10, 25, 50, 75, 90, 99],
         })
