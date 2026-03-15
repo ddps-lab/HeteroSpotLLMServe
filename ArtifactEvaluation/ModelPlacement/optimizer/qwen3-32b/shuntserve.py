@@ -59,7 +59,7 @@ def main():
         "(spot)g6e.xlarge": 0.7040,
     }
 
-    TOP_K = 1
+    TOP_K = 5
 
     print("=" * 80)
     print("ShuntServe Optimizer — Iterative Pipeline Search")
