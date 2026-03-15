@@ -59,7 +59,7 @@ def main():
     }
 
 
-    TOP_K = 5  # Beam width & number of candidates to show per iteration
+    TOP_K = 3  # Beam width & number of candidates to show per iteration
 
     print("=" * 80)
     print("ShuntServe Optimizer — Iterative Pipeline Search")
