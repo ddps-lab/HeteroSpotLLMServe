@@ -164,6 +164,8 @@ async def test_benchmark():
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
             run_initial_test=False,
+            start_time=0,
+            end_time=10 * 60,  # 10 minutes
         )
 
         print_benchmark_results(metrics)
