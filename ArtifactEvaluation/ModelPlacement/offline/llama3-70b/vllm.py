@@ -168,7 +168,7 @@ async def test_benchmark():
             disable_tqdm=False,
             run_initial_test=False,
             start_time=0,
-            end_time=10 * 60,  # 10 minutes
+            end_time=5 * 60,  # 5 minutes
         )
 
         print_benchmark_results(metrics)
