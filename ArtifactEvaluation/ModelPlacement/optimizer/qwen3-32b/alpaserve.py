@@ -41,7 +41,7 @@ def main():
     groups = [
         ("g6.12xlarge", 3, 0.85),
         ("g5.12xlarge", 2, 0.85),
-        ("g6e.xlarge", 4, 0.9),
+        ("g6e.xlarge", 4, 0.85),
     ]
 
     total_throughput = 0
