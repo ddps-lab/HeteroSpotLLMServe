@@ -1,6 +1,6 @@
 """
 Online benchmark — AlpaServe (Qwen3-32B)
-All pipelines loaded from predicted JSON, Azure Trace with time_scale=1.0 (online).
+All pipelines loaded from predicted JSON, Azure Trace with time_scale=4/3 (online).
 """
 import asyncio
 import concurrent.futures
@@ -171,7 +171,7 @@ async def test_benchmark():
             dataset_path=DEFAULT_DATASET_PATH,
             trace_output_prefix=f"modelplacement_online_{SYSTEM}",
             num_requests=None,
-            time_scale=1.0,
+            time_scale=4/3,
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
