@@ -132,7 +132,7 @@ async def test_benchmark():
             "parallel_strategy": p["parallel_strategy"],
             "max_model_len": 8192,
             "max_num_batched_tokens": 8192,
-            "max_num_seqs": 512,
+            "max_num_seqs": 1024,
             "model_source": "s3",
             "s3_path": f"s3://{S3_BUCKET}/{model_name}",
             "num_gpu_blocks": p["num_blocks"],
