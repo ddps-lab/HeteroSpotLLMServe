@@ -1,6 +1,6 @@
 """
 Online benchmark — ShuntServe (Qwen3-32B)
-All pipelines loaded from predicted JSON, Azure Trace with time_scale=4/3 (online).
+All pipelines loaded from predicted JSON, Azure Trace with time_scale=5/3 (online).
 """
 import asyncio
 import concurrent.futures
@@ -162,14 +162,14 @@ async def test_benchmark():
         logger.info("All pipelines are ready!")
 
         start_time = 0
-        end_time = 15 * 60  # 15 minutes
+        end_time = 9 * 60  # 9 minutes
 
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
             trace_output_prefix=f"modelplacement_online_{SYSTEM}",
             num_requests=None,
-            time_scale=4/3,
+            time_scale=5/3,
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,

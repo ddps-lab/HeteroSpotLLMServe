@@ -1,6 +1,6 @@
 """
 Online warmup — AlpaServe (Qwen3-32B)
-All pipelines loaded from predicted JSON, Azure Trace warmup (time_scale=4/3, 15s) (offline).
+All pipelines loaded from predicted JSON, Azure Trace warmup (time_scale=5/3, 15s) (offline).
 """
 import asyncio
 import concurrent.futures
@@ -171,7 +171,7 @@ async def test_benchmark():
             dataset_path=DEFAULT_DATASET_PATH,
             trace_output_prefix=f"modelplacement_online_warmup_{SYSTEM}",
             num_requests=None,
-            time_scale=4/3,
+            time_scale=5/3,
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
