@@ -51,13 +51,13 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"offline_{SYSTEM}.json")
 # cross-pipeline Ray conflicts.
 #
 # HX-P1 (3 stages):
-#   stage 0  (A10G TP=1) → EXTRA_G5_XLARGE_3   (moved off g5.12xl#2, 4-way conflict)
+#   stage 0  (A10G TP=1) → EXTRA_G5_XLARGE_1   (moved off g5.12xl#2, 4-way conflict)
 #   stage 1  (L40S TP=1) → g6e.xl#1
 #   stage 2  (L40S TP=1) → g6e.xl#2
 #
 # HX-P2 (5 stages):
 #   stages 0-2 (L4 TP=1 ×3) → g6.12xl#1 (3 GPUs)
-#   stage 3  (A10G TP=1) → EXTRA_G5_XLARGE_4   (moved off g5.12xl#2, 4-way conflict)
+#   stage 3  (A10G TP=1) → EXTRA_G5_XLARGE_2   (moved off g5.12xl#2, 4-way conflict)
 #   stage 4  (L40S TP=1) → g6e.xl#4
 #
 # HX-P3 (3 stages):
@@ -67,8 +67,8 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"offline_{SYSTEM}.json")
 #
 # HX-P4 (4 stages):
 #   stages 0,1 (L4 TP=2 ×2) → g6.12xl#2 (4 GPUs)
-#   stage 2  (L4 TP=1)   → EXTRA_G6_XLARGE_2   (moved off g6.12xl#3, conflict with P5)
-#   stage 3  (A10G TP=1) → EXTRA_G5_XLARGE_5   (moved off g5.12xl#1, conflict with P3)
+#   stage 2  (L4 TP=1)   → EXTRA_G6_XLARGE_1   (moved off g6.12xl#3, conflict with P5)
+#   stage 3  (A10G TP=1) → EXTRA_G5_XLARGE_3   (moved off g5.12xl#1, conflict with P3)
 #
 # HX-P5 (5 stages):
 #   stage 0  (L4 TP=1)   → g6.12xl#3 GPU 0     (consolidated from Node 0)
@@ -80,7 +80,7 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"offline_{SYSTEM}.json")
 NODE_MAPPINGS = [
     # P1: 3 stages
     [
-        (EXTRA_G5_XLARGE_3, 0),        # stage 0: A10G TP=1
+        (EXTRA_G5_XLARGE_1, 0),        # stage 0: A10G TP=1
         (g6e_xlarge_node_ip_1, 1),     # stage 1: L40S TP=1
         (g6e_xlarge_node_ip_2, 2),     # stage 2: L40S TP=1
     ],
@@ -89,7 +89,7 @@ NODE_MAPPINGS = [
         (g6_12xlarge_node_ip_1, 0),    # stage 0: L4 TP=1
         (g6_12xlarge_node_ip_1, 1),    # stage 1: L4 TP=1
         (g6_12xlarge_node_ip_1, 2),    # stage 2: L4 TP=1
-        (EXTRA_G5_XLARGE_4, 3),        # stage 3: A10G TP=1
+        (EXTRA_G5_XLARGE_2, 3),        # stage 3: A10G TP=1
         (g6e_xlarge_node_ip_4, 4),     # stage 4: L40S TP=1
     ],
     # P3: 3 stages
@@ -102,8 +102,8 @@ NODE_MAPPINGS = [
     [
         (g6_12xlarge_node_ip_2, 0),    # stage 0: L4 TP=2
         (g6_12xlarge_node_ip_2, 1),    # stage 1: L4 TP=2
-        (EXTRA_G6_XLARGE_2, 2),        # stage 2: L4 TP=1
-        (EXTRA_G5_XLARGE_5, 3),        # stage 3: A10G TP=1
+        (EXTRA_G6_XLARGE_1, 2),        # stage 2: L4 TP=1
+        (EXTRA_G5_XLARGE_3, 3),        # stage 3: A10G TP=1
     ],
     # P5: 5 stages
     [

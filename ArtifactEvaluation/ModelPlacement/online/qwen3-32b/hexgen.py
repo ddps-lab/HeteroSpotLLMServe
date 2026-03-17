@@ -49,7 +49,7 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"online_{SYSTEM}.json")
 NODE_MAPPINGS = [
     # P1: 3 stages
     [
-        (EXTRA_G5_XLARGE_3, 0),        # stage 0: A10G TP=1
+        (EXTRA_G5_XLARGE_1, 0),        # stage 0: A10G TP=1
         (g6e_xlarge_node_ip_1, 1),     # stage 1: L40S TP=1
         (g6e_xlarge_node_ip_2, 2),     # stage 2: L40S TP=1
     ],
@@ -58,7 +58,7 @@ NODE_MAPPINGS = [
         (g6_12xlarge_node_ip_1, 0),    # stage 0: L4 TP=1
         (g6_12xlarge_node_ip_1, 1),    # stage 1: L4 TP=1
         (g6_12xlarge_node_ip_1, 2),    # stage 2: L4 TP=1
-        (EXTRA_G5_XLARGE_4, 3),        # stage 3: A10G TP=1
+        (EXTRA_G5_XLARGE_2, 3),        # stage 3: A10G TP=1
         (g6e_xlarge_node_ip_4, 4),     # stage 4: L40S TP=1
     ],
     # P3: 3 stages
@@ -71,8 +71,8 @@ NODE_MAPPINGS = [
     [
         (g6_12xlarge_node_ip_2, 0),    # stage 0: L4 TP=2
         (g6_12xlarge_node_ip_2, 1),    # stage 1: L4 TP=2
-        (EXTRA_G6_XLARGE_2, 2),        # stage 2: L4 TP=1
-        (EXTRA_G5_XLARGE_5, 3),        # stage 3: A10G TP=1
+        (EXTRA_G6_XLARGE_1, 2),        # stage 2: L4 TP=1
+        (EXTRA_G5_XLARGE_3, 3),        # stage 3: A10G TP=1
     ],
     # P5: 5 stages
     [

@@ -57,8 +57,8 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p4.json")
 NODE_LAYER_MAPPING = [
     (g6_12xlarge_node_ip_2, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),   # stage 0: L4 TP=2
     (g6_12xlarge_node_ip_2, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: L4 TP=2
-    (EXTRA_G6_XLARGE_2, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),       # stage 2: L4 TP=1
-    (EXTRA_G5_XLARGE_5, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),       # stage 3: A10G TP=1
+    (EXTRA_G6_XLARGE_1, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),       # stage 2: L4 TP=1
+    (EXTRA_G5_XLARGE_3, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),       # stage 3: A10G TP=1
 ]
 
 

@@ -58,7 +58,7 @@ NODE_LAYER_MAPPING = [
     (g6_12xlarge_node_ip_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),   # stage 0: L4 TP=1
     (g6_12xlarge_node_ip_1, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: L4 TP=1
     (g6_12xlarge_node_ip_1, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),   # stage 2: L4 TP=1
-    (EXTRA_G5_XLARGE_4, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),       # stage 3: A10G TP=1
+    (EXTRA_G5_XLARGE_2, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),       # stage 3: A10G TP=1
     (g6e_xlarge_node_ip_4, int(_pipeline["stages"][4][STAGE_LAYER_COUNT_IDX])),    # stage 4: L40S TP=1
 ]
 

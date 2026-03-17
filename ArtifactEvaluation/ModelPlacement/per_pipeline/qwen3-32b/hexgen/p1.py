@@ -54,7 +54,7 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p1.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
 NODE_LAYER_MAPPING = [
-    (EXTRA_G5_XLARGE_3, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),      # stage 0: A10G TP=1
+    (EXTRA_G5_XLARGE_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),      # stage 0: A10G TP=1
     (g6e_xlarge_node_ip_1, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: L40S TP=1
     (g6e_xlarge_node_ip_2, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),   # stage 2: L40S TP=1
 ]
