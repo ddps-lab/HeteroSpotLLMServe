@@ -1,15 +1,14 @@
 """
-HexGen Pipeline 1 (HX-P1)
-HexGen GA placement → ShuntServe layer partition
-8 stages: 6×g6.xlarge(TP=1) + 1×g6.12xlarge-half(TP=2) + 1×g5.xlarge(TP=1)
-Layers=[8,19,9,9,9,9,9,8]
+HexGen Pipeline 1 (HX-P1) — Llama-3.1-70B
+HexGen GA placement + memory-proportional layer partition
+8 stages: L4(TP=1) + A10G(TP=1) + A10G(TP=2) + A10G(TP=1) + A10G(TP=2) + L40S(TP=1)×3
 
-Physical node allocation:
-  g6.12xlarge #1 (4 L4 GPUs): stages 0(TP=1) + 1(TP=2) + 2(TP=1) = 4 GPUs
-  g6.12xlarge #3 (4 L4 GPUs): stages 3,4,5,6 (each TP=1) = 4 GPUs
-  g5.xlarge extra (1 A10G GPU): stage 7 (TP=1) = 1 GPU
-    ※ Cannot share g5.12xlarge #2 with HX-P3 — Ray conflict.
-       Uses standalone g5.xlarge instead.
+Physical node allocation (consolidated):
+  EXTRA g6.xlarge  (1 L4 GPU):   stage 0 (TP=1)  — moved off g6.12xl#2 (P2 conflict)
+  EXTRA g5.xlarge  (1 A10G GPU): stage 1 (TP=1)  — moved off g5.12xl (P2 conflict)
+  g5.12xlarge #1   (4 A10G GPUs): stages 2,4 (TP=2+2=4 GPUs, consolidated)
+  EXTRA g5.xlarge  (1 A10G GPU): stage 3 (TP=1)  — moved off g5.12xl (P2 conflict)
+  g6e.xlarge #1,#2,#4: stages 5,6,7 (L40S TP=1)
 """
 import asyncio
 import concurrent.futures
@@ -56,32 +55,15 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p1.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
-# HexGen GA originally placed on g6.12xlarge nodes 0,2 + g5.12xlarge node 4.
-# ShuntServe optimizer re-partitioned layers within this placement.
-#
-# g6.12xlarge #1 (4 GPUs total):
-#   stage 0 — TP=1, 1 GPU
-#   stage 1 — TP=2, 2 GPUs
-#   stage 2 — TP=1, 1 GPU
-#
-# g6.12xlarge #3 (4 GPUs total):
-#   stages 3,4,5,6 — each TP=1, 1 GPU each
-#
-# Stage 7 (TP=1, A10G):
-#   Originally this GPU comes from g5.12xlarge #2, but HX-P3 also uses
-#   g5.12xlarge #2 (3 GPUs). Ray cannot host two independent vLLM
-#   instances on the same physical node, so we use a separate standalone
-#   g5.xlarge instance instead. See nodes.py for details.
-
 NODE_LAYER_MAPPING = [
-    (g6_12xlarge_node_ip_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: TP=1
-    (g6_12xlarge_node_ip_1, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),  # stage 1: TP=2
-    (g6_12xlarge_node_ip_1, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),  # stage 2: TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),  # stage 3: TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][4][STAGE_LAYER_COUNT_IDX])),  # stage 4: TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][5][STAGE_LAYER_COUNT_IDX])),  # stage 5: TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][6][STAGE_LAYER_COUNT_IDX])),  # stage 6: TP=1
-    (EXTRA_G5_XLARGE_1, int(_pipeline["stages"][7][STAGE_LAYER_COUNT_IDX])),  # stage 7: TP=1 (extra node)
+    (EXTRA_G6_XLARGE_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),       # stage 0: L4 TP=1
+    (EXTRA_G5_XLARGE_1, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),       # stage 1: A10G TP=1
+    (g5_12xlarge_node_ip_1, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),   # stage 2: A10G TP=2 (consolidated)
+    (EXTRA_G5_XLARGE_2, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),       # stage 3: A10G TP=1
+    (g5_12xlarge_node_ip_1, int(_pipeline["stages"][4][STAGE_LAYER_COUNT_IDX])),   # stage 4: A10G TP=2 (consolidated)
+    (g6e_xlarge_node_ip_1, int(_pipeline["stages"][5][STAGE_LAYER_COUNT_IDX])),    # stage 5: L40S TP=1
+    (g6e_xlarge_node_ip_2, int(_pipeline["stages"][6][STAGE_LAYER_COUNT_IDX])),    # stage 6: L40S TP=1
+    (g6e_xlarge_node_ip_4, int(_pipeline["stages"][7][STAGE_LAYER_COUNT_IDX])),    # stage 7: L40S TP=1
 ]
 
 

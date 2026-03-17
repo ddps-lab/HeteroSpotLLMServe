@@ -1,19 +1,20 @@
 """
-HexGen Evaluate: Parse HexGen GA results, then use ShuntServe's estimator
-to find optimal layer partition and predict throughput for each pipeline.
+HexGen Evaluate (Pure): HexGen GA determines model placement (which nodes, TP degrees),
+then layers are partitioned proportionally to each stage's GPU memory capacity.
 
-HexGen GA determines: stage definitions (which GPU types, TP degrees).
-ShuntServe optimizer determines: optimal layer partition + batched throughput.
+This follows the HexGen paper's original approach:
+  1. HexGen GA → node placement + TP degrees
+  2. Memory-proportional layer partitioning (not ShuntServe DP)
 
-This gives HexGen the benefit of ShuntServe's estimator while keeping
-HexGen's stage/TP decisions. Uses only_throughput mode to ensure all
-nodes in each pipeline are used.
+Throughput is estimated using ShuntServe's estimator (get_throughput / get_global_batch_size).
 
-Run: python3 evaluate.py
+Run: python3 hexgen.py
 """
 import sys
 import os
 import json
+import logging
+import math
 
 # Add ModelPlacement to path
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -23,16 +24,14 @@ sys.path.insert(0, os.path.join(_d, "ModelPlacement"))
 del _d
 
 import torch
-import logging
 from transformers import AutoConfig
 from hexgen_optimizer import main as hexgen_main
-from hardware_specs import INSTANCE_SPEC
-from shuntserve_optimizer import run_test_case
-from cluster_pool import ClusterPool
+from hardware_specs import INSTANCE_SPEC, GPU_SPEC
+from estimator_utils import get_throughput, get_global_batch_size
 
 
 def resolve_stage_mapping(genes_pipeline, plan_pipeline, pp_partition, cluster_config_flatten):
-    """Map HexGen stages to (instance_type, tp_degree, layer_count)."""
+    """Map HexGen GA output to per-stage (instance_type, tp_degree, layer_count)."""
     node_gpus = []
     for node_idx, gpu_count in enumerate(genes_pipeline):
         if gpu_count > 0:
@@ -60,99 +59,114 @@ def resolve_stage_mapping(genes_pipeline, plan_pipeline, pp_partition, cluster_c
     return stages
 
 
-"""
-Map HexGen TP degree to an equivalent ShuntServe instance type.
-
-ShuntServe requires TP = instance gpu_count, so we map:
-  TP=4 on g5.12xlarge  → (spot)g5.12xlarge       (4 GPU)
-  TP=2 on g5.12xlarge  → (spot)g5.12xlarge(half)  (2 GPU)
-  TP=1 on g5.12xlarge  → (spot)g5.xlarge           (1 GPU)
-  TP=1 on g6e.xlarge   → (spot)g6e.xlarge          (1 GPU, already 1)
-"""
-_TP_TO_INSTANCE = {
-    # g5.12xlarge (A10G, 4 GPU base)
-    ("g5.12xlarge", 4): "(spot)g5.12xlarge",
-    ("g5.12xlarge", 2): "(spot)g5.12xlarge(half)",
-    ("g5.12xlarge", 1): "(spot)g5.xlarge",
-    # g6.12xlarge (L4, 4 GPU base)
-    ("g6.12xlarge", 4): "(spot)g6.12xlarge",
-    ("g6.12xlarge", 2): "(spot)g6.12xlarge(half)",
-    ("g6.12xlarge", 1): "(spot)g6.xlarge",
-    # g6e.xlarge (L40S, 1 GPU base) — TP can only be 1
-    ("g6e.xlarge", 1): "(spot)g6e.xlarge",
-    # g6e.12xlarge (L40S, 4 GPU base)
-    ("g6e.12xlarge", 4): "(spot)g6e.12xlarge",
-    ("g6e.12xlarge", 2): "(spot)g6e.12xlarge(half)",
-    ("g6e.12xlarge", 1): "(spot)g6e.xlarge",
-}
-
-
-def stages_to_cluster(stages):
+def memory_proportional_partition(stages, total_layers, gpu_mem_utilization=0.85):
     """
-    Convert HexGen pipeline stages into a ClusterPool for ShuntServe optimizer.
+    Distribute layers across stages proportionally to each stage's GPU memory capacity.
 
-    Each stage is mapped to a virtual instance whose gpu_count = TP degree.
-    ShuntServe optimizer will then determine the optimal layer partition.
+    Each stage's capacity = GPU memory (MB) × tp_degree × gpu_mem_utilization.
+    Layers are allocated proportionally and rounded, with remainder correction
+    applied to the stage with the largest fractional part.
     """
-    from collections import Counter
-    node_counts = Counter()
+    capacities = []
     for s in stages:
-        key = (s["instance_type"], s["tp_degree"])
-        mapped = _TP_TO_INSTANCE.get(key)
-        if mapped is None:
-            raise ValueError(f"No instance mapping for {s['instance_type']} TP={s['tp_degree']}")
-        node_counts[mapped] += 1
+        gpu_type = INSTANCE_SPEC[s["instance_type"]]["gpu_type"]
+        mem_mb = GPU_SPEC[gpu_type]["memory_size"]
+        cap = mem_mb * s["tp_degree"] * gpu_mem_utilization
+        capacities.append(cap)
 
-    available = dict(node_counts)
-    # Dummy prices — only_throughput mode ignores cost
-    prices = {k: 1.0 for k in available}
-    return available, prices
+    total_cap = sum(capacities)
+    ratios = [c / total_cap for c in capacities]
+
+    # Compute fractional layer counts
+    raw = [r * total_layers for r in ratios]
+    floored = [math.floor(v) for v in raw]
+    remainders = [v - f for v, f in zip(raw, floored)]
+
+    # Distribute the remaining layers to stages with largest fractional parts
+    deficit = total_layers - sum(floored)
+    indices_by_remainder = sorted(range(len(remainders)), key=lambda i: remainders[i], reverse=True)
+    for i in range(deficit):
+        floored[indices_by_remainder[i]] += 1
+
+    # Ensure no stage has 0 layers
+    for i in range(len(floored)):
+        if floored[i] == 0:
+            donor = max(range(len(floored)), key=lambda j: floored[j])
+            floored[donor] -= 1
+            floored[i] = 1
+
+    assert sum(floored) == total_layers, f"Layer sum mismatch: {sum(floored)} != {total_layers}"
+    return floored
 
 
-def evaluate_pipeline_with_shuntserve(stages, model_config, head_dim=None):
+def estimate_pipeline_throughput(stages, layer_partition, model_config, head_dim=None):
     """
-    Use ShuntServe optimizer to find optimal layer partition for a HexGen pipeline.
-    
-    The pipeline's stage structure (instance types) is fixed by HexGen GA.
-    ShuntServe optimizer finds the best layer partition using only_throughput mode
-    (all nodes must be used).
+    Estimate throughput for a pipeline using ShuntServe's estimator functions.
     """
-    available, prices = stages_to_cluster(stages)
+    node_layer_comb = []
+    tp_sizes = []
+    for s, layers in zip(stages, layer_partition):
+        node_layer_comb.append((s["instance_type"], "us-east-1a", layers))
+        tp_sizes.append(s["tp_degree"])
 
-    config = {
-        "expected_input_len": 763,
-        "expected_output_len": 232,
-        "hidden_size": model_config.hidden_size,
-        "num_layers": model_config.num_hidden_layers,
-        "num_attention_heads": model_config.num_attention_heads,
-        "num_key_value_heads": getattr(model_config, "num_key_value_heads", model_config.num_attention_heads),
-        "intermediate_size": model_config.intermediate_size,
-        "vocab_size": model_config.vocab_size,
-        "max_position_embeddings": model_config.max_position_embeddings,
-        "dtype": torch.float16,
-        "max_model_len": 8192,
-        "gpu_mem_utilization": 0.85,
-        "head_dim": head_dim,
+    input_len = 763
+    output_len = 232
+
+    try:
+        mbs, num_blocks = get_global_batch_size(
+            avg_input_len=input_len,
+            avg_output_len=output_len,
+            max_model_len=8192,
+            hidden_dim=model_config.hidden_size,
+            num_attention_head=model_config.num_attention_heads,
+            num_kv_cache_head=getattr(model_config, "num_key_value_heads", model_config.num_attention_heads),
+            total_num_layers=model_config.num_hidden_layers,
+            vocab_size=model_config.vocab_size,
+            intermediate_dim=model_config.intermediate_size,
+            gpu_mem_utilization=0.85,
+            node_layer_comb=node_layer_comb,
+            dtype=torch.float16,
+            tp_sizes=tp_sizes,
+            head_dim=head_dim,
+        )
+    except Exception as e:
+        print(f"  ❌ get_global_batch_size failed: {e}")
+        return None
+
+    if mbs <= 0:
+        print(f"  ❌ max_batch_size = {mbs} (infeasible)")
+        return None
+
+    try:
+        tput, latency, _ = get_throughput(
+            avg_input_len=input_len,
+            avg_output_len=output_len,
+            max_model_len=8192,
+            hidden_dim=model_config.hidden_size,
+            num_attention_head=model_config.num_attention_heads,
+            num_kv_cache_head=getattr(model_config, "num_key_value_heads", model_config.num_attention_heads),
+            total_num_layers=model_config.num_hidden_layers,
+            vocab_size=model_config.vocab_size,
+            intermediate_dim=model_config.intermediate_size,
+            gpu_mem_utilization=0.85,
+            node_layer_comb=node_layer_comb,
+            dtype=torch.float16,
+            tp_sizes=tp_sizes,
+            batch_override=(mbs, num_blocks),
+            head_dim=head_dim,
+        )
+    except Exception as e:
+        print(f"  ❌ get_throughput failed: {e}")
+        return None
+
+    return {
+        "throughput": tput,
+        "latency_ms": latency,
+        "max_batch_size": int(mbs),
+        "num_blocks": num_blocks,
+        "tp_sizes": tp_sizes,
+        "layer_partition": layer_partition,
     }
-
-    cluster_pool = ClusterPool(
-        available_spot_nodes=available,
-        spot_prices=prices
-    )
-
-    max_stages = len(stages)
-
-    results, _, opt_time = run_test_case(
-        config, budget=9999, latency_slo=99999999,
-        cluster_pool=cluster_pool, max_stages=max_stages, top_k=1,
-        optimization_mode="only_throughput"
-    )
-
-    if not results:
-        return None, opt_time
-
-    best = results[0]
-    return best, opt_time
 
 
 def main():
@@ -163,7 +177,7 @@ def main():
     head_dim = getattr(model_config, "head_dim", None)
 
     print("=" * 80)
-    print("HexGen Optimizer + ShuntServe Estimator Evaluation")
+    print("HexGen Optimizer (Pure: HexGen placement + memory-proportional partition)")
     print(f"Model: {model_name}")
     print(f"  hidden_size={model_config.hidden_size}, num_layers={model_config.num_hidden_layers}, "
           f"num_heads={model_config.num_attention_heads}, head_dim={head_dim}")
@@ -185,13 +199,15 @@ def main():
     plans_all = best_ind.plan[1][0]
     pp_partitions_all = best_ind.pp_partition[0]
 
-    # Step 2: For each pipeline, use ShuntServe optimizer
+    # Step 2: Memory-proportional layer partition + throughput estimation
     print(f"\n{'=' * 80}")
-    print("[Step 2] ShuntServe estimator — optimal layer partition & throughput")
+    print("[Step 2] Memory-proportional layer partition + throughput estimation")
     print(f"{'=' * 80}")
 
     total_throughput = 0
-    all_pipeline_results = []
+    output_pipelines = []
+    pipeline_count = 0
+
     for pipeline_idx in range(len(genes_all)):
         stages = resolve_stage_mapping(
             genes_all[pipeline_idx], plans_all[pipeline_idx],
@@ -203,62 +219,66 @@ def main():
         print(f"  HexGen stages:")
         for j, s in enumerate(stages):
             print(f"    Stage {j}: {s['instance_type']} (Node {s['node_idx']}), "
-                  f"TP={s['tp_degree']}, HexGen layers={s['layer_count']}")
-        print(f"  HexGen TP strategy: {[s['tp_degree'] for s in stages]}")
-        print(f"  HexGen layer partition: {[s['layer_count'] for s in stages]}")
+                  f"TP={s['tp_degree']}, GA layers={s['layer_count']}")
 
-        # Run ShuntServe optimizer on this pipeline's cluster
-        best, opt_time = evaluate_pipeline_with_shuntserve(stages, model_config, head_dim=head_dim)
+        # Memory-proportional layer partition
+        layer_partition = memory_proportional_partition(
+            stages, model_config.num_hidden_layers
+        )
 
-        if best is None:
-            print(f"  ❌ No feasible pipeline found by ShuntServe optimizer")
+        print(f"  Memory-proportional partition: {layer_partition}")
+        print(f"  TP strategy: {[s['tp_degree'] for s in stages]}")
+
+        # Estimate throughput
+        result = estimate_pipeline_throughput(stages, layer_partition, model_config, head_dim)
+
+        if result is None or result["throughput"] <= 0:
+            print(f"  ❌ Infeasible pipeline (OOM or negative throughput)")
             continue
 
-        tp_list = [INSTANCE_SPEC[inst]['gpu_count'] for inst in best.stages]
-        print(f"\n  ShuntServe optimized result ({opt_time:.1f}s):")
-        print(f"    Stages: {list(best.stages)}")
-        print(f"    TP strategy: {tp_list}")
-        print(f"    Layer partition: {list(best.layer_per_stage)}")
-        print(f"    Throughput: {best.throughput:.4f} req/s")
-        print(f"    Global batch size: {best.global_batch_size}")
-        print(f"    Num GPU blocks: {best.num_blocks}")
-        print(f"    Single request latency: {best.single_request_latency:.2f} ms")
+        pipeline_count += 1
+        total_throughput += result["throughput"]
 
-        total_throughput += best.throughput
-        all_pipeline_results.append({
-            "best": best,
-            "tp_list": tp_list,
-            "hexgen_stages": stages,
-        })
+        print(f"\n  Estimated result:")
+        print(f"    Layer partition: {result['layer_partition']}")
+        print(f"    Throughput: {result['throughput']:.4f} req/s")
+        print(f"    Latency: {result['latency_ms']:.2f} ms")
+        print(f"    Max batch size: {result['max_batch_size']}")
+        print(f"    Num GPU blocks: {result['num_blocks']}")
 
-    print(f"\n{'=' * 60}")
-    print(f"Total system throughput (HexGen stages + ShuntServe estimator): {total_throughput:.4f} req/s")
+        # Build stages list for JSON output
+        stages_list = []
+        for s, layers in zip(stages, layer_partition):
+            stages_list.append([s["instance_type"], int(layers)])
 
-    # ─── Save JSON ────────────────────────────────────────────────────────
-    output_pipelines = []
-    for i, pr in enumerate(all_pipeline_results, 1):
-        best = pr["best"]
-        tp_list = pr["tp_list"]
-        hexgen_stages = pr["hexgen_stages"]
-        ss_stages = [[inst, int(layers)] for inst, layers in zip(best.stages, best.layer_per_stage)]
         output_pipelines.append({
-            "label": f"HX-P{i}",
+            "label": f"HX-P{pipeline_count}",
             "system": "HexGen",
-            "stages": ss_stages,
-            "parallel_strategy": tp_list,
-            "pp_layer_partition": ",".join(str(int(l)) for l in best.layer_per_stage),
+            "mode": "hexgen",
+            "stages": stages_list,
+            "parallel_strategy": result["tp_sizes"],
+            "pp_layer_partition": ",".join(str(l) for l in layer_partition),
             "gpu_memory_utilization": 0.85,
-            "predicted_throughput_rps": best.throughput,
-            "predicted_total_latency_ms": best.single_request_latency,
-            "max_batch_size": best.global_batch_size,
-            "num_blocks": best.num_blocks,
+            "predicted_throughput_rps": result["throughput"],
+            "predicted_total_latency_ms": result["latency_ms"],
+            "max_batch_size": result["max_batch_size"],
+            "num_blocks": result["num_blocks"],
             "hexgen_original_stages": [
-                {"instance_type": s["instance_type"], "tp_degree": s["tp_degree"], "layer_count": s["layer_count"]}
-                for s in hexgen_stages
+                {
+                    "node_idx": s["node_idx"],
+                    "instance_type": s["instance_type"],
+                    "tp_degree": s["tp_degree"],
+                    "layer_count": s["layer_count"],
+                }
+                for s in stages
             ],
         })
 
-    model_short = model_name.split("/")[-1]
+    print(f"\n{'=' * 60}")
+    print(f"Total system throughput: {total_throughput:.4f} req/s")
+    print(f"Pipelines: {pipeline_count}")
+
+    # Save results
     output = {
         "model": model_name,
         "workload": {"input_len": 763, "output_len": 232},
@@ -268,6 +288,7 @@ def main():
 
     results_dir = os.path.join(os.path.dirname(__file__), "..", "results", "qwen3-32b", "estimated")
     os.makedirs(results_dir, exist_ok=True)
+    model_short = model_name.split("/")[-1]
     output_file = os.path.join(results_dir, f"predicted_hexgen_{model_short}.json")
     with open(output_file, "w") as f:
         json.dump(output, f, indent=2)

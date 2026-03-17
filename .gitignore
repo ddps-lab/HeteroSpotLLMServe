@@ -41,3 +41,6 @@ ArtifactEvaluation/ModelPlacement/optimizer/results/*/measured/
 ./ArtifactEvaluation/Datasets/*.png
 ./ArtifactEvaluation/Datasets/*.pdf
 
+# Trace: runtime experiment logs
+ArtifactEvaluation/Trace/
+

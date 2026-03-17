@@ -1,12 +1,12 @@
 """
-HexGen Pipeline 4 (HX-P4)
-HexGen GA placement → ShuntServe layer partition
-5 stages: 2×g5.xlarge(TP=1) + 3×g6.xlarge(TP=1)
-Layers=[13,14,13,13,11]
+HexGen Pipeline 4 (HX-P4) — Qwen3-32B
+HexGen GA placement + memory-proportional layer partition
+4 stages: L4(TP=2)×2 + L4(TP=1) + A10G(TP=1)
 
 Physical node allocation:
-  g5.12xlarge #2 (2 of 4 A10G GPUs): stages 0,1 (each TP=1)
-  g6.12xlarge #3 (3 of 4 L4 GPUs): stages 2,3,4 (each TP=1)
+  g6.12xlarge #2 (4 L4 GPUs): stages 0,1 (TP=2+2=4 GPUs)
+  EXTRA g6.xlarge: stage 2 (L4 TP=1) — moved off g6.12xl#3 (P5 conflict)
+  EXTRA g5.xlarge: stage 3 (A10G TP=1) — moved off g5.12xl#1 (P3 conflict)
 """
 import asyncio
 import concurrent.futures
@@ -53,18 +53,12 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p4.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
-# g5.12xlarge #2 (2 of 4 GPUs):
-#   stages 0,1 — each TP=1 (g5.xlarge)
-#
-# g6.12xlarge #3 (3 of 4 GPUs):
-#   stages 2,3,4 — each TP=1 (g6.xlarge)
 
 NODE_LAYER_MAPPING = [
-    (g5_12xlarge_node_ip_2, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: g5.xlarge TP=1
-    (g5_12xlarge_node_ip_2, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),  # stage 1: g5.xlarge TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),  # stage 2: g6.xlarge TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),  # stage 3: g6.xlarge TP=1
-    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][4][STAGE_LAYER_COUNT_IDX])),  # stage 4: g6.xlarge TP=1
+    (g6_12xlarge_node_ip_2, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),   # stage 0: L4 TP=2
+    (g6_12xlarge_node_ip_2, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: L4 TP=2
+    (EXTRA_G6_XLARGE_2, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),       # stage 2: L4 TP=1
+    (EXTRA_G5_XLARGE_5, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),       # stage 3: A10G TP=1
 ]
 
 

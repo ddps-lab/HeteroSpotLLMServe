@@ -17,31 +17,32 @@ g6_xlarge_node_ip_1   = ""   # g6.xlarge   #1 (1× L4) — used by llama3-70b/ex
 g6_xlarge_node_ip_2   = ""   # g6.xlarge   #1 (1× L4) — used by qwen3-32b/example/p1.py
 
 # ─── Extra standalone instances (HexGen) ─────────────────────────────
-# HexGen splits multi-GPU nodes across pipelines at sub-node granularity.
+# HexGen GA splits multi-GPU nodes across pipelines at sub-node granularity.
 # However, Ray does not allow two independent vLLM workers (from different
 # pipelines) to coexist on the same physical node simultaneously.
 #
-# Example: HexGen assigns 1 A10G from g5.12xlarge #2 to P1 and
-# the remaining 3 A10G to P3. Since P1 and P3 are separate vLLM
-# instances, they cannot share g5_12xlarge_node_ip_2.
+# Resolution strategy: consolidate same-pipeline stages onto shared nodes
+# where possible, then launch small standalone instances for remaining
+# cross-pipeline conflicts.
 #
-# Solution: launch a separate standalone g5.xlarge (1× A10G) for the
-# single-GPU stage, so each pipeline owns its nodes exclusively.
+# Llama-3.1-70B HexGen (2 pipelines):
+#   - P1 TP=2 g5 stages consolidated onto g5.12xl#1 (4 GPUs)
+#   - P2 TP=1 g5 stages consolidated onto g5.12xl#2 (2 GPUs)
+#   - P1 stage 0 (L4 TP=1) conflicts with P2 on g6.12xl#2 → extra g6.xlarge
+#   - P1 stages 1,3 (A10G TP=1) moved off g5.12xl → extra g5.xlarge ×2
 
-EXTRA_G5_XLARGE_1 = ""  # Extra: standalone g5.xlarge (1× A10G) — used by Llama-3.1-70B HX-P1 stage 7
+EXTRA_G6_XLARGE_1  = ""   # Extra: standalone g6.xlarge  (1× L4)   — Llama HX-P1 stage 0
+EXTRA_G5_XLARGE_1  = ""   # Extra: standalone g5.xlarge  (1× A10G) — Llama HX-P1 stage 1
+EXTRA_G5_XLARGE_2  = ""   # Extra: standalone g5.xlarge  (1× A10G) — Llama HX-P1 stage 3
 
-# ─── Extra standalone instances (Qwen3-32B HexGen) ──────────────────
-# Qwen3 HexGen has 6 pipelines. All must run simultaneously for parallel
-# benchmarking. The following cross-pipeline conflicts require extra nodes:
-#
-#   P1 ↔ P5: both use g5.12xl#1 (A10G)
-#   P1 ↔ P6: both use g6.12xl#1 (L4)
-#   P4 ↔ P6: both use g5.12xl#2 (A10G)
-#
-# P6 stage 0 is TP=2 (needs 2 L4 GPUs on same node) → requires g6.12xlarge.
+# Qwen3-32B HexGen (5 pipelines):
+#   - P5 L4 stages consolidated onto g6.12xl#3 (4 GPUs)
+#   - P3 g5 stages consolidated onto g5.12xl#1 (3 GPUs)
+#   - P5 g5 stages consolidated onto g5.12xl#2 (2 GPUs)
+#   - P1 stage 0, P2 stage 3, P4 stage 3 (A10G TP=1) → extra g5.xlarge ×3
+#   - P4 stage 2 (L4 TP=1) conflicts with P5 on g6.12xl#3 → extra g6.xlarge
 
-EXTRA_G5_XLARGE_2 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P5 stage 1
-EXTRA_G5_XLARGE_3 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P5 stage 2
-EXTRA_G6_12XLARGE_1 = ""  # Extra: standalone g6.12xlarge (4× L4)  — Qwen3 HX-P6 stages 0,3
-EXTRA_G5_XLARGE_4 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P6 stage 1
-EXTRA_G5_XLARGE_5 = ""    # Extra: standalone g5.xlarge (1× A10G) — Qwen3 HX-P6 stage 2
+EXTRA_G5_XLARGE_3  = ""   # Extra: standalone g5.xlarge  (1× A10G) — Qwen3 HX-P1 stage 0
+EXTRA_G5_XLARGE_4  = ""   # Extra: standalone g5.xlarge  (1× A10G) — Qwen3 HX-P2 stage 3
+EXTRA_G5_XLARGE_5  = ""   # Extra: standalone g5.xlarge  (1× A10G) — Qwen3 HX-P4 stage 3
+EXTRA_G6_XLARGE_2  = ""   # Extra: standalone g6.xlarge  (1× L4)   — Qwen3 HX-P4 stage 2

@@ -1,12 +1,11 @@
 """
-HexGen Pipeline 3 (HX-P3)
-HexGen GA placement → ShuntServe layer partition
-2 stages: 2×g6e.xlarge(TP=1)
-Layers=[32,32]
+HexGen Pipeline 3 (HX-P3) — Qwen3-32B
+HexGen GA placement + memory-proportional layer partition
+3 stages: A10G(TP=2) + A10G(TP=1) + L40S(TP=1)
 
-Physical node allocation:
-  g6e.xlarge #2: stage 0 (TP=1)
-  g6e.xlarge #3: stage 1 (TP=1)
+Physical node allocation (consolidated):
+  g5.12xlarge #1 (3 A10G GPUs): stages 0(TP=2),1(TP=1) — stage 1 consolidated from Node 4
+  g6e.xlarge #3: stage 2 (L40S TP=1)
 """
 import asyncio
 import concurrent.futures
@@ -53,12 +52,11 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p3.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
-# g6e.xlarge #2: stage 0 — TP=1
-# g6e.xlarge #3: stage 1 — TP=1
 
 NODE_LAYER_MAPPING = [
-    (g6e_xlarge_node_ip_2, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: g6e.xlarge TP=1
-    (g6e_xlarge_node_ip_3, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),  # stage 1: g6e.xlarge TP=1
+    (g5_12xlarge_node_ip_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),   # stage 0: A10G TP=2
+    (g5_12xlarge_node_ip_1, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: A10G TP=1 (consolidated)
+    (g6e_xlarge_node_ip_3, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),    # stage 2: L40S TP=1
 ]
 
 

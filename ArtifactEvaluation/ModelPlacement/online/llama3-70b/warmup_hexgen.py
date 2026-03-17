@@ -54,33 +54,26 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 NODE_MAPPINGS = [
     # P1: 8 stages
     [
-        (g6_12xlarge_node_ip_1, 0),
-        (g6_12xlarge_node_ip_1, 1),
-        (g6_12xlarge_node_ip_1, 2),
-        (g6_12xlarge_node_ip_3, 3),
-        (g6_12xlarge_node_ip_3, 4),
-        (g6_12xlarge_node_ip_3, 5),
-        (g6_12xlarge_node_ip_3, 6),
-        (EXTRA_G5_XLARGE_1, 7),
+        (EXTRA_G6_XLARGE_1, 0),        # stage 0: L4 TP=1
+        (EXTRA_G5_XLARGE_1, 1),        # stage 1: A10G TP=1
+        (g5_12xlarge_node_ip_1, 2),    # stage 2: A10G TP=2 (consolidated)
+        (EXTRA_G5_XLARGE_2, 3),        # stage 3: A10G TP=1
+        (g5_12xlarge_node_ip_1, 4),    # stage 4: A10G TP=2 (consolidated)
+        (g6e_xlarge_node_ip_1, 5),     # stage 5: L40S TP=1
+        (g6e_xlarge_node_ip_2, 6),     # stage 6: L40S TP=1
+        (g6e_xlarge_node_ip_4, 7),     # stage 7: L40S TP=1
     ],
-    # P2: 5 stages
+    # P2: 9 stages
     [
-        (g6_12xlarge_node_ip_2, 0),
-        (g6e_xlarge_node_ip_1, 1),
-        (g6e_xlarge_node_ip_2, 2),
-        (g6e_xlarge_node_ip_3, 3),
-        (g6_12xlarge_node_ip_2, 4),
-    ],
-    # P3: 8 stages
-    [
-        (g5_12xlarge_node_ip_1, 0),
-        (g5_12xlarge_node_ip_1, 1),
-        (g5_12xlarge_node_ip_1, 2),
-        (g5_12xlarge_node_ip_1, 3),
-        (g5_12xlarge_node_ip_2, 4),
-        (g5_12xlarge_node_ip_2, 5),
-        (g6e_xlarge_node_ip_4, 6),
-        (g5_12xlarge_node_ip_2, 7),
+        (g6_12xlarge_node_ip_1, 0),    # stage 0: L4 TP=2
+        (g6_12xlarge_node_ip_1, 1),    # stage 1: L4 TP=2
+        (g6_12xlarge_node_ip_2, 2),    # stage 2: L4 TP=1
+        (g6_12xlarge_node_ip_2, 3),    # stage 3: L4 TP=2
+        (g6_12xlarge_node_ip_3, 4),    # stage 4: L4 TP=2
+        (g6_12xlarge_node_ip_3, 5),    # stage 5: L4 TP=2
+        (g5_12xlarge_node_ip_2, 6),    # stage 6: A10G TP=1 (consolidated)
+        (g5_12xlarge_node_ip_2, 7),    # stage 7: A10G TP=1 (consolidated)
+        (g6e_xlarge_node_ip_3, 8),     # stage 8: L40S TP=1
     ],
 ]
 

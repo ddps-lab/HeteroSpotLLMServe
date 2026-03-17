@@ -1,13 +1,11 @@
 """
-HexGen Pipeline 5 (HX-P5)
-HexGen GA placement → ShuntServe layer partition
-3 stages: 1×g6e.xlarge(TP=1) + 2×g5.xlarge(TP=1)
-Layers=[33,16,15]
+HexGen Pipeline 5 (HX-P5) — Qwen3-32B
+HexGen GA placement + memory-proportional layer partition
+5 stages: L4(TP=1)×2 + L4(TP=2) + A10G(TP=1)×2
 
-Physical node allocation:
-  g6e.xlarge #4: stage 0 (TP=1)
-  EXTRA_G5_XLARGE_2: stage 1 (TP=1, standalone g5.xlarge)
-  EXTRA_G5_XLARGE_3: stage 2 (TP=1, standalone g5.xlarge)
+Physical node allocation (consolidated):
+  g6.12xlarge #3 (4 L4 GPUs): stages 0(TP=1),1(TP=1),2(TP=2) — stage 0 consolidated from Node 0
+  g5.12xlarge #2 (2 A10G GPUs): stages 3(TP=1),4(TP=1) — stage 3 consolidated from Node 3
 """
 import asyncio
 import concurrent.futures
@@ -54,14 +52,13 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p5.json")
 
 # ─── Node assignment ─────────────────────────────────────────────────
-# g6e.xlarge #4:         stage 0 — TP=1
-# EXTRA_G5_XLARGE_2:     stage 1 — TP=1 (standalone, avoids P1 conflict on g5.12xl#1)
-# EXTRA_G5_XLARGE_3:     stage 2 — TP=1 (standalone, avoids P1 conflict on g5.12xl#1)
 
 NODE_LAYER_MAPPING = [
-    (g6e_xlarge_node_ip_4, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # stage 0: g6e.xlarge TP=1
-    (EXTRA_G5_XLARGE_2, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),     # stage 1: g5.xlarge TP=1
-    (EXTRA_G5_XLARGE_3, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),     # stage 2: g5.xlarge TP=1
+    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),   # stage 0: L4 TP=1 (consolidated)
+    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: L4 TP=1
+    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),   # stage 2: L4 TP=2
+    (g5_12xlarge_node_ip_2, int(_pipeline["stages"][3][STAGE_LAYER_COUNT_IDX])),   # stage 3: A10G TP=1 (consolidated)
+    (g5_12xlarge_node_ip_2, int(_pipeline["stages"][4][STAGE_LAYER_COUNT_IDX])),   # stage 4: A10G TP=1
 ]
 
 
