@@ -1,7 +1,7 @@
 from typing import List, Optional
 import torch
 import logging
-from hardware_specs import GPU_SPEC, INTERCONNECT_SPEC, INSTANCE_SPEC
+from hardware_specs import GPU_SPEC, INSTANCE_SPEC
 
 import sys
 import os
@@ -524,10 +524,10 @@ def get_prefill_compute_logit_latency(
         return 0
 
     compute_logit_ops = get_prefill_compute_logit_ops(
-        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+        1, hidden_dim, vocab_size, gpu_count, batch_size
     )
     compute_logit_memory_access = get_prefill_compute_logit_memory_access_count(
-        input_len, hidden_dim, vocab_size, gpu_count, batch_size
+        1, hidden_dim, vocab_size, gpu_count, batch_size
     ) * dtype.itemsize  # Convert to Bytes
 
     GPU_SPEC_info = GPU_SPEC[gpu_type]
@@ -769,7 +769,7 @@ def get_single_request_latency(
     for i, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
         num_gpu = tp_sizes[i] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
-        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
+        p2p_bandwidth = INSTANCE_SPEC[node_type]["interconnect_bandwidth"]
         processed_layers += layer_count
 
         prefill_computation_laytency = get_prefill_computation_latency_per_layer(
@@ -1061,6 +1061,7 @@ def get_throughput(
     head_dim: int = None,
     tp_sizes: List[int] = None,
     batch_override: tuple = None,  # Optional (global_batch_size, num_blocks) to skip estimation
+    detail: bool = False,  # If True, return additional dict with prefill/decode latency breakdown
 ):
     if batch_override is not None:
         global_batch_size, num_blocks = batch_override
@@ -1097,7 +1098,7 @@ def get_throughput(
     for stage, (node_type, az, layer_count) in enumerate(node_layer_comb):
         gpu_type = INSTANCE_SPEC[node_type]["gpu_type"]
         num_gpu = tp_sizes[stage] if tp_sizes else INSTANCE_SPEC[node_type]["gpu_count"]
-        p2p_bandwidth = INTERCONNECT_SPEC[INSTANCE_SPEC[node_type]["interconnect"]]["bandwidth"]
+        p2p_bandwidth = INSTANCE_SPEC[node_type]["interconnect_bandwidth"]
 
         processed_layers += layer_count
 
@@ -1161,17 +1162,6 @@ def get_throughput(
                     inter_node_bandwidth=None  # intra region bandwidth
                 )
                 max_batch_prefill_pp_communication_latency += max_batch_prefill_pp_communication_send_latency
-            if stage != 0 and num_gpu > 1: # If not the first stage and tp size is greater than 1, need to broadcast.
-                max_batch_prefill_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                    batch_size=max_prefill_batch_size,
-                    sequence_len=avg_input_len,
-                    hidden_dim=hidden_dim,
-                    tp_size=num_gpu,
-                    p2p_bandwidth=p2p_bandwidth,
-                    p2p_latency_ms=None,
-                    dtype=dtype
-                )
-                max_batch_prefill_pp_communication_latency += max_batch_prefill_pp_communication_broadcast_latency
             
             # TP Communication Latency of Prefill (max_batch)
             max_batch_prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
@@ -1259,17 +1249,6 @@ def get_throughput(
                         dtype=dtype
                     )
                     tmp_prefill_pp_communication_latency += tmp_prefill_pp_communication_send_latency
-                if stage != 0 and num_gpu > 1:  # If not the first stage and tp size is greater than 1, need to broadcast.
-                    tmp_prefill_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                        batch_size=tmp_batch_size,
-                        sequence_len=avg_input_len,
-                        hidden_dim=hidden_dim,
-                        tp_size=num_gpu,
-                        p2p_bandwidth=p2p_bandwidth,
-                        p2p_latency_ms=None,
-                        dtype=dtype
-                    )
-                    tmp_prefill_pp_communication_latency += tmp_prefill_pp_communication_broadcast_latency
                 
                 tmp_prefill_tp_communication_latency = get_tp_communication_latency_per_layer(
                     tp_size=num_gpu,
@@ -1352,17 +1331,6 @@ def get_throughput(
                     dtype=dtype
                 ) * avg_output_len
                 tmp_decoding_pp_communication_latency += tmp_decoding_pp_communication_send_latency
-            if stage != 0 and num_gpu > 1:  # If not the first stage and tp size is greater than 1, need to broadcast.
-                tmp_decoding_pp_communication_broadcast_latency = get_pp_communication_latency_broadcast(
-                    batch_size=decoding_batch_size,
-                    sequence_len=1,
-                    hidden_dim=hidden_dim,
-                    tp_size=num_gpu,
-                    p2p_bandwidth=p2p_bandwidth,
-                    p2p_latency_ms=None,
-                    dtype=dtype
-                ) * avg_output_len
-                tmp_decoding_pp_communication_latency += tmp_decoding_pp_communication_broadcast_latency
 
             tmp_decoding_tp_communication_latency = get_tp_communication_latency_per_layer(
                 tp_size=num_gpu,
@@ -1410,8 +1378,32 @@ def get_throughput(
 
     logging.debug(f"Prefill latencies per Stage : {prefill_latencies}")
     logging.debug(f"Decoding latencies per Stage : {decoding_latencies}")
+
+    pp_size = len(node_layer_comb)
     max_prefill_latency = max(prefill_latencies)
     max_decoding_latency = max(decoding_latencies)
+
+    # Pipeline bubble correction.
+    # K = number of micro-batches (capped at pp_size).
+    # When K < PP, a single stage cannot represent full E2E — scale by pp//K.
+    # Pipeline filling overhead (one TTFT or TPOT) is always added when K > 1.
+    K = min(global_batch_size, pp_size)
+    stage_multiplier = pp_size // K
+    max_prefill_latency *= stage_multiplier
+    max_decoding_latency *= stage_multiplier
+
+    if K > 1:
+        num_prefill_mbs = max(int(global_batch_size // max_prefill_batch_size), K)
+        per_mb_prefill = [lat / num_prefill_mbs for lat in prefill_latencies]
+        per_mb_decode = [lat / K for lat in decoding_latencies]
+        ttft = max(per_mb_prefill)
+        tpot = max(per_mb_decode) / avg_output_len
+        filling_overhead = (K - 1) * max(ttft, tpot)
+        if ttft >= tpot:
+            max_prefill_latency += filling_overhead
+        else:
+            max_decoding_latency += filling_overhead
+        logging.debug(f"Pipeline bubble (K={K}, PP={pp_size}): stage_multiplier={stage_multiplier}, filling={filling_overhead:.2f}ms")
 
     total_latency_per_global_batch = max_prefill_latency + max_decoding_latency
 
@@ -1422,6 +1414,11 @@ def get_throughput(
     logging.debug(f"End to End Latency per Global Batch: {total_latency_per_global_batch:.2f} ms")
     logging.debug(f"Throughput: {throughput:.2f} reqs/s")
 
+    if detail:
+        return throughput, total_latency_per_global_batch, num_blocks, {
+            "prefill_latency_ms": max_prefill_latency,
+            "decode_latency_ms": max_decoding_latency,
+        }
     return throughput, total_latency_per_global_batch, num_blocks
 
 

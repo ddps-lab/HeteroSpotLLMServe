@@ -10,12 +10,14 @@ import json
 import logging
 import sys
 import os
+import argparse
 
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+_REPO_ROOT = _d
 del _d
 
 from global_server import GlobalServer
@@ -33,13 +35,17 @@ S3_BUCKET = "hetero-spot-llm-serve-models"
 
 # Estimator results for g6.xlarge (1× L4, 22494 MB):
 #   max_batch_size = 176, num_blocks = 6336
-#   throughput = 20.22 req/s, latency = 8702.86 ms
+#   throughput = 12.48 req/s, latency = 14103.21 ms
 MAX_BATCH_SIZE = 176
 NUM_GPU_BLOCKS = 6336
-NUM_REQUESTS = MAX_BATCH_SIZE * 10
+NUM_REQUESTS = MAX_BATCH_SIZE * 5
 
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
-OUTPUT_PATH = os.path.join(RESULTS_DIR, "example_Llama-3.2-3B.json")
+OUTPUT_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "llama3-70b", "measured"
+)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "example_Llama-3.2-3B.json")
 
 # Single GPU — all layers on one node
 NODE_LAYER_MAPPING = [
@@ -94,6 +100,12 @@ async def test_benchmark():
         "num_gpu_blocks": NUM_GPU_BLOCKS,
         "max_batch_size": MAX_BATCH_SIZE,
     }
+
+    # Validate layer count
+    _total = sum(layers for _, layers in NODE_LAYER_MAPPING)
+    assert _total == config["total_num_layers"], (
+        f"Layer mismatch: node mapping sum={_total} != config total={config['total_num_layers']}"
+    )
     estimated_throughput = 20.22
 
     pipeline_task = asyncio.create_task(
@@ -106,17 +118,29 @@ async def test_benchmark():
         await pipeline_task
         logger.info("Pipeline is ready!")
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--single-request", action="store_true",
+                            help="Run 5 requests sequentially (max_concurrency=1)")
+        args = parser.parse_args()
+
+        if args.single_request:
+            num_requests = 5
+            max_concurrency = 1
+        else:
+            num_requests = NUM_REQUESTS
+            max_concurrency = None
+
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=NUM_REQUESTS,
+            num_requests=num_requests,
             input_len=INPUT_LEN,
             output_len=OUTPUT_LEN,
             request_rate=float('inf'),
             model_name=MODEL_NAME,
-            max_concurrency=MAX_BATCH_SIZE,
+            max_concurrency=max_concurrency,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
-            run_initial_test=True,
+            run_initial_test=False,
             test_requests_per_pipeline=2,
         )
 
@@ -131,10 +155,11 @@ async def test_benchmark():
             "parallel_strategy": [1],
             "input_len": INPUT_LEN,
             "output_len": OUTPUT_LEN,
-            "num_requests": NUM_REQUESTS,
+            "num_requests": num_requests,
             "max_batch_size": MAX_BATCH_SIZE,
             "num_gpu_blocks": NUM_GPU_BLOCKS,
             "estimated_throughput_rps": estimated_throughput,
+            "percentiles": [10, 25, 50, 75, 90, 99],
         })
 
     except KeyboardInterrupt:

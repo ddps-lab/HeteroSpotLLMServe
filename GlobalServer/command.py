@@ -135,6 +135,22 @@ def get_api_server_command(model_name: str,
     # Convert parallel_strategy list to space-separated string
     parallel_strategy_str = " ".join(map(str, parallel_strategy))
     
+    # vLLM's executor backend determines how worker processes are created:
+    #   - "mp"  (multiprocessing): all workers run as local processes on the API server node
+    #   - "ray": workers are Ray actors, placed on remote nodes via placement groups
+    #
+    # When --distributed-executor-backend is not specified, vLLM auto-detects:
+    #   total_workers <= local_gpu_count → "mp" (assumes single-node)
+    #   total_workers >  local_gpu_count → "ray"
+    #
+    # This auto-detection fails when a pipeline spans multiple nodes but the
+    # total worker count fits on the head node (e.g., P3: 4 workers on a 4-GPU node,
+    # but rank 3 should be on a different node). Force "ray" when node_rank_mapping
+    # contains more than one node.
+    import json as _json
+    _nrm = _json.loads(node_rank_mapping) if isinstance(node_rank_mapping, str) else node_rank_mapping
+    _multi_node = len(_nrm) > 1
+
     cmd_parts = [
         f"RAY_DEDUP_LOGS=0", # if you want to see all logs from Ray
         # f"RAY_BACKEND_LOG_LEVEL=debug", # if you want to see debug logs from Ray
@@ -148,6 +164,9 @@ def get_api_server_command(model_name: str,
         f"--parallel-strategy {parallel_strategy_str}",
         f"--ray-address={ray_address}",
     ]
+
+    if _multi_node:
+        cmd_parts.append("--distributed-executor-backend=ray")
     
     if dtype is not None:
         cmd_parts.append(f"--dtype={dtype}")

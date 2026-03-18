@@ -1,6 +1,12 @@
 """
-HexGen Pipeline 1 (qwen3-32b)
-Config loaded from optimizer results (predicted_hexgen_*.json)
+HexGen Pipeline 1 (HX-P1) — Qwen3-32B
+HexGen GA placement + memory-proportional layer partition
+3 stages: A10G(TP=1) + L40S(TP=1)×2
+
+Physical node allocation:
+  EXTRA g5.xlarge (1 A10G GPU): stage 0 (TP=1) — moved off g5.12xl#2 (4-way conflict)
+  g6e.xlarge #1: stage 1 (L40S TP=1)
+  g6e.xlarge #2: stage 2 (L40S TP=1)
 """
 import asyncio
 import concurrent.futures
@@ -8,54 +14,53 @@ import json
 import logging
 import sys
 import os
+import argparse
 
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+_REPO_ROOT = _d
 del _d
 
 from global_server import GlobalServer
 from benchmark_utils import print_benchmark_results, run_latency_benchmark
 from save_results import save_benchmark_results
-
 from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
+
 PIPELINE_INDEX = 0  # HX-P1
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
-PREDICTED_FILE = [f for f in os.listdir(RESULTS_DIR) if f.startswith("predicted_hexgen_")][0]
-with open(os.path.join(RESULTS_DIR, PREDICTED_FILE)) as f:
+STAGE_LAYER_COUNT_IDX = 1
+
+PREDICTED_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "qwen3-32b", "estimated"
+)
+OUTPUT_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "qwen3-32b", "measured"
+)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+PREDICTED_FILE = [f for f in os.listdir(PREDICTED_DIR) if f.startswith("predicted_hexgen_")][0]
+
+with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
     _data = json.load(f)
 _pipeline = _data["pipelines"][PIPELINE_INDEX]
 
-# Stage field index: stages[i] = [instance_type, layer_count]
-STAGE_LAYER_COUNT_IDX = 1
-
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(RESULTS_DIR, "hexgen_p1.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "hexgen_p1.json")
 
-# ─── Node assignment (manual) ────────────────────────────────────────
-# Pipeline-exclusive: each physical node belongs to exactly one pipeline.
-# (half) = 2 GPUs from a 4-GPU node; xlarge = 1 GPU standalone instance.
+# ─── Node assignment ─────────────────────────────────────────────────
 NODE_LAYER_MAPPING = [
-    # stage[0]: (spot)g6.12xlarge (TP=4, 4 GPU)
-    (g6_12xlarge_node_ip_1, int(_pipeline['stages'][0][STAGE_LAYER_COUNT_IDX])),
-    # stage[1]: (spot)g6.12xlarge(half) (TP=2, 2 GPU)
-    (g6_12xlarge_node_ip_2, int(_pipeline['stages'][1][STAGE_LAYER_COUNT_IDX])),
-    # stage[2]: (spot)g6.12xlarge(half) (TP=2, 2 GPU)
-    (g6_12xlarge_node_ip_2, int(_pipeline['stages'][2][STAGE_LAYER_COUNT_IDX])),
-    # stage[3]: (spot)g6.12xlarge(half) (TP=2, 2 GPU)
-    (g6_12xlarge_node_ip_3, int(_pipeline['stages'][3][STAGE_LAYER_COUNT_IDX])),
-    # stage[4]: (spot)g5.12xlarge(half) (TP=2, 2 GPU)
-    (g5_12xlarge_node_ip_1, int(_pipeline['stages'][4][STAGE_LAYER_COUNT_IDX])),
-    # stage[5]: (spot)g5.xlarge (TP=1, 1 GPU)
-    (g5_12xlarge_node_ip_1, int(_pipeline['stages'][5][STAGE_LAYER_COUNT_IDX])),
-    # stage[6]: (spot)g6.xlarge (TP=1, 1 GPU)
-    (g6_12xlarge_node_ip_3, int(_pipeline['stages'][6][STAGE_LAYER_COUNT_IDX])),
+    (EXTRA_G5_XLARGE_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),      # stage 0: A10G TP=1
+    (g6e_xlarge_node_ip_1, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),   # stage 1: L40S TP=1
+    (g6e_xlarge_node_ip_2, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),   # stage 2: L40S TP=1
 ]
 
+
+# ─── Benchmark ───────────────────────────────────────────────────────
 
 async def test_benchmark():
     logger = logging.getLogger(__name__)
@@ -63,8 +68,10 @@ async def test_benchmark():
     logger.handlers.clear()
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter(
+        '[%(asctime)s] %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.propagate = False
@@ -72,17 +79,14 @@ async def test_benchmark():
     model_name = _data["model"]
 
     print("=" * 70)
-    print(f"HexGen Pipeline 1 — Config loaded from {PREDICTED_FILE}")
-    print(f"  Model: {model_name}")
-    print(f"  Label: {_pipeline['label']}")
+    print(f"HexGen Pipeline 1 — {PREDICTED_FILE}")
     print(f"  Stages: {_pipeline['stages']}")
-    print(f"  PP layer partition: {_pipeline['pp_layer_partition']}")
-    print(f"  Parallel strategy: {_pipeline['parallel_strategy']}")
-    print(f"  Predicted throughput: {_pipeline['predicted_throughput_rps']:.3f} req/s")
+    print(f"  PP: {_pipeline['pp_layer_partition']}  TP: {_pipeline['parallel_strategy']}")
+    print(f"  Predicted: {_pipeline['predicted_throughput_rps']:.3f} req/s")
     print(f"  Max batch size: {_pipeline['max_batch_size']}")
     print(f"  Num GPU blocks: {_pipeline['num_blocks']}")
     if "hexgen_original_stages" in _pipeline:
-        print(f"  HexGen original stages:")
+        print(f"  HexGen GA original placement:")
         for s in _pipeline["hexgen_original_stages"]:
             print(f"    {s['instance_type']} TP={s['tp_degree']} layers={s['layer_count']}")
     print(f"  Node mapping:")
@@ -116,6 +120,13 @@ async def test_benchmark():
         "max_batch_size": int(_pipeline["max_batch_size"]),
         "mode": "hexgen",
     }
+
+
+    # Validate layer count
+    total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in _pipeline["stages"])
+    assert total_layers == config["total_num_layers"], (
+        f"Layer mismatch: stages sum={total_layers} != config total={config['total_num_layers']}"
+    )
     estimated_throughput = _pipeline["predicted_throughput_rps"]
     max_batch_size = int(_pipeline["max_batch_size"])
 
@@ -129,20 +140,34 @@ async def test_benchmark():
         await pipeline_task
         logger.info("Pipeline is ready!")
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--single-request", action="store_true",
+                            help="Run 5 requests sequentially (max_concurrency=1)")
+        args = parser.parse_args()
+
+        if args.single_request:
+            num_requests = 5
+            max_concurrency = 1
+        else:
+            num_requests = max_batch_size * 5
+            max_concurrency = None
+
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=max_batch_size * 10,
+            num_requests=num_requests,
             input_len=_data["workload"]["input_len"],
             output_len=_data["workload"]["output_len"],
             request_rate=float('inf'),
             model_name=model_name,
+            max_concurrency=max_concurrency,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
-            run_initial_test=True,
+            run_initial_test=False,
             test_requests_per_pipeline=2,
         )
 
         print_benchmark_results(metrics)
+
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
             "system": "HexGen",
             "pipeline": f"P{PIPELINE_INDEX + 1}",
@@ -151,8 +176,9 @@ async def test_benchmark():
             "stages": _pipeline["stages"],
             "input_len": _data["workload"]["input_len"],
             "output_len": _data["workload"]["output_len"],
-            "num_requests": max_batch_size * 10,
+            "num_requests": num_requests,
             "predicted_throughput_rps": estimated_throughput,
+            "percentiles": [10, 25, 50, 75, 90, 99],
         })
 
     except KeyboardInterrupt:

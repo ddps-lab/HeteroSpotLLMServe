@@ -1,0 +1,44 @@
+[BENCHMARK] num_samples 48
+[BENCHMARK] num_error_samples 0
+
+[BENCHMARK] num_samples 48
+[BENCHMARK] total_latency(ms) 50632.25
+[BENCHMARK] seq_throughput(seq/sec) 0.95
+[BENCHMARK] token_throughput(token/sec) 219.94
+[BENCHMARK] avg_acceptance_rate(tokens/decoding steps) 1.00
+
+[BENCHMARK] avg_sequence_latency(ms) 16852.43
+[BENCHMARK] max_sequence_latency(ms) 16939.51
+[BENCHMARK] min_sequence_latency(ms) 16713.59
+[BENCHMARK] p99_sequence_latency(ms) 16939.51
+[BENCHMARK] p90_sequence_latency(ms) 16939.41
+[BENCHMARK] p50_sequence_latency(ms) 16899.36
+
+[BENCHMARK] avg_time_to_first_token(ms) 2566.86
+[BENCHMARK] max_time_to_first_token(ms) 2674.08
+[BENCHMARK] min_time_to_first_token(ms) 2431.37
+[BENCHMARK] p99_time_to_first_token(ms) 2674.08
+[BENCHMARK] p90_time_to_first_token(ms) 2644.53
+[BENCHMARK] p50_time_to_first_token(ms) 2615.70
+
+[BENCHMARK] avg_inter_token_latency(ms) 61.84
+[BENCHMARK] max_inter_token_latency(ms) 61.89
+[BENCHMARK] min_inter_token_latency(ms) 61.75
+[BENCHMARK] p99_inter_token_latency(ms) 61.89
+[BENCHMARK] p90_inter_token_latency(ms) 61.89
+[BENCHMARK] p50_inter_token_latency(ms) 61.84
+
+[BENCHMARK] avg_user_tokens_per_second(tokens/sec/user) 16.17
+[BENCHMARK] max_user_tokens_per_second(tokens/sec/user) 16.19
+[BENCHMARK] min_user_tokens_per_second(tokens/sec/user) 16.16
+[BENCHMARK] p99_user_tokens_per_second(tokens/sec/user) 16.19
+[BENCHMARK] p90_user_tokens_per_second(tokens/sec/user) 16.17
+[BENCHMARK] p50_user_tokens_per_second(tokens/sec/user) 16.17
+
+[BENCHMARK] avg_request_queueing_latency(ms) 2.43
+[BENCHMARK] max_request_queueing_latency(ms) 2.82
+[BENCHMARK] min_request_queueing_latency(ms) 2.17
+[BENCHMARK] p99_request_queueing_latency(ms) 2.82
+[BENCHMARK] p90_request_queueing_latency(ms) 2.82
+[BENCHMARK] p50_request_queueing_latency(ms) 2.29
+
