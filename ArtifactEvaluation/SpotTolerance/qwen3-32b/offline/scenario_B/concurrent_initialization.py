@@ -1,9 +1,8 @@
 """
-Offline benchmark — ShuntServe spot tolerance (Llama-3.1-70B, Scenario B)
+Offline benchmark — Concurrent Initialization spot tolerance (Qwen3-32B, Scenario B)
 
-Pipelines, nodes, and spot-trace events are loaded from JSON config files.
-On interruption: spot nodes are replaced with on-demand counterparts via switch_nodes().
-On restore: on-demand nodes are switched back to recovered spot nodes.
+Same event handling as ShuntServe (switch_nodes), but uses re-routing mode
+instead of migration mode.
 """
 import asyncio
 import concurrent.futures
@@ -35,19 +34,19 @@ from save_results import save_benchmark_results
 SCENARIO = "B"
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))   # llama3-70b/
+MODEL_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))   # qwen3-32b/
 SPOT_TOLERANCE_DIR = os.path.dirname(MODEL_DIR)              # SpotTolerance/
 
-with open(os.path.join(MODEL_DIR, f"pipelines_llama3_70b_scenario_{SCENARIO}.json")) as f:
+with open(os.path.join(MODEL_DIR, f"pipelines_qwen3_32b_scenario_{SCENARIO}.json")) as f:
     pipelines_data = json.load(f)
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"nodes_scenario_{SCENARIO}.json")) as f:
     nodes_map = json.load(f)
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"spot_trace_events_scenario_{SCENARIO}.json")) as f:
     events_data = json.load(f)
 
-OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "llama3-70b", f"scenario_{SCENARIO}")
+OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "qwen3-32b", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_shuntserve.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_concurrent_initialization.json")
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +81,7 @@ async def test_benchmark():
     pipelines = pipelines_data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe Spot Tolerance — Scenario {SCENARIO}")
+    print(f"Offline Benchmark — Concurrent Initialization Spot Tolerance — Scenario {SCENARIO}")
     print(f"  Model: {model_name}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
@@ -94,7 +93,7 @@ async def test_benchmark():
         print(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}")
     print("=" * 70)
 
-    global_server = GlobalServer(request_handler_mode="migration")
+    global_server = GlobalServer(request_handler_mode="re-routing")
 
     # ── Create pipelines ──────────────────────────────────────────────
 
@@ -139,13 +138,10 @@ async def test_benchmark():
         except Exception as e:
             logger.error(f"Node switch failed: {e}")
 
-    # Group events by time_min so simultaneous events become a single switch_nodes call
     grouped_events = defaultdict(list)
     for event in events_data["events"]:
         grouped_events[event["time_min"]].append(event)
 
-    # Track which spot nodes are currently interrupted → on_demand replacement
-    # Pre-populate from initial pipeline state: on_demand nodes imply spot counterpart unavailable
     interrupted_spots = {}
     for p in pipelines:
         for node_name, _ in p["node_layer_mapping"]:
@@ -197,7 +193,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"spottolerance_offline_shuntserve_scenario_{SCENARIO}",
+            trace_output_prefix=f"spottolerance_offline_concurrent_initialization_qwen3_32b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=0.0,
@@ -213,7 +209,7 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
+            "system": "ConcurrentInitialization",
             "benchmark_type": "offline",
             "scenario": SCENARIO,
             "num_pipelines": len(pipelines),

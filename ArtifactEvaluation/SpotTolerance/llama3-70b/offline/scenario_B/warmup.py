@@ -1,9 +1,11 @@
 """
-Offline benchmark — ShuntServe spot tolerance (Llama-3.1-70B, Scenario B)
+Offline benchmark — Warmup baseline (Llama-3.1-70B, Scenario B)
 
-Pipelines, nodes, and spot-trace events are loaded from JSON config files.
-On interruption: spot nodes are replaced with on-demand counterparts via switch_nodes().
-On restore: on-demand nodes are switched back to recovered spot nodes.
+Provisions ALL available nodes into pipelines, no spot events.
+ShuntServe pipelines (P1, P2) + extra pipeline for remaining nodes.
+
+Remaining nodes (not in ShuntServe config):
+  - spot_g6_12xlarge 1,2,3 + spot_g6e_xlarge 3,4 → P3 (20+20+20+10+10, pp=[4,4,4,1,1])
 """
 import asyncio
 import concurrent.futures
@@ -11,9 +13,6 @@ import json
 import logging
 import os
 import sys
-import time
-from collections import defaultdict
-from typing import List
 
 # ─── Path setup ──────────────────────────────────────────────────────
 _d = os.path.dirname(os.path.abspath(__file__))
@@ -42,25 +41,45 @@ with open(os.path.join(MODEL_DIR, f"pipelines_llama3_70b_scenario_{SCENARIO}.jso
     pipelines_data = json.load(f)
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"nodes_scenario_{SCENARIO}.json")) as f:
     nodes_map = json.load(f)
-with open(os.path.join(SPOT_TOLERANCE_DIR, f"spot_trace_events_scenario_{SCENARIO}.json")) as f:
-    events_data = json.load(f)
 
 OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "llama3-70b", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_shuntserve.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_warmup.json")
 
 logger = logging.getLogger(__name__)
 
+# ─── Extra pipelines for remaining nodes ─────────────────────────────
 
-# ─── Helpers ─────────────────────────────────────────────────────────
+MODEL_NAME = "meta-llama/Llama-3.1-70B-Instruct"
+S3_PATH = "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct"
 
-def get_counterpart_name(name: str) -> str:
-    """spot_xxx → on_demand_xxx, on_demand_xxx → spot_xxx"""
-    if name.startswith("spot_"):
-        return "on_demand_" + name[len("spot_"):]
-    elif name.startswith("on_demand_"):
-        return "spot_" + name[len("on_demand_"):]
-    raise ValueError(f"Unknown prefix: {name}")
+EXTRA_PIPELINES = [
+    {
+        "label": "WU-P3",
+        "predicted_throughput_rps": 0.8,
+        "config": {
+            "model_name": MODEL_NAME,
+            "total_num_layers": 80,
+            "gpu_memory_utilization": 0.85,
+            "pp_layer_partition": "20,20,20,10,10",
+            "parallel_strategy": [4, 4, 4, 1, 1],
+            "max_model_len": 8192,
+            "max_num_batched_tokens": 8192,
+            "max_num_seqs": 512,
+            "model_source": "s3",
+            "s3_path": S3_PATH,
+            "num_gpu_blocks": 1181,
+            "max_batch_size": 19,
+        },
+        "node_layer_mapping": [
+            ["spot_g6_12xlarge_node_ip_1", 20],
+            ["spot_g6_12xlarge_node_ip_2", 20],
+            ["spot_g6_12xlarge_node_ip_3", 20],
+            ["spot_g6e_xlarge_node_ip_3", 10],
+            ["spot_g6e_xlarge_node_ip_4", 10],
+        ],
+    },
+]
 
 
 # ─── Benchmark ───────────────────────────────────────────────────────
@@ -79,22 +98,21 @@ async def test_benchmark():
     logger.propagate = False
 
     model_name = pipelines_data["model"]
-    pipelines = pipelines_data["pipelines"]
+    all_pipelines = pipelines_data["pipelines"] + EXTRA_PIPELINES
+
+    total_tput = sum(p["predicted_throughput_rps"] for p in all_pipelines)
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe Spot Tolerance — Scenario {SCENARIO}")
+    print(f"Offline Benchmark — Warmup (All Nodes) — Scenario {SCENARIO}")
     print(f"  Model: {model_name}")
-    print(f"  Pipelines: {len(pipelines)}")
-    for i, p in enumerate(pipelines):
+    print(f"  Pipelines: {len(all_pipelines)}")
+    for i, p in enumerate(all_pipelines):
         mapping = " → ".join(f"{n}:{l}" for n, l in p["node_layer_mapping"])
         print(f"  {p['label']}: tput={p['predicted_throughput_rps']:.3f}  {mapping}")
-    print(f"  Total predicted: {pipelines_data['total_throughput_rps']:.3f} req/s")
-    print(f"  Events: {len(events_data['events'])}")
-    for ev in events_data["events"]:
-        print(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}")
+    print(f"  Total predicted: {total_tput:.3f} req/s")
     print("=" * 70)
 
-    global_server = GlobalServer(request_handler_mode="migration")
+    global_server = GlobalServer()
 
     # ── Create pipelines ──────────────────────────────────────────────
 
@@ -108,7 +126,7 @@ async def test_benchmark():
         logger.info("Pipeline creation completed")
 
     pipeline_tasks = []
-    for p in pipelines:
+    for p in all_pipelines:
         config = p["config"]
         node_layer_mapping = [
             (nodes_map[name], layers)
@@ -121,72 +139,7 @@ async def test_benchmark():
 
     server_task = asyncio.create_task(global_server.run_global_server())
 
-    # ── Schedule spot events ──────────────────────────────────────────
-
-    async def switch_node_after_delay(event_time: float, old_ips: List[str], new_ips: List[str]):
-        """Switch nodes after a specified delay."""
-        await asyncio.sleep(event_time)
-        try:
-            logger.info(f"Starting node switch: {old_ips} -> {new_ips}")
-            switch_start = time.time()
-            loop = asyncio.get_event_loop()
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                await loop.run_in_executor(
-                    executor, global_server.switch_nodes, old_ips, new_ips
-                )
-            duration = time.time() - switch_start
-            logger.info(f"Node switch completed in {duration:.2f}s")
-        except Exception as e:
-            logger.error(f"Node switch failed: {e}")
-
-    # Group events by time_min so simultaneous events become a single switch_nodes call
-    grouped_events = defaultdict(list)
-    for event in events_data["events"]:
-        grouped_events[event["time_min"]].append(event)
-
-    # Track which spot nodes are currently interrupted → on_demand replacement
-    # Pre-populate from initial pipeline state: on_demand nodes imply spot counterpart unavailable
-    interrupted_spots = {}
-    for p in pipelines:
-        for node_name, _ in p["node_layer_mapping"]:
-            if node_name.startswith("on_demand_"):
-                spot_name = get_counterpart_name(node_name)
-                interrupted_spots[spot_name] = node_name
-
-    for time_min in sorted(grouped_events.keys()):
-        event_time = time_min * 60
-        all_old_names = []
-        all_new_names = []
-
-        for event in grouped_events[time_min]:
-            if event["type"] == "interruption":
-                old_names = event["instances"]
-                new_names = [get_counterpart_name(n) for n in old_names]
-                for spot, od in zip(old_names, new_names):
-                    interrupted_spots[spot] = od
-                all_old_names.extend(old_names)
-                all_new_names.extend(new_names)
-
-            elif event["type"] == "restore":
-                old_names = [interrupted_spots[n] for n in event["instances"]]
-                new_names = event["instances"]
-                for n in new_names:
-                    del interrupted_spots[n]
-                all_old_names.extend(old_names)
-                all_new_names.extend(new_names)
-
-        assert len(all_old_names) == len(all_new_names), (
-            f"t={time_min}min: old/new node count mismatch: "
-            f"{len(all_old_names)} old vs {len(all_new_names)} new"
-        )
-
-        asyncio.create_task(switch_node_after_delay(
-            event_time,
-            [nodes_map[n] for n in all_old_names],
-            [nodes_map[n] for n in all_new_names],
-        ))
-
-    # ── Run benchmark ─────────────────────────────────────────────────
+    # ── No spot events — warmup run ───────────────────────────────────
 
     try:
         logger.info("Waiting for pipeline creation to complete...")
@@ -197,7 +150,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"spottolerance_offline_shuntserve_scenario_{SCENARIO}",
+            trace_output_prefix=f"spottolerance_offline_warmup_llama3_70b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=0.0,
@@ -207,17 +160,17 @@ async def test_benchmark():
             run_initial_test=False,
             start_time=0,
             end_time=60 * 60,
-            max_duration=60 * 60,
+            max_duration=3 * 60,
         )
 
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
+            "system": "Warmup",
             "benchmark_type": "offline",
             "scenario": SCENARIO,
-            "num_pipelines": len(pipelines),
-            "predicted_total_throughput_rps": pipelines_data["total_throughput_rps"],
+            "num_pipelines": len(all_pipelines),
+            "predicted_total_throughput_rps": total_tput,
             "percentiles": [1, 5, 10, 25, 50, 75, 90, 95, 99],
         })
 

@@ -1,9 +1,8 @@
 """
-Offline benchmark — ShuntServe spot tolerance (Llama-3.1-70B, Scenario B)
+Offline benchmark — Concurrent Initialization spot tolerance (Llama-3.1-70B, Scenario B)
 
-Pipelines, nodes, and spot-trace events are loaded from JSON config files.
-On interruption: spot nodes are replaced with on-demand counterparts via switch_nodes().
-On restore: on-demand nodes are switched back to recovered spot nodes.
+Same event handling as ShuntServe (switch_nodes), but uses re-routing mode
+instead of migration mode.
 """
 import asyncio
 import concurrent.futures
@@ -47,7 +46,7 @@ with open(os.path.join(SPOT_TOLERANCE_DIR, f"spot_trace_events_scenario_{SCENARI
 
 OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "llama3-70b", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_shuntserve.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_concurrent_initialization.json")
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +81,7 @@ async def test_benchmark():
     pipelines = pipelines_data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe Spot Tolerance — Scenario {SCENARIO}")
+    print(f"Offline Benchmark — Concurrent Initialization Spot Tolerance — Scenario {SCENARIO}")
     print(f"  Model: {model_name}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
@@ -94,7 +93,7 @@ async def test_benchmark():
         print(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}")
     print("=" * 70)
 
-    global_server = GlobalServer(request_handler_mode="migration")
+    global_server = GlobalServer(request_handler_mode="re-routing")
 
     # ── Create pipelines ──────────────────────────────────────────────
 
@@ -197,7 +196,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"spottolerance_offline_shuntserve_scenario_{SCENARIO}",
+            trace_output_prefix=f"spottolerance_offline_concurrent_initialization_llama3_70b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=0.0,
@@ -213,7 +212,7 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
+            "system": "ConcurrentInitialization",
             "benchmark_type": "offline",
             "scenario": SCENARIO,
             "num_pipelines": len(pipelines),

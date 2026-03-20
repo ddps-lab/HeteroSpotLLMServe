@@ -202,7 +202,7 @@ async def test_benchmark():
             num_requests=None,
             time_scale=0.0,
             model_name=model_name,
-            percentiles=[10, 25, 50, 75, 90, 99],
+            percentiles=[1, 5, 10, 25, 50, 75, 90, 95, 99],
             disable_tqdm=False,
             run_initial_test=False,
             start_time=0,
@@ -218,7 +218,7 @@ async def test_benchmark():
             "scenario": SCENARIO,
             "num_pipelines": len(pipelines),
             "predicted_total_throughput_rps": pipelines_data["total_throughput_rps"],
-            "percentiles": [10, 25, 50, 75, 90, 99],
+            "percentiles": [1, 5, 10, 25, 50, 75, 90, 95, 99],
         })
 
     except KeyboardInterrupt:

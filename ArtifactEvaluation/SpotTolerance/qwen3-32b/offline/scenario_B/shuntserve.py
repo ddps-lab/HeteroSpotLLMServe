@@ -1,5 +1,5 @@
 """
-Offline benchmark — ShuntServe spot tolerance (Llama-3.1-70B, Scenario B)
+Offline benchmark — ShuntServe spot tolerance (Qwen3-32B, Scenario B)
 
 Pipelines, nodes, and spot-trace events are loaded from JSON config files.
 On interruption: spot nodes are replaced with on-demand counterparts via switch_nodes().
@@ -35,17 +35,17 @@ from save_results import save_benchmark_results
 SCENARIO = "B"
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))   # llama3-70b/
+MODEL_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))   # qwen3-32b/
 SPOT_TOLERANCE_DIR = os.path.dirname(MODEL_DIR)              # SpotTolerance/
 
-with open(os.path.join(MODEL_DIR, f"pipelines_llama3_70b_scenario_{SCENARIO}.json")) as f:
+with open(os.path.join(MODEL_DIR, f"pipelines_qwen3_32b_scenario_{SCENARIO}.json")) as f:
     pipelines_data = json.load(f)
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"nodes_scenario_{SCENARIO}.json")) as f:
     nodes_map = json.load(f)
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"spot_trace_events_scenario_{SCENARIO}.json")) as f:
     events_data = json.load(f)
 
-OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "llama3-70b", f"scenario_{SCENARIO}")
+OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "qwen3-32b", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_shuntserve.json")
 
@@ -197,7 +197,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"spottolerance_offline_shuntserve_scenario_{SCENARIO}",
+            trace_output_prefix=f"spottolerance_offline_shuntserve_qwen3_32b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=0.0,

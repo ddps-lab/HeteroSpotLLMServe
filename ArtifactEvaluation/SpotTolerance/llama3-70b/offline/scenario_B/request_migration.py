@@ -1,9 +1,9 @@
 """
-Offline benchmark — ShuntServe spot tolerance (Llama-3.1-70B, Scenario B)
+Offline benchmark — Request Migration spot tolerance (Llama-3.1-70B, Scenario B)
 
-Pipelines, nodes, and spot-trace events are loaded from JSON config files.
-On interruption: spot nodes are replaced with on-demand counterparts via switch_nodes().
-On restore: on-demand nodes are switched back to recovered spot nodes.
+On interruption: stop_nodes() destroys affected pipelines, then create_pipeline()
+rebuilds them with replacement nodes. Migration mode preserves in-flight request
+tokens across the restart.
 """
 import asyncio
 import concurrent.futures
@@ -47,7 +47,7 @@ with open(os.path.join(SPOT_TOLERANCE_DIR, f"spot_trace_events_scenario_{SCENARI
 
 OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "llama3-70b", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_shuntserve.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_request_migration.json")
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ async def test_benchmark():
     pipelines = pipelines_data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — ShuntServe Spot Tolerance — Scenario {SCENARIO}")
+    print(f"Offline Benchmark — Request Migration Spot Tolerance — Scenario {SCENARIO}")
     print(f"  Model: {model_name}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
@@ -95,6 +95,11 @@ async def test_benchmark():
     print("=" * 70)
 
     global_server = GlobalServer(request_handler_mode="migration")
+
+    # ── Mutable pipeline state tracking ───────────────────────────────
+    pipeline_states = [list(p["node_layer_mapping"]) for p in pipelines]
+    pipeline_configs = [p["config"] for p in pipelines]
+    pipeline_throughputs = [p["predicted_throughput_rps"] for p in pipelines]
 
     # ── Create pipelines ──────────────────────────────────────────────
 
@@ -123,29 +128,51 @@ async def test_benchmark():
 
     # ── Schedule spot events ──────────────────────────────────────────
 
-    async def switch_node_after_delay(event_time: float, old_ips: List[str], new_ips: List[str]):
-        """Switch nodes after a specified delay."""
+    async def stop_and_restart_after_delay(event_time: float, old_ips: List[str], swap_map: dict):
+        """Stop pipelines containing old nodes, then recreate with new nodes."""
         await asyncio.sleep(event_time)
         try:
-            logger.info(f"Starting node switch: {old_ips} -> {new_ips}")
-            switch_start = time.time()
+            logger.info(f"Stopping nodes: {old_ips}")
+            stop_start = time.time()
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 await loop.run_in_executor(
-                    executor, global_server.switch_nodes, old_ips, new_ips
+                    executor, global_server.stop_nodes, old_ips
                 )
-            duration = time.time() - switch_start
-            logger.info(f"Node switch completed in {duration:.2f}s")
-        except Exception as e:
-            logger.error(f"Node switch failed: {e}")
+            stop_duration = time.time() - stop_start
+            logger.info(f"Nodes stopped in {stop_duration:.2f}s")
 
-    # Group events by time_min so simultaneous events become a single switch_nodes call
+            await asyncio.sleep(5)  # Wait for clean shutdown
+
+            # Recreate affected pipelines with updated node mapping (parallel)
+            recreation_tasks = []
+            for i, state in enumerate(pipeline_states):
+                affected = any(name in swap_map for name, _ in state)
+                if not affected:
+                    continue
+                new_state = [(swap_map.get(n, n), l) for n, l in state]
+                pipeline_states[i] = new_state
+                new_mapping = [(nodes_map[n], l) for n, l in new_state]
+                logger.info(f"Recreating pipeline {i} with new nodes...")
+                recreation_tasks.append(asyncio.create_task(
+                    create_pipeline_async(pipeline_configs[i], new_mapping, pipeline_throughputs[i])
+                ))
+
+            if recreation_tasks:
+                create_start = time.time()
+                await asyncio.gather(*recreation_tasks)
+                create_duration = time.time() - create_start
+                logger.info(f"{len(recreation_tasks)} pipeline(s) recreated in {create_duration:.2f}s")
+
+        except Exception as e:
+            logger.error(f"Stop-and-restart failed: {e}")
+
+    # Group events by time_min so simultaneous events become a single call
     grouped_events = defaultdict(list)
     for event in events_data["events"]:
         grouped_events[event["time_min"]].append(event)
 
     # Track which spot nodes are currently interrupted → on_demand replacement
-    # Pre-populate from initial pipeline state: on_demand nodes imply spot counterpart unavailable
     interrupted_spots = {}
     for p in pipelines:
         for node_name, _ in p["node_layer_mapping"]:
@@ -180,10 +207,11 @@ async def test_benchmark():
             f"{len(all_old_names)} old vs {len(all_new_names)} new"
         )
 
-        asyncio.create_task(switch_node_after_delay(
-            event_time,
-            [nodes_map[n] for n in all_old_names],
-            [nodes_map[n] for n in all_new_names],
+        swap_map = dict(zip(all_old_names, all_new_names))
+        old_ips = [nodes_map[n] for n in all_old_names]
+
+        asyncio.create_task(stop_and_restart_after_delay(
+            event_time, old_ips, swap_map
         ))
 
     # ── Run benchmark ─────────────────────────────────────────────────
@@ -197,7 +225,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix=f"spottolerance_offline_shuntserve_scenario_{SCENARIO}",
+            trace_output_prefix=f"spottolerance_offline_request_migration_llama3_70b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=0.0,
@@ -213,7 +241,7 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ShuntServe",
+            "system": "RequestMigration",
             "benchmark_type": "offline",
             "scenario": SCENARIO,
             "num_pipelines": len(pipelines),
