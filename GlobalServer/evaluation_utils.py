@@ -183,7 +183,8 @@ async def run_trace_replay_benchmark(
     time_scale: float = 1.0,
     percentiles: Optional[List[float]] = None,
     disable_tqdm: bool = False,
-    save_trace_path: Optional[str] = None
+    save_trace_path: Optional[str] = None,
+    max_duration: float = None
 ) -> BenchmarkMetrics:
     """
     Run trace replay benchmark by sending requests according to their arrival times.
@@ -255,7 +256,16 @@ async def run_trace_replay_benchmark(
         tasks.append(task)
 
     # Wait for all requests to complete
-    request_datas = await asyncio.gather(*tasks)
+    if max_duration is not None:
+        done, pending = await asyncio.wait(tasks, timeout=max_duration)
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        request_datas = [task.result() for task in done
+                         if not task.cancelled() and not task.exception()]
+    else:
+        request_datas = await asyncio.gather(*tasks)
 
     if pbar:
         pbar.close()
@@ -323,14 +333,16 @@ def save_request_trace(
             'Latency',
             'TTFT',
             'TPOT',
-            'Success'
+            'Success',
+            'QueueingDelay',
+            'SendCount'
         ])
 
         # Write data rows
         for request, arrival_time_ts, completion_time_ts in request_datas:
+            send_count = request.retry_count + 1
+
             if request.output:
-                # Calculate queueing delay
-                total_time = completion_time_ts - arrival_time_ts
                 latency = request.output.latency
 
                 # Get TTFT
@@ -344,6 +356,9 @@ def save_request_trace(
                 else:
                     tpot = 0.0
 
+                # QueueingDelay = total wall-clock time - E2E latency (from first dispatch)
+                queueing_delay = (completion_time_ts - arrival_time_ts) - latency
+
                 writer.writerow([
                     request.request_id,
                     f"{arrival_time_ts:.6f}",
@@ -353,7 +368,9 @@ def save_request_trace(
                     f"{latency:.6f}",
                     f"{ttft:.6f}",
                     f"{tpot:.6f}",
-                    request.output.success
+                    request.output.success,
+                    f"{queueing_delay:.6f}",
+                    send_count
                 ])
             else:
                 # Request failed before completion
@@ -367,7 +384,9 @@ def save_request_trace(
                     f"{total_time:.6f}",
                     0.0,
                     0.0,
-                    False
+                    False,
+                    f"{total_time:.6f}",
+                    send_count
                 ])
 
 
