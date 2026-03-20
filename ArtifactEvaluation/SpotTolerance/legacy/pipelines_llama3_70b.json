@@ -1,0 +1,75 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "total_num_layers": 80,
+  "total_throughput_rps": 4.23,
+  "pipelines": [
+    {
+      "label": "SS-P1",
+      "predicted_throughput_rps": 1.9951945710714936,
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-70B-Instruct",
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "20,20,20,10,10",
+        "parallel_strategy": [4, 4, 4, 1, 1],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct",
+        "num_gpu_blocks": 27549,
+        "max_batch_size": 442
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g6_12xlarge_node_ip_1", 20
+        ],
+        [
+          "spot_g6_12xlarge_node_ip_2", 20
+        ],
+        [
+          "on_demand_g6_12xlarge_node_ip_3", 20
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_1", 10
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_2", 10
+        ]
+      ]
+    },
+    {
+      "label": "SS-P2",
+      "predicted_throughput_rps": 2.76,
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-70B-Instruct",
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "13,28,28,11",
+        "parallel_strategy": [1, 4, 4, 1],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct",
+        "num_gpu_blocks": 12561,
+        "max_batch_size": 202
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g6e_xlarge_node_ip_3", 11
+        ],
+        [
+          "spot_g5_12xlarge_node_ip_1", 28
+        ],
+        [
+          "spot_g5_12xlarge_node_ip_2", 28
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_4", 11
+        ]
+      ]
+    }
+  ]
+}
