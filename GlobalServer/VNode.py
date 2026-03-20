@@ -874,7 +874,10 @@ class Pipeline:
         # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
         target_vnode.stop_tensor_store()
-        
+        assert not target_vnode.is_tensor_store_ready, (
+            f"Tensor store on {old_node_ip} failed to stop"
+        )
+
         cluster_logger.info(f"Node switch completed in pipeline: {old_node_ip} -> {new_node_ip}")
 
     def switch_nodes(self, switch_pairs: List[Tuple[str, str]], ray_init_lock: threading.Lock = None):
@@ -1069,6 +1072,9 @@ class Pipeline:
             # Stop tensor store on old node (target_vnode == old_vnode)
             cluster_logger.info(f"Stopping tensor store on old node {target_vnode.node_ip}")
             target_vnode.stop_tensor_store()
+            assert not target_vnode.is_tensor_store_ready, (
+                f"Tensor store on {target_vnode.node_ip} failed to stop"
+            )
 
             cluster_logger.info(f"Node switch completed in pipeline: {target_vnode.node_ip} -> {new_node_ip}")
 
@@ -1531,7 +1537,34 @@ class VNode:
                     success_count += 1
             
             cluster_logger.info(f"TensorStore shutdown: {success_count}/{self.tp_size} processes stopped successfully")
-        
+
+        # Force kill any remaining tensor store processes on the remote node
+        if success_count < self.tp_size:
+            try:
+                ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+                check_cmd = (
+                    f"ssh {ssh_options} {self.node_ip} "
+                    f"\"pgrep -f 'tensor_store'\""
+                )
+                result = subprocess.run(
+                    check_cmd, shell=True, timeout=5,
+                    capture_output=True, text=True
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    cluster_logger.warning(
+                        f"Tensor store processes still running on {self.node_ip}, force killing..."
+                    )
+                    kill_cmd = (
+                        f"ssh {ssh_options} {self.node_ip} "
+                        f"\"pkill -9 -f 'tensor_store'\""
+                    )
+                    subprocess.run(kill_cmd, shell=True, timeout=5, capture_output=True)
+                    cluster_logger.info(f"Force killed tensor store on {self.node_ip}")
+                else:
+                    cluster_logger.info(f"Tensor store processes already stopped on {self.node_ip}")
+            except Exception as e:
+                cluster_logger.error(f"Failed to force-kill tensor store on {self.node_ip}: {e}")
+
         self.is_tensor_store_ready = False
         cluster_logger.info(f"TensorStore shutdown completed on {self.node_ip}")
 
