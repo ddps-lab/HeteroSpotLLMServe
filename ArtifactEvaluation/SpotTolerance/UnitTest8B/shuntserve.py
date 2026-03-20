@@ -203,7 +203,7 @@ async def test_benchmark():
             num_requests=None,
             time_scale=1.0,
             model_name=model_name,
-            percentiles=[10, 25, 50, 75, 90, 99],
+            percentiles=[1, 5, 10, 25, 50, 75, 90, 95, 99],
             disable_tqdm=False,
             run_initial_test=False,
             max_duration=12 * 60,

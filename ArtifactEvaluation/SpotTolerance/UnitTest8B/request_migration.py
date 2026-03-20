@@ -1,8 +1,9 @@
 """
-Offline benchmark — Concurrent Initialization spot tolerance unit test (Llama-3.1-8B-Instruct)
+Offline benchmark — Request Migration spot tolerance unit test (Llama-3.1-8B-Instruct)
 
-Same event handling as ShuntServe (switch_nodes), but uses re-routing mode
-instead of migration mode.
+On interruption: stop_nodes() destroys affected pipelines, then create_pipeline()
+rebuilds them with replacement nodes. Migration mode preserves in-flight request
+tokens across the restart.
 """
 import asyncio
 import concurrent.futures
@@ -43,7 +44,7 @@ with open(os.path.join(SCRIPT_DIR, "spot_trace_events.json")) as f:
 
 OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "UnitTest8B")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_concurrent_initialization.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_request_migration.json")
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ async def test_benchmark():
     pipelines = pipelines_data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — Concurrent Initialization Spot Tolerance — UnitTest8B")
+    print(f"Offline Benchmark — Request Migration Spot Tolerance — UnitTest8B")
     print(f"  Model: {model_name}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
@@ -91,7 +92,14 @@ async def test_benchmark():
         print(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}{note}")
     print("=" * 70)
 
-    global_server = GlobalServer(request_handler_mode="re-routing")
+    global_server = GlobalServer(request_handler_mode="migration")
+
+    # ── Mutable pipeline state tracking ───────────────────────────────
+    # These track the *current* node_layer_mapping for each pipeline,
+    # updated after each stop_and_restart event.
+    pipeline_states = [list(p["node_layer_mapping"]) for p in pipelines]
+    pipeline_configs = [p["config"] for p in pipelines]
+    pipeline_throughputs = [p["predicted_throughput_rps"] for p in pipelines]
 
     # ── Create pipelines ──────────────────────────────────────────────
 
@@ -120,23 +128,43 @@ async def test_benchmark():
 
     # ── Schedule spot events ──────────────────────────────────────────
 
-    async def switch_node_after_delay(event_time: float, old_ips: List[str], new_ips: List[str]):
-        """Switch nodes after a specified delay."""
+    async def stop_and_restart_after_delay(event_time: float, old_ips: List[str], swap_map: dict):
+        """Stop pipelines containing old nodes, then recreate with new nodes."""
         await asyncio.sleep(event_time)
         try:
-            logger.info(f"Starting node switch: {old_ips} -> {new_ips}")
-            switch_start = time.time()
+            logger.info(f"Stopping nodes: {old_ips}")
+            stop_start = time.time()
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 await loop.run_in_executor(
-                    executor, global_server.switch_nodes, old_ips, new_ips
+                    executor, global_server.stop_nodes, old_ips
                 )
-            duration = time.time() - switch_start
-            logger.info(f"Node switch completed in {duration:.2f}s")
-        except Exception as e:
-            logger.error(f"Node switch failed: {e}")
+            stop_duration = time.time() - stop_start
+            logger.info(f"Nodes stopped in {stop_duration:.2f}s")
 
-    # Group events by time_min so simultaneous events become a single switch_nodes call
+            await asyncio.sleep(5)  # Wait for clean shutdown
+
+            # Recreate affected pipelines with updated node mapping
+            for i, state in enumerate(pipeline_states):
+                affected = any(name in swap_map for name, _ in state)
+                if not affected:
+                    continue
+                # Update state with swapped nodes
+                new_state = [(swap_map.get(n, n), l) for n, l in state]
+                pipeline_states[i] = new_state
+                new_mapping = [(nodes_map[n], l) for n, l in new_state]
+                logger.info(f"Recreating pipeline {i} with new nodes...")
+                create_start = time.time()
+                await create_pipeline_async(
+                    pipeline_configs[i], new_mapping, pipeline_throughputs[i]
+                )
+                create_duration = time.time() - create_start
+                logger.info(f"Pipeline {i} recreated in {create_duration:.2f}s")
+
+        except Exception as e:
+            logger.error(f"Stop-and-restart failed: {e}")
+
+    # Group events by time_min so simultaneous events become a single call
     grouped_events = defaultdict(list)
     for event in events_data["events"]:
         grouped_events[event["time_min"]].append(event)
@@ -177,10 +205,11 @@ async def test_benchmark():
             f"{len(all_old_names)} old vs {len(all_new_names)} new"
         )
 
-        asyncio.create_task(switch_node_after_delay(
-            event_time,
-            [nodes_map[n] for n in all_old_names],
-            [nodes_map[n] for n in all_new_names],
+        swap_map = dict(zip(all_old_names, all_new_names))
+        old_ips = [nodes_map[n] for n in all_old_names]
+
+        asyncio.create_task(stop_and_restart_after_delay(
+            event_time, old_ips, swap_map
         ))
 
     # ── Run benchmark ─────────────────────────────────────────────────
@@ -194,7 +223,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix="spottolerance_offline_concurrent_initialization_unittest8b",
+            trace_output_prefix="spottolerance_offline_request_migration_unittest8b",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=1.0,
@@ -208,12 +237,12 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "ConcurrentInitialization",
+            "system": "RequestMigration",
             "benchmark_type": "offline",
             "scenario": "UnitTest8B",
             "num_pipelines": len(pipelines),
             "predicted_total_throughput_rps": pipelines_data["total_throughput_rps"],
-            "percentiles": [10, 25, 50, 75, 90, 99],
+            "percentiles": [1, 5, 10, 25, 50, 75, 90, 95, 99],
         })
 
     except KeyboardInterrupt:
