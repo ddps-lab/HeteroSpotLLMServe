@@ -198,6 +198,7 @@ async def test_benchmark():
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
             trace_output_prefix=f"spottolerance_offline_shuntserve_scenario_{SCENARIO}",
+            trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=0.0,
             model_name=model_name,
