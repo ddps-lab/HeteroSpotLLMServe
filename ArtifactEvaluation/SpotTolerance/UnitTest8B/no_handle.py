@@ -1,9 +1,9 @@
 """
-Offline benchmark — Request Migration spot tolerance unit test (Llama-3.1-8B-Instruct)
+Offline benchmark — No Handle spot tolerance unit test (Llama-3.1-8B-Instruct)
 
 On interruption: stop_nodes() destroys affected pipelines, then create_pipeline()
-rebuilds them with replacement nodes. Migration mode preserves in-flight request
-tokens across the restart.
+rebuilds them with replacement nodes. Re-routing mode means failed in-flight
+requests are retried from scratch (no token preservation).
 """
 import asyncio
 import concurrent.futures
@@ -44,7 +44,7 @@ with open(os.path.join(SCRIPT_DIR, "spot_trace_events.json")) as f:
 
 OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "UnitTest8B")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_request_migration.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_no_handle.json")
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ async def test_benchmark():
     pipelines = pipelines_data["pipelines"]
 
     print("=" * 70)
-    print(f"Offline Benchmark — Request Migration Spot Tolerance — UnitTest8B")
+    print(f"Offline Benchmark — No Handle Spot Tolerance — UnitTest8B")
     print(f"  Model: {model_name}")
     print(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
@@ -92,11 +92,9 @@ async def test_benchmark():
         print(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}{note}")
     print("=" * 70)
 
-    global_server = GlobalServer(request_handler_mode="migration")
+    global_server = GlobalServer(request_handler_mode="re-routing")
 
     # ── Mutable pipeline state tracking ───────────────────────────────
-    # These track the *current* node_layer_mapping for each pipeline,
-    # updated after each stop_and_restart event.
     pipeline_states = [list(p["node_layer_mapping"]) for p in pipelines]
     pipeline_configs = [p["config"] for p in pipelines]
     pipeline_throughputs = [p["predicted_throughput_rps"] for p in pipelines]
@@ -150,7 +148,6 @@ async def test_benchmark():
                 affected = any(name in swap_map for name, _ in state)
                 if not affected:
                     continue
-                # Update state with swapped nodes
                 new_state = [(swap_map.get(n, n), l) for n, l in state]
                 pipeline_states[i] = new_state
                 new_mapping = [(nodes_map[n], l) for n, l in new_state]
@@ -174,7 +171,6 @@ async def test_benchmark():
         grouped_events[event["time_min"]].append(event)
 
     # Track which spot nodes are currently interrupted → on_demand replacement
-    # Pre-populate from initial pipeline state: on_demand nodes imply spot counterpart unavailable
     interrupted_spots = {}
     for p in pipelines:
         for node_name, _ in p["node_layer_mapping"]:
@@ -227,7 +223,7 @@ async def test_benchmark():
         metrics = await run_trace_benchmark(
             global_server=global_server,
             dataset_path=DEFAULT_DATASET_PATH,
-            trace_output_prefix="spottolerance_offline_request_migration_unittest8b",
+            trace_output_prefix="spottolerance_offline_no_handle_unittest8b",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
             time_scale=1.0,
@@ -241,7 +237,7 @@ async def test_benchmark():
         print_benchmark_results(metrics)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
-            "system": "RequestMigration",
+            "system": "NoHandle",
             "benchmark_type": "offline",
             "scenario": "UnitTest8B",
             "num_pipelines": len(pipelines),
