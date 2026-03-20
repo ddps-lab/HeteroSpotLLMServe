@@ -183,8 +183,7 @@ async def run_trace_replay_benchmark(
     time_scale: float = 1.0,
     percentiles: Optional[List[float]] = None,
     disable_tqdm: bool = False,
-    save_trace_path: Optional[str] = None,
-    max_duration: float = None
+    save_trace_path: Optional[str] = None
 ) -> BenchmarkMetrics:
     """
     Run trace replay benchmark by sending requests according to their arrival times.
@@ -196,9 +195,6 @@ async def run_trace_replay_benchmark(
         percentiles: List of percentiles to calculate (default: [25, 50, 75, 99])
         disable_tqdm: Whether to disable progress bar
         save_trace_path: Path to save detailed request trace CSV (optional)
-        max_duration: Maximum wall-clock duration in seconds (None for no limit).
-                      When reached, pending requests are cancelled and metrics are
-                      computed from completed requests only.
 
     Returns:
         BenchmarkMetrics object with results
@@ -258,25 +254,11 @@ async def run_trace_replay_benchmark(
         task = asyncio.create_task(send_request_at_time(request_input, scaled_arrival_time))
         tasks.append(task)
 
-    # Wait for requests to complete (with optional duration limit)
-    if max_duration is not None:
-        done, pending = await asyncio.wait(tasks, timeout=max_duration)
-        # Cancel pending tasks
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
-        # Collect results from completed tasks only
-        request_datas = [task.result() for task in done if not task.cancelled() and not task.exception()]
-    else:
-        request_datas = await asyncio.gather(*tasks)
+    # Wait for all requests to complete
+    request_datas = await asyncio.gather(*tasks)
 
     if pbar:
         pbar.close()
-
-    if max_duration is not None and len(request_datas) < len(tasks):
-        print(f"\nMax duration ({max_duration}s) reached. "
-              f"Completed {len(request_datas)}/{len(tasks)} requests.")
 
     # Calculate total duration
     benchmark_duration = time.time() - benchmark_start
@@ -341,16 +323,14 @@ def save_request_trace(
             'Latency',
             'TTFT',
             'TPOT',
-            'Success',
-            'QueueingDelay',
-            'SendCount'
+            'Success'
         ])
 
         # Write data rows
         for request, arrival_time_ts, completion_time_ts in request_datas:
-            send_count = len(request.sended_at)
-
             if request.output:
+                # Calculate queueing delay
+                total_time = completion_time_ts - arrival_time_ts
                 latency = request.output.latency
 
                 # Get TTFT
@@ -364,9 +344,6 @@ def save_request_trace(
                 else:
                     tpot = 0.0
 
-                # QueueingDelay = total wall-clock time - computation latency
-                queueing_delay = (completion_time_ts - arrival_time_ts) - latency
-
                 writer.writerow([
                     request.request_id,
                     f"{arrival_time_ts:.6f}",
@@ -376,9 +353,7 @@ def save_request_trace(
                     f"{latency:.6f}",
                     f"{ttft:.6f}",
                     f"{tpot:.6f}",
-                    request.output.success,
-                    f"{queueing_delay:.6f}",
-                    send_count
+                    request.output.success
                 ])
             else:
                 # Request failed before completion
@@ -392,9 +367,7 @@ def save_request_trace(
                     f"{total_time:.6f}",
                     0.0,
                     0.0,
-                    False,
-                    f"{total_time:.6f}",
-                    send_count
+                    False
                 ])
 
 

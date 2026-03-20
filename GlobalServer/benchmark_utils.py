@@ -368,8 +368,7 @@ async def run_trace_benchmark(
     run_initial_test: bool = True,
     test_requests_per_pipeline: int = 2,
     start_time: float = None,
-    end_time: float = None,
-    max_duration: float = None
+    end_time: float = None
 ):
     """
     Run a trace-based benchmark test on the GlobalServer using Azure dataset.
@@ -388,9 +387,6 @@ async def run_trace_benchmark(
         test_requests_per_pipeline: Number of test requests per pipeline
         start_time: Start time in seconds from the first request (None for no lower bound)
         end_time: End time in seconds from the first request (None for no upper bound)
-        max_duration: Maximum wall-clock duration in seconds (None for no limit).
-                      When reached, pending requests are cancelled and metrics are
-                      computed from completed requests only.
 
     Returns:
         BenchmarkMetrics object with results
@@ -480,8 +476,7 @@ async def run_trace_benchmark(
         time_scale=time_scale,
         percentiles=percentiles,
         disable_tqdm=disable_tqdm,
-        save_trace_path=trace_output_path,
-        max_duration=max_duration
+        save_trace_path=trace_output_path
     )
 
     return metrics

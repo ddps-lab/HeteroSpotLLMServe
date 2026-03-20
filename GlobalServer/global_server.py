@@ -112,8 +112,9 @@ class GlobalServer:
         # Set API URL for the request
         request.input.api_url = f"http://{api_server_host}:{api_server_port}/v1/completions"
         
-        # Record dispatch timestamp (appended each time, including retries)
-        request.sended_at.append(time.time())
+        # Mark when request was firstly sent
+        if request.sended_at is None:
+            request.sended_at = time.time()
         
         if self.request_handler_mode == "re-routing":
             return await async_request_without_migration(request, logger=logger)
