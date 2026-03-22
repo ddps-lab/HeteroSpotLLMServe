@@ -43,9 +43,14 @@ with open(os.path.join(MODEL_DIR, f"pipelines_qwen3_32b_scenario_{SCENARIO}.json
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"nodes_scenario_{SCENARIO}.json")) as f:
     nodes_map = json.load(f)
 
-OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "qwen3-32b", f"scenario_{SCENARIO}")
+OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "qwen3-32b", "offline", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_warmup.json")
+
+# ─── Benchmark time parameters (minutes) ─────────────────────────────
+START_TIME_MIN = 0
+END_TIME_MIN = 60        # 1 hour of trace data
+MAX_DURATION_MIN = 3     # 3 minute warmup
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +67,20 @@ EXTRA_PIPELINES = [
             "model_name": MODEL_NAME,
             "total_num_layers": 64,
             "gpu_memory_utilization": 0.85,
-            "pp_layer_partition": "24,24,16",
+            "pp_layer_partition": "22,21,21",
             "parallel_strategy": [4, 4, 4],
             "max_model_len": 8192,
             "max_num_batched_tokens": 8192,
             "max_num_seqs": 512,
             "model_source": "s3",
             "s3_path": S3_PATH,
-            "num_gpu_blocks": 32213,
-            "max_batch_size": 517,
+            "num_gpu_blocks": 20397,
+            "max_batch_size": 328,
         },
         "node_layer_mapping": [
-            ["spot_g6_12xlarge_node_ip_1", 24],
-            ["spot_g6_12xlarge_node_ip_2", 24],
-            ["spot_g6_12xlarge_node_ip_3", 16],
+            ["spot_g6_12xlarge_node_ip_1", 22],
+            ["spot_g6_12xlarge_node_ip_2", 21],
+            ["spot_g6_12xlarge_node_ip_3", 21],
         ],
     },
     {
@@ -92,8 +97,8 @@ EXTRA_PIPELINES = [
             "max_num_seqs": 512,
             "model_source": "s3",
             "s3_path": S3_PATH,
-            "num_gpu_blocks": 5223,
-            "max_batch_size": 83,
+            "num_gpu_blocks": 1679,
+            "max_batch_size": 27,
         },
         "node_layer_mapping": [
             ["spot_g6e_xlarge_node_ip_3", 32],
@@ -179,9 +184,9 @@ async def test_benchmark():
             percentiles=[1, 5, 10, 25, 50, 75, 90, 95, 99],
             disable_tqdm=False,
             run_initial_test=False,
-            start_time=0,
-            end_time=60 * 60,
-            max_duration=60 * 60,
+            start_time=START_TIME_MIN * 60,
+            end_time=END_TIME_MIN * 60,
+            max_duration=MAX_DURATION_MIN * 60,
         )
 
         print_benchmark_results(metrics)

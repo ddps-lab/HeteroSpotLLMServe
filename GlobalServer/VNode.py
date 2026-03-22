@@ -874,9 +874,7 @@ class Pipeline:
         # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
         target_vnode.stop_tensor_store()
-        assert not target_vnode.is_tensor_store_ready, (
-            f"Tensor store on {old_node_ip} failed to stop"
-        )
+        target_vnode.assert_tensor_store_stopped()
 
         cluster_logger.info(f"Node switch completed in pipeline: {old_node_ip} -> {new_node_ip}")
 
@@ -1072,9 +1070,7 @@ class Pipeline:
             # Stop tensor store on old node (target_vnode == old_vnode)
             cluster_logger.info(f"Stopping tensor store on old node {target_vnode.node_ip}")
             target_vnode.stop_tensor_store()
-            assert not target_vnode.is_tensor_store_ready, (
-                f"Tensor store on {target_vnode.node_ip} failed to stop"
-            )
+            target_vnode.assert_tensor_store_stopped()
 
             cluster_logger.info(f"Node switch completed in pipeline: {target_vnode.node_ip} -> {new_node_ip}")
 
@@ -1567,6 +1563,27 @@ class VNode:
 
         self.is_tensor_store_ready = False
         cluster_logger.info(f"TensorStore shutdown completed on {self.node_ip}")
+
+    def assert_tensor_store_stopped(self):
+        """Assert that no tensor store processes are running on this node."""
+        ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        check_cmd = (
+            f"ssh {ssh_options} {self.node_ip} "
+            f"\"pgrep -f 'tensor_store'\""
+        )
+        try:
+            result = subprocess.run(
+                check_cmd, shell=True, timeout=5,
+                capture_output=True, text=True
+            )
+            assert result.returncode != 0 or not result.stdout.strip(), (
+                f"Tensor store processes still running on {self.node_ip}: "
+                f"PIDs={result.stdout.strip()}"
+            )
+        except subprocess.TimeoutExpired:
+            cluster_logger.warning(
+                f"Tensor store check timed out on {self.node_ip} (node may be unreachable)"
+            )
 
     def stop_api_server(self, api_server_port: int = None):
         """Stop the API server on this VNode (only applicable for first node)."""

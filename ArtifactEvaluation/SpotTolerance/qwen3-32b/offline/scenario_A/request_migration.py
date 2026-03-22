@@ -45,9 +45,14 @@ with open(os.path.join(SPOT_TOLERANCE_DIR, f"nodes_scenario_{SCENARIO}.json")) a
 with open(os.path.join(SPOT_TOLERANCE_DIR, f"spot_trace_events_scenario_{SCENARIO}.json")) as f:
     events_data = json.load(f)
 
-OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "qwen3-32b", f"scenario_{SCENARIO}")
+OUTPUT_DIR = os.path.join(SPOT_TOLERANCE_DIR, "results", "qwen3-32b", "offline", f"scenario_{SCENARIO}")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 OUTPUT_PATH = os.path.join(OUTPUT_DIR, "offline_request_migration.json")
+
+# ─── Benchmark time parameters (minutes) ─────────────────────────────
+START_TIME_MIN = 0
+END_TIME_MIN = 60        # 1 hour of trace data
+MAX_DURATION_MIN = 60    # 1 hour wall-clock limit
 
 logger = logging.getLogger(__name__)
 
@@ -231,9 +236,9 @@ async def test_benchmark():
             percentiles=[1, 5, 10, 25, 50, 75, 90, 95, 99],
             disable_tqdm=False,
             run_initial_test=False,
-            start_time=0,
-            end_time=60 * 60,
-            max_duration=60 * 60,
+            start_time=START_TIME_MIN * 60,
+            end_time=END_TIME_MIN * 60,
+            max_duration=MAX_DURATION_MIN * 60,
         )
 
         print_benchmark_results(metrics)
