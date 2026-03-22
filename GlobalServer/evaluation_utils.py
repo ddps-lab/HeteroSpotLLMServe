@@ -4,6 +4,7 @@ Contains dataset loading, trace-based request generation, and trace replay funct
 """
 import asyncio
 import csv
+import logging
 import os
 import time
 from datetime import datetime
@@ -25,7 +26,8 @@ def load_azure_trace(
     max_context_tokens: Optional[int] = None,
     max_generated_tokens: Optional[int] = None,
     start_time: Optional[float] = None,
-    end_time: Optional[float] = None
+    end_time: Optional[float] = None,
+    logger=None
 ) -> List[Tuple[float, int, int]]:
     """
     Load Azure LLM Inference Conversation Trace dataset.
@@ -91,31 +93,33 @@ def load_azure_trace(
             trace_data.append((arrival_time, context_tokens, generated_tokens))
 
     # Print statistics
+    if logger is None:
+        logger = logging.getLogger(__name__)
     if trace_data:
         arrival_times = [t[0] for t in trace_data]
         context_tokens = [t[1] for t in trace_data]
         generated_tokens = [t[2] for t in trace_data]
 
-        print("\n" + "=" * 60)
-        print(" " * 15 + "Azure Trace Dataset Loaded")
-        print("=" * 60)
-        print(f"{'Total requests:':<40} {len(trace_data)}")
-        print(f"{'Time range (s):':<40} {min(arrival_times):.3f} - {max(arrival_times):.3f}")
-        print(f"{'Duration (s):':<40} {max(arrival_times) - min(arrival_times):.3f}")
-        print(f"{'Average request rate (req/s):':<40} {len(trace_data) / max(arrival_times) if max(arrival_times) > 0 else 0:.2f}")
-        print()
-        print(f"{'Context tokens - Min:':<40} {min(context_tokens)}")
-        print(f"{'Context tokens - Max:':<40} {max(context_tokens)}")
-        print(f"{'Context tokens - Mean:':<40} {np.mean(context_tokens):.1f}")
-        print(f"{'Context tokens - Median (P50):':<40} {np.percentile(context_tokens, 50):.1f}")
-        print(f"{'Context tokens - P99:':<40} {np.percentile(context_tokens, 99):.1f}")
-        print()
-        print(f"{'Generated tokens - Min:':<40} {min(generated_tokens)}")
-        print(f"{'Generated tokens - Max:':<40} {max(generated_tokens)}")
-        print(f"{'Generated tokens - Mean:':<40} {np.mean(generated_tokens):.1f}")
-        print(f"{'Generated tokens - Median (P50):':<40} {np.percentile(generated_tokens, 50):.1f}")
-        print(f"{'Generated tokens - P99:':<40} {np.percentile(generated_tokens, 99):.1f}")
-        print("=" * 60 + "\n")
+        logger.info("\n" + "=" * 60)
+        logger.info(" " * 15 + "Azure Trace Dataset Loaded")
+        logger.info("=" * 60)
+        logger.info(f"{'Total requests:':<40} {len(trace_data)}")
+        logger.info(f"{'Time range (s):':<40} {min(arrival_times):.3f} - {max(arrival_times):.3f}")
+        logger.info(f"{'Duration (s):':<40} {max(arrival_times) - min(arrival_times):.3f}")
+        logger.info(f"{'Average request rate (req/s):':<40} {len(trace_data) / max(arrival_times) if max(arrival_times) > 0 else 0:.2f}")
+        logger.info("")
+        logger.info(f"{'Context tokens - Min:':<40} {min(context_tokens)}")
+        logger.info(f"{'Context tokens - Max:':<40} {max(context_tokens)}")
+        logger.info(f"{'Context tokens - Mean:':<40} {np.mean(context_tokens):.1f}")
+        logger.info(f"{'Context tokens - Median (P50):':<40} {np.percentile(context_tokens, 50):.1f}")
+        logger.info(f"{'Context tokens - P99:':<40} {np.percentile(context_tokens, 99):.1f}")
+        logger.info("")
+        logger.info(f"{'Generated tokens - Min:':<40} {min(generated_tokens)}")
+        logger.info(f"{'Generated tokens - Max:':<40} {max(generated_tokens)}")
+        logger.info(f"{'Generated tokens - Mean:':<40} {np.mean(generated_tokens):.1f}")
+        logger.info(f"{'Generated tokens - Median (P50):':<40} {np.percentile(generated_tokens, 50):.1f}")
+        logger.info(f"{'Generated tokens - P99:':<40} {np.percentile(generated_tokens, 99):.1f}")
+        logger.info("=" * 60 + "\n")
 
     return trace_data
 
@@ -184,7 +188,8 @@ async def run_trace_replay_benchmark(
     percentiles: Optional[List[float]] = None,
     disable_tqdm: bool = False,
     save_trace_path: Optional[str] = None,
-    max_duration: float = None
+    max_duration: float = None,
+    logger=None
 ) -> BenchmarkMetrics:
     """
     Run trace replay benchmark by sending requests according to their arrival times.
@@ -200,22 +205,24 @@ async def run_trace_replay_benchmark(
     Returns:
         BenchmarkMetrics object with results
     """
+    if logger is None:
+        logger = logging.getLogger(__name__)
     if percentiles is None:
         percentiles = [25, 50, 75, 99]
 
     # Print header
     if not disable_tqdm:
-        print("\n" + "=" * 60)
-        print(" " * 15 + "Starting Trace Replay Benchmark")
-        print("=" * 60)
-        print(f"{'Total requests:':<40} {len(trace_requests)}")
-        print(f"{'Time scale:':<40} {time_scale}x")
+        logger.info("\n" + "=" * 60)
+        logger.info(" " * 15 + "Starting Trace Replay Benchmark")
+        logger.info("=" * 60)
+        logger.info(f"{'Total requests:':<40} {len(trace_requests)}")
+        logger.info(f"{'Time scale:':<40} {time_scale}x")
         if trace_requests:
             original_duration = trace_requests[-1][0] - trace_requests[0][0]
             scaled_duration = original_duration * time_scale
-            print(f"{'Original trace duration (s):':<40} {original_duration:.3f}")
-            print(f"{'Scaled duration (s):':<40} {scaled_duration:.3f}")
-        print("=" * 60 + "\n")
+            logger.info(f"{'Original trace duration (s):':<40} {original_duration:.3f}")
+            logger.info(f"{'Scaled duration (s):':<40} {scaled_duration:.3f}")
+        logger.info("=" * 60 + "\n")
 
     # Start benchmark timer
     benchmark_start = time.time()

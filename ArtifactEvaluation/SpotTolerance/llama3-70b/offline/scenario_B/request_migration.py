@@ -251,9 +251,10 @@ async def test_benchmark():
             start_time=START_TIME_MIN * 60,
             end_time=END_TIME_MIN * 60,
             max_duration=MAX_DURATION_MIN * 60,
+            logger=logger,
         )
 
-        print_benchmark_results(metrics)
+        print_benchmark_results(metrics, logger=logger)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
             "system": "RequestMigration",

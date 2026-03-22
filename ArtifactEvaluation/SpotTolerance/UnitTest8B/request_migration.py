@@ -246,9 +246,10 @@ async def test_benchmark():
             disable_tqdm=False,
             run_initial_test=False,
             max_duration=12 * 60,
+            logger=logger,
         )
 
-        print_benchmark_results(metrics)
+        print_benchmark_results(metrics, logger=logger)
 
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
             "system": "RequestMigration",
