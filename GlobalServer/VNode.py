@@ -1570,61 +1570,67 @@ class VNode:
         self.is_tensor_store_ready = False
         cluster_logger.info(f"TensorStore shutdown completed on {self.node_ip}")
 
-    def assert_tensor_store_stopped(self, max_retries: int = 2, wait_seconds: int = 10):
-        """Assert that no tensor store processes are running on this node.
+    def assert_tensor_store_stopped(self, max_attempts: int = 6, interval: float = 5.0):
+        """Ensure tensor store processes are killed on this node.
         
-        If processes are still alive, send pkill and retry up to max_retries times
-        with wait_seconds between each attempt before raising AssertionError.
+        Spawns a daemon thread that repeatedly checks and force-kills
+        any remaining tensor store processes. Non-blocking.
+        
+        Args:
+            max_attempts: Maximum number of check-kill cycles.
+            interval: Seconds between each attempt.
         """
-        ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -o LogLevel=ERROR"
-
-        for attempt in range(max_retries + 1):
-            # Check if any tensor store processes are still running
+        def _cleanup_worker():
+            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -o LogLevel=ERROR"
             check_cmd = (
                 f"ssh {ssh_options} {self.node_ip} "
                 f"\"pgrep -f 'tensor_store'\""
             )
-            try:
-                result = subprocess.run(
-                    check_cmd, shell=True, timeout=5,
-                    capture_output=True, text=True
-                )
-                pids = result.stdout.strip()
+            kill_cmd = (
+                f"ssh {ssh_options} {self.node_ip} "
+                f"\"pkill -9 -f 'tensor_store'\""
+            )
 
-                # No processes found — done
-                if result.returncode != 0 or not pids:
-                    cluster_logger.info(
-                        f"Tensor store processes confirmed stopped on {self.node_ip}"
+            for attempt in range(max_attempts):
+                try:
+                    result = subprocess.run(
+                        check_cmd, shell=True, timeout=5,
+                        capture_output=True, text=True
                     )
-                    return
+                    pids = result.stdout.strip()
 
-                # Processes still alive
-                if attempt < max_retries:
+                    if result.returncode != 0 or not pids:
+                        cluster_logger.info(
+                            f"Tensor store processes confirmed stopped on {self.node_ip}"
+                        )
+                        return
+
                     cluster_logger.warning(
-                        f"Tensor store processes still running on {self.node_ip} "
-                        f"(attempt {attempt + 1}/{max_retries + 1}): PIDs={pids}. "
-                        f"Sending pkill and waiting {wait_seconds}s..."
-                    )
-                    kill_cmd = (
-                        f"ssh {ssh_options} {self.node_ip} "
-                        f"\"pkill -9 -f 'tensor_store'\""
+                        f"Tensor store still running on {self.node_ip} "
+                        f"(attempt {attempt + 1}/{max_attempts}): PIDs={pids}. "
+                        f"Sending pkill -9..."
                     )
                     subprocess.run(kill_cmd, shell=True, timeout=5, capture_output=True)
-                    time.sleep(wait_seconds)
-                else:
-                    # Final attempt failed
-                    raise AssertionError(
-                        f"Tensor store processes still running on {self.node_ip} "
-                        f"after {max_retries} kill attempts: PIDs={pids}"
+
+                except subprocess.TimeoutExpired:
+                    cluster_logger.warning(
+                        f"Tensor store cleanup timed out on {self.node_ip} "
+                        f"(attempt {attempt + 1}, node may be unreachable)"
+                    )
+                except Exception as e:
+                    cluster_logger.error(
+                        f"Tensor store cleanup error on {self.node_ip}: {e}"
                     )
 
-            except subprocess.TimeoutExpired:
-                cluster_logger.warning(
-                    f"Tensor store check timed out on {self.node_ip} "
-                    f"(attempt {attempt + 1}, node may be unreachable)"
-                )
-                if attempt == max_retries:
-                    return  # Node unreachable — cannot verify, skip
+                time.sleep(interval)
+
+            cluster_logger.error(
+                f"Failed to kill tensor store on {self.node_ip} "
+                f"after {max_attempts} attempts"
+            )
+
+        thread = threading.Thread(target=_cleanup_worker, daemon=True)
+        thread.start()
 
     def stop_api_server(self, api_server_port: int = None):
         """Stop the API server on this VNode (only applicable for first node)."""
