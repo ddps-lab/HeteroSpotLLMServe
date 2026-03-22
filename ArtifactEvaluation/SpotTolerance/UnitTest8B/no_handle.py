@@ -73,6 +73,14 @@ async def test_benchmark():
     )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+    LOG_DIR = os.path.join(SCRIPT_DIR, "logs")
+    os.makedirs(LOG_DIR, exist_ok=True)
+    file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, os.path.basename(__file__).replace(".py", ".log"))
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
     logger.propagate = False
 
     model_name = pipelines_data["model"]
@@ -178,6 +186,7 @@ async def test_benchmark():
                 spot_name = get_counterpart_name(node_name)
                 interrupted_spots[spot_name] = node_name
 
+    event_schedule = []
     for time_min in sorted(grouped_events.keys()):
         event_time = time_min * 60
         all_old_names = []
@@ -208,9 +217,7 @@ async def test_benchmark():
         swap_map = dict(zip(all_old_names, all_new_names))
         old_ips = [nodes_map[n] for n in all_old_names]
 
-        asyncio.create_task(stop_and_restart_after_delay(
-            event_time, old_ips, swap_map
-        ))
+        event_schedule.append((event_time, old_ips, swap_map))
 
     # ── Run benchmark ─────────────────────────────────────────────────
 
@@ -219,6 +226,9 @@ async def test_benchmark():
         for task in pipeline_tasks:
             await task
         logger.info("All pipelines are ready!")
+        # Schedule spot events (after pipelines ready)
+        for event_args in event_schedule:
+            asyncio.create_task(stop_and_restart_after_delay(*event_args))
 
         metrics = await run_trace_benchmark(
             global_server=global_server,

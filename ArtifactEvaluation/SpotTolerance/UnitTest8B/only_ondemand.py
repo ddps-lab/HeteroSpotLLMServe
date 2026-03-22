@@ -57,6 +57,14 @@ async def test_benchmark():
     )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+    LOG_DIR = os.path.join(SCRIPT_DIR, "logs")
+    os.makedirs(LOG_DIR, exist_ok=True)
+    file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, os.path.basename(__file__).replace(".py", ".log"))
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
     logger.propagate = False
 
     model_name = pipelines_data["model"]
