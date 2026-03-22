@@ -137,15 +137,15 @@ async def test_benchmark():
 
     total_tput = sum(p["predicted_throughput_rps"] for p in all_pipelines)
 
-    print("=" * 70)
-    print(f"Offline Benchmark — Warmup (All Nodes) — Scenario {SCENARIO}")
-    print(f"  Model: {model_name}")
-    print(f"  Pipelines: {len(all_pipelines)}")
+    logger.info("=" * 70)
+    logger.info(f"Offline Benchmark — Warmup (All Nodes) — Scenario {SCENARIO}")
+    logger.info(f"  Model: {model_name}")
+    logger.info(f"  Pipelines: {len(all_pipelines)}")
     for i, p in enumerate(all_pipelines):
         mapping = " → ".join(f"{n}:{l}" for n, l in p["node_layer_mapping"])
-        print(f"  {p['label']}: tput={p['predicted_throughput_rps']:.3f}  {mapping}")
-    print(f"  Total predicted: {total_tput:.3f} req/s")
-    print("=" * 70)
+        logger.info(f"  {p['label']}: tput={p['predicted_throughput_rps']:.3f}  {mapping}")
+    logger.info(f"  Total predicted: {total_tput:.3f} req/s")
+    logger.info("=" * 70)
 
     global_server = GlobalServer()
 

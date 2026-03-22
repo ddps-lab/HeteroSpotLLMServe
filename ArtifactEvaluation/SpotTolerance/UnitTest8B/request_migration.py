@@ -86,19 +86,19 @@ async def test_benchmark():
     model_name = pipelines_data["model"]
     pipelines = pipelines_data["pipelines"]
 
-    print("=" * 70)
-    print(f"Offline Benchmark — Request Migration Spot Tolerance — UnitTest8B")
-    print(f"  Model: {model_name}")
-    print(f"  Pipelines: {len(pipelines)}")
+    logger.info("=" * 70)
+    logger.info(f"Offline Benchmark — Request Migration Spot Tolerance — UnitTest8B")
+    logger.info(f"  Model: {model_name}")
+    logger.info(f"  Pipelines: {len(pipelines)}")
     for i, p in enumerate(pipelines):
         mapping = " → ".join(f"{n}:{l}" for n, l in p["node_layer_mapping"])
-        print(f"  {p['label']}: tput={p['predicted_throughput_rps']:.3f}  {mapping}")
-    print(f"  Total predicted: {pipelines_data['total_throughput_rps']:.3f} req/s")
-    print(f"  Events: {len(events_data['events'])}")
+        logger.info(f"  {p['label']}: tput={p['predicted_throughput_rps']:.3f}  {mapping}")
+    logger.info(f"  Total predicted: {pipelines_data['total_throughput_rps']:.3f} req/s")
+    logger.info(f"  Events: {len(events_data['events'])}")
     for ev in events_data["events"]:
         note = f"  ({ev['note']})" if "note" in ev else ""
-        print(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}{note}")
-    print("=" * 70)
+        logger.info(f"    t={ev['time_min']}min  {ev['type']}  {ev['instances']}{note}")
+    logger.info("=" * 70)
 
     global_server = GlobalServer(request_handler_mode="migration")
 
