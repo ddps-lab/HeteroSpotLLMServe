@@ -988,15 +988,15 @@ class Pipeline:
                     cluster_logger.error(f"Failed to start tensor store on {node_ip}: {e}")
                     raise
         
-        for new_vnode in new_vnodes:
-            new_node_ip = new_vnode.node_ip
-            # Wait until the Tensor Store is ready.
-            cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
-            status_check_time = 0
-            while not new_vnode.check_tensor_store_status():
-                status_check_time += 1
-                cluster_logger.info(f"Waiting for tensor store to be ready on new node {new_node_ip} ({status_check_time})...")
-                time.sleep(2)
+        # for new_vnode in new_vnodes:
+        #     new_node_ip = new_vnode.node_ip
+        #     # Wait until the Tensor Store is ready.
+        #     cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
+        #     status_check_time = 0
+        #     while not new_vnode.check_tensor_store_status():
+        #         status_check_time += 1
+        #         cluster_logger.info(f"Waiting for tensor store to be ready on new node {new_node_ip} ({status_check_time})...")
+        #         time.sleep(2)
         
         # Update the Node Rank Mapping Dictionary.
         self._generate_node_rank_mapping()
@@ -1015,6 +1015,17 @@ class Pipeline:
         # Start the new API server
         new_ray_address = f"{self.ray_head_ip}:{new_ray_port}"
         new_first_vnode.start_api_server(new_api_server_port, self.config, self.node_rank_mapping, new_ray_address)
+
+
+        for new_vnode in new_vnodes:
+            new_node_ip = new_vnode.node_ip
+            # Wait until the Tensor Store is ready.
+            cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
+            status_check_time = 0
+            while not new_vnode.check_tensor_store_status():
+                status_check_time += 1
+                cluster_logger.info(f"Waiting for tensor store to be ready on new node {new_node_ip} ({status_check_time})...")
+                time.sleep(2)
 
         # Wait until the new API server is ready.
         cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{new_api_server_port}")
