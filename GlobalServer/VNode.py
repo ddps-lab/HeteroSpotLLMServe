@@ -407,14 +407,16 @@ class Pipeline:
         for vnode in self.vnodes:
             num_gpu = None
             while True:
-                for node_info in ray.nodes():
-                    ray_node_ip = node_info.get("NodeManagerAddress")
-                    if ray_node_ip == vnode.node_ip:
-                        num_gpu = int(node_info.get("Resources").get("GPU", 0))
-                        break
+                with ray_init_lock:
+                    for node_info in ray.nodes():
+                        ray_node_ip = node_info.get("NodeManagerAddress")
+                        if ray_node_ip == vnode.node_ip:
+                            num_gpu = int(node_info.get("Resources").get("GPU", 0))
+                            break
                 if num_gpu is not None and num_gpu > 0:
                     break
                 cluster_logger.info(f"Waiting for node {vnode.node_ip} to be entered into Ray cluster...")
+                time.sleep(3)
             
             # Update the vnode's GPU count
             # Previously, tp size was always determined by num_gpu.
@@ -597,7 +599,8 @@ class Pipeline:
             init_ray()
         
         # Get currently connected nodes
-        ray_nodes = ray.nodes()
+        with ray_init_lock:
+            ray_nodes = ray.nodes()
         connected_ips = {node.get("NodeManagerAddress") for node in ray_nodes if node.get("Alive")}
         cluster_logger.info(f"Currently connected nodes: {connected_ips}")
         
@@ -639,7 +642,8 @@ class Pipeline:
             attempt = 0
             
             while attempt < max_attempts:
-                ray_nodes = ray.nodes()
+                with ray_init_lock:
+                    ray_nodes = ray.nodes()
                 connected_ips = {node.get("NodeManagerAddress") for node in ray_nodes if node.get("Alive")}
                 
                 if vnode_ips.issubset(connected_ips):
@@ -777,11 +781,12 @@ class Pipeline:
         # 5. Get GPU count for new node from Ray cluster
         new_tp_size = None
         while True:
-            for node_info in ray.nodes():
-                ray_node_ip = node_info.get("NodeManagerAddress")
-                if ray_node_ip == new_node_ip:
-                    new_tp_size = int(node_info.get("Resources").get("GPU", 0))
-                    break
+            with ray_init_lock:
+                for node_info in ray.nodes():
+                    ray_node_ip = node_info.get("NodeManagerAddress")
+                    if ray_node_ip == new_node_ip:
+                        new_tp_size = int(node_info.get("Resources").get("GPU", 0))
+                        break
             if new_tp_size is not None and new_tp_size > 0:
                 break
             cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
@@ -949,11 +954,12 @@ class Pipeline:
             new_node_ip = new_vnode.node_ip
             new_tp_size = None
             while True:
-                for node_info in ray.nodes():
-                    ray_node_ip = node_info.get("NodeManagerAddress")
-                    if ray_node_ip == new_node_ip:
-                        new_tp_size = int(node_info.get("Resources").get("GPU", 0))
-                        break
+                with ray_init_lock:
+                    for node_info in ray.nodes():
+                        ray_node_ip = node_info.get("NodeManagerAddress")
+                        if ray_node_ip == new_node_ip:
+                            new_tp_size = int(node_info.get("Resources").get("GPU", 0))
+                            break
                 if new_tp_size is not None and new_tp_size > 0:
                     break
                 cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
