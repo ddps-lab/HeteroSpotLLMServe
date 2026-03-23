@@ -127,7 +127,7 @@ async def test_benchmark():
             trace_output_prefix=f"spottolerance_online_only_ondemand_llama3_70b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
-            time_scale=1.0,
+            time_scale=6.0,
             model_name=model_name,
             percentiles=[1, 5, 10, 25, 50, 75, 90, 95, 99],
             disable_tqdm=False,
