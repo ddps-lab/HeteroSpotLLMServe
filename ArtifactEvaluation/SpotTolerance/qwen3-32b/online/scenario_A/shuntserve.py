@@ -217,7 +217,7 @@ async def test_benchmark():
             trace_output_prefix=f"spottolerance_online_shuntserve_qwen3_32b_scenario_{SCENARIO}",
             trace_base_dir=OUTPUT_DIR,
             num_requests=None,
-            time_scale=1.0,
+            time_scale=1.25,
             model_name=model_name,
             percentiles=[1, 5, 10, 25, 50, 75, 90, 95, 99],
             disable_tqdm=False,
