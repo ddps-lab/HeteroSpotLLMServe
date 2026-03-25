@@ -1,115 +1,115 @@
-[2026-03-24 10:59:35] INFO - ======================================================================
-[2026-03-24 10:59:35] INFO - Online Benchmark — On-Demand Only Baseline — Scenario A
-[2026-03-24 10:59:35] INFO -   Model: Qwen/Qwen3-32B
-[2026-03-24 10:59:35] INFO -   Pipelines: 4
-[2026-03-24 10:59:35] INFO -   SS-P1: tput=5.865  spot_g6e_xlarge_node_ip_1:16 → spot_g6e_xlarge_node_ip_2:16 → spot_g6e_xlarge_node_ip_3:16 → spot_g6e_xlarge_node_ip_4:16
-[2026-03-24 10:59:35] INFO -   SS-P2: tput=2.628  spot_g6_12xlarge_node_ip_1:24 → spot_g6_12xlarge_node_ip_2:24 → spot_g6_12xlarge_node_ip_3:16
-[2026-03-24 10:59:35] INFO -   SS-P3: tput=0.466  on_demand_g5_12xlarge_node_ip_1:64
-[2026-03-24 10:59:35] INFO -   SS-P4: tput=0.466  on_demand_g5_12xlarge_node_ip_2:64
-[2026-03-24 10:59:35] INFO -   Total predicted: 9.424 req/s
-[2026-03-24 10:59:35] INFO - ======================================================================
-[2026-03-24 10:59:35] INFO - Waiting for pipeline creation to complete...
-[2026-03-24 11:00:09] INFO - Pipeline creation completed
-[2026-03-24 11:01:01] INFO - Pipeline creation completed
-[2026-03-24 11:01:02] INFO - Pipeline creation completed
-[2026-03-24 11:01:11] INFO - Pipeline creation completed
-[2026-03-24 11:01:11] INFO - All pipelines are ready!
-[2026-03-24 11:01:11] INFO - Loading trace dataset from: /home/ubuntu/ShuntServe/ArtifactEvaluation/Datasets/AzureLLMInferenceConvTrace_pruned_2048.csv
-[2026-03-24 11:01:11] INFO - 
+[2026-03-25 04:42:23] INFO - ======================================================================
+[2026-03-25 04:42:23] INFO - Online Benchmark — On-Demand Only Baseline — Scenario A
+[2026-03-25 04:42:23] INFO -   Model: Qwen/Qwen3-32B
+[2026-03-25 04:42:23] INFO -   Pipelines: 4
+[2026-03-25 04:42:23] INFO -   SS-P1: tput=5.865  spot_g6e_xlarge_node_ip_1:16 → spot_g6e_xlarge_node_ip_2:16 → spot_g6e_xlarge_node_ip_3:16 → spot_g6e_xlarge_node_ip_4:16
+[2026-03-25 04:42:23] INFO -   SS-P2: tput=2.628  spot_g6_12xlarge_node_ip_1:24 → spot_g6_12xlarge_node_ip_2:24 → spot_g6_12xlarge_node_ip_3:16
+[2026-03-25 04:42:23] INFO -   SS-P3: tput=0.466  on_demand_g5_12xlarge_node_ip_1:64
+[2026-03-25 04:42:23] INFO -   SS-P4: tput=0.466  on_demand_g5_12xlarge_node_ip_2:64
+[2026-03-25 04:42:23] INFO -   Total predicted: 9.424 req/s
+[2026-03-25 04:42:23] INFO - ======================================================================
+[2026-03-25 04:42:23] INFO - Waiting for pipeline creation to complete...
+[2026-03-25 04:42:59] INFO - Pipeline creation completed
+[2026-03-25 04:43:49] INFO - Pipeline creation completed
+[2026-03-25 04:43:49] INFO - Pipeline creation completed
+[2026-03-25 04:43:58] INFO - Pipeline creation completed
+[2026-03-25 04:43:58] INFO - All pipelines are ready!
+[2026-03-25 04:43:58] INFO - Loading trace dataset from: /home/ubuntu/ShuntServe/ArtifactEvaluation/Datasets/AzureLLMInferenceConvTrace_pruned_2048.csv
+[2026-03-25 04:43:58] INFO - 
 ============================================================
-[2026-03-24 11:01:11] INFO -                Azure Trace Dataset Loaded
-[2026-03-24 11:01:11] INFO - ============================================================
-[2026-03-24 11:01:11] INFO - Total requests:                          16663
-[2026-03-24 11:01:11] INFO - Time range (s):                          0.000 - 3501.722
-[2026-03-24 11:01:11] INFO - Duration (s):                            3501.722
-[2026-03-24 11:01:11] INFO - Average request rate (req/s):            4.76
-[2026-03-24 11:01:11] INFO - 
-[2026-03-24 11:01:11] INFO - Context tokens - Min:                    2
-[2026-03-24 11:01:11] INFO - Context tokens - Max:                    2047
-[2026-03-24 11:01:11] INFO - Context tokens - Mean:                   762.8
-[2026-03-24 11:01:11] INFO - Context tokens - Median (P50):           947.0
-[2026-03-24 11:01:11] INFO - Context tokens - P99:                    1911.4
-[2026-03-24 11:01:11] INFO - 
-[2026-03-24 11:01:11] INFO - Generated tokens - Min:                  7
-[2026-03-24 11:01:11] INFO - Generated tokens - Max:                  1000
-[2026-03-24 11:01:11] INFO - Generated tokens - Mean:                 232.4
-[2026-03-24 11:01:11] INFO - Generated tokens - Median (P50):         157.0
-[2026-03-24 11:01:11] INFO - Generated tokens - P99:                  608.4
-[2026-03-24 11:01:11] INFO - ============================================================
+[2026-03-25 04:43:58] INFO -                Azure Trace Dataset Loaded
+[2026-03-25 04:43:58] INFO - ============================================================
+[2026-03-25 04:43:58] INFO - Total requests:                          16663
+[2026-03-25 04:43:58] INFO - Time range (s):                          0.000 - 3501.722
+[2026-03-25 04:43:58] INFO - Duration (s):                            3501.722
+[2026-03-25 04:43:58] INFO - Average request rate (req/s):            4.76
+[2026-03-25 04:43:58] INFO - 
+[2026-03-25 04:43:58] INFO - Context tokens - Min:                    2
+[2026-03-25 04:43:58] INFO - Context tokens - Max:                    2047
+[2026-03-25 04:43:58] INFO - Context tokens - Mean:                   762.8
+[2026-03-25 04:43:58] INFO - Context tokens - Median (P50):           947.0
+[2026-03-25 04:43:58] INFO - Context tokens - P99:                    1911.4
+[2026-03-25 04:43:58] INFO - 
+[2026-03-25 04:43:58] INFO - Generated tokens - Min:                  7
+[2026-03-25 04:43:58] INFO - Generated tokens - Max:                  1000
+[2026-03-25 04:43:58] INFO - Generated tokens - Mean:                 232.4
+[2026-03-25 04:43:58] INFO - Generated tokens - Median (P50):         157.0
+[2026-03-25 04:43:58] INFO - Generated tokens - P99:                  608.4
+[2026-03-25 04:43:58] INFO - ============================================================
 
-[2026-03-24 11:01:11] INFO - Generating requests from trace data...
-[2026-03-24 11:01:20] INFO - Generated 16663 requests from trace
+[2026-03-25 04:43:58] INFO - Generating requests from trace data...
+[2026-03-25 04:44:06] INFO - Generated 16663 requests from trace
 
-[2026-03-24 11:01:20] INFO - 
+[2026-03-25 04:44:06] INFO - 
 ============================================================
-[2026-03-24 11:01:20] INFO -                Starting Trace Replay Benchmark
-[2026-03-24 11:01:20] INFO - ============================================================
-[2026-03-24 11:01:20] INFO - Total requests:                          16663
-[2026-03-24 11:01:20] INFO - Time scale:                              1.25x
-[2026-03-24 11:01:20] INFO - Original trace duration (s):             3501.722
-[2026-03-24 11:01:20] INFO - Scaled duration (s):                     4377.152
-[2026-03-24 11:01:20] INFO - ============================================================
+[2026-03-25 04:44:06] INFO -                Starting Trace Replay Benchmark
+[2026-03-25 04:44:06] INFO - ============================================================
+[2026-03-25 04:44:06] INFO - Total requests:                          16663
+[2026-03-25 04:44:06] INFO - Time scale:                              1.0x
+[2026-03-25 04:44:06] INFO - Original trace duration (s):             3501.722
+[2026-03-25 04:44:06] INFO - Scaled duration (s):                     3501.722
+[2026-03-25 04:44:06] INFO - ============================================================
 
-[2026-03-24 12:01:26] INFO - 
+[2026-03-25 05:44:14] INFO - 
 ==================================================
-[2026-03-24 12:01:26] INFO -             Serving Benchmark Result
-[2026-03-24 12:01:26] INFO - ==================================================
-[2026-03-24 12:01:26] INFO - Successful requests:                     13985     
-[2026-03-24 12:01:26] INFO - Benchmark duration (s):                  3600.20   
-[2026-03-24 12:01:26] INFO - Total input tokens:                      10446083  
-[2026-03-24 12:01:26] INFO - Total generated tokens:                  3089118   
-[2026-03-24 12:01:26] INFO - Request throughput (req/s):              3.88      
-[2026-03-24 12:01:26] INFO - Output token throughput (tok/s):         858.04    
-[2026-03-24 12:01:26] INFO - Total Token throughput (tok/s):          3759.57   
-[2026-03-24 12:01:26] INFO - ----------------End-to-end Latency----------------
-[2026-03-24 12:01:26] INFO - Mean E2EL (ms):                          86068.25  
-[2026-03-24 12:01:26] INFO - Median E2EL (ms):                        56851.94  
-[2026-03-24 12:01:26] INFO - P1 E2EL (ms):                            3569.92   
-[2026-03-24 12:01:26] INFO - P5 E2EL (ms):                            6617.26   
-[2026-03-24 12:01:26] INFO - P10 E2EL (ms):                           14023.93  
-[2026-03-24 12:01:26] INFO - P25 E2EL (ms):                           27961.93  
-[2026-03-24 12:01:26] INFO - P50 E2EL (ms):                           56851.94  
-[2026-03-24 12:01:26] INFO - P75 E2EL (ms):                           129463.50 
-[2026-03-24 12:01:26] INFO - P90 E2EL (ms):                           212070.81 
-[2026-03-24 12:01:26] INFO - P95 E2EL (ms):                           231753.83 
-[2026-03-24 12:01:26] INFO - P99 E2EL (ms):                           287508.27 
-[2026-03-24 12:01:26] INFO - ---------------Time to First Token----------------
-[2026-03-24 12:01:26] INFO - Mean TTFT (ms):                          7632.45   
-[2026-03-24 12:01:26] INFO - Median TTFT (ms):                        1056.08   
-[2026-03-24 12:01:26] INFO - P1 TTFT (ms):                            218.39    
-[2026-03-24 12:01:26] INFO - P5 TTFT (ms):                            306.01    
-[2026-03-24 12:01:26] INFO - P10 TTFT (ms):                           384.47    
-[2026-03-24 12:01:26] INFO - P25 TTFT (ms):                           588.91    
-[2026-03-24 12:01:26] INFO - P50 TTFT (ms):                           1056.08   
-[2026-03-24 12:01:26] INFO - P75 TTFT (ms):                           9057.48   
-[2026-03-24 12:01:26] INFO - P90 TTFT (ms):                           27980.68  
-[2026-03-24 12:01:26] INFO - P95 TTFT (ms):                           37978.96  
-[2026-03-24 12:01:26] INFO - P99 TTFT (ms):                           52620.17  
-[2026-03-24 12:01:26] INFO - -----Time per Output Token (excl. 1st token)------
-[2026-03-24 12:01:26] INFO - Mean TPOT (ms):                          356.73    
-[2026-03-24 12:01:26] INFO - Median TPOT (ms):                        402.21    
-[2026-03-24 12:01:26] INFO - P1 TPOT (ms):                            44.35     
-[2026-03-24 12:01:26] INFO - P5 TPOT (ms):                            52.06     
-[2026-03-24 12:01:26] INFO - P10 TPOT (ms):                           79.96     
-[2026-03-24 12:01:26] INFO - P25 TPOT (ms):                           248.08    
-[2026-03-24 12:01:26] INFO - P50 TPOT (ms):                           402.21    
-[2026-03-24 12:01:26] INFO - P75 TPOT (ms):                           474.96    
-[2026-03-24 12:01:26] INFO - P90 TPOT (ms):                           513.60    
-[2026-03-24 12:01:26] INFO - P95 TPOT (ms):                           531.08    
-[2026-03-24 12:01:26] INFO - P99 TPOT (ms):                           563.22    
-[2026-03-24 12:01:26] INFO - ---------------Inter-token Latency----------------
-[2026-03-24 12:01:26] INFO - Mean ITL (ms):                           356.70    
-[2026-03-24 12:01:26] INFO - Median ITL (ms):                         253.20    
-[2026-03-24 12:01:26] INFO - P1 ITL (ms):                             43.65     
-[2026-03-24 12:01:26] INFO - P5 ITL (ms):                             45.58     
-[2026-03-24 12:01:26] INFO - P10 ITL (ms):                            49.94     
-[2026-03-24 12:01:26] INFO - P25 ITL (ms):                            132.70    
-[2026-03-24 12:01:26] INFO - P50 ITL (ms):                            253.20    
-[2026-03-24 12:01:26] INFO - P75 ITL (ms):                            457.56    
-[2026-03-24 12:01:26] INFO - P90 ITL (ms):                            834.95    
-[2026-03-24 12:01:26] INFO - P95 ITL (ms):                            1064.26   
-[2026-03-24 12:01:26] INFO - P99 ITL (ms):                            1638.53   
-[2026-03-24 12:01:26] INFO - ==================================================
-[2026-03-24 12:01:26] INFO - Cleaning up...
-[2026-03-24 12:01:26] INFO - Stopping pipelines...
-[2026-03-24 12:01:27] INFO - All pipelines stopped
+[2026-03-25 05:44:14] INFO -             Serving Benchmark Result
+[2026-03-25 05:44:14] INFO - ==================================================
+[2026-03-25 05:44:14] INFO - Successful requests:                     16653     
+[2026-03-25 05:44:14] INFO - Benchmark duration (s):                  3600.16   
+[2026-03-25 05:44:14] INFO - Total input tokens:                      12700484  
+[2026-03-25 05:44:14] INFO - Total generated tokens:                  3865013   
+[2026-03-25 05:44:14] INFO - Request throughput (req/s):              4.63      
+[2026-03-25 05:44:14] INFO - Output token throughput (tok/s):         1073.57   
+[2026-03-25 05:44:14] INFO - Total Token throughput (tok/s):          4601.32   
+[2026-03-25 05:44:14] INFO - ----------------End-to-end Latency----------------
+[2026-03-25 05:44:14] INFO - Mean E2EL (ms):                          134517.87 
+[2026-03-25 05:44:14] INFO - Median E2EL (ms):                        88218.59  
+[2026-03-25 05:44:14] INFO - P1 E2EL (ms):                            4307.50   
+[2026-03-25 05:44:14] INFO - P5 E2EL (ms):                            8771.44   
+[2026-03-25 05:44:14] INFO - P10 E2EL (ms):                           21517.43  
+[2026-03-25 05:44:14] INFO - P25 E2EL (ms):                           47053.27  
+[2026-03-25 05:44:14] INFO - P50 E2EL (ms):                           88218.59  
+[2026-03-25 05:44:14] INFO - P75 E2EL (ms):                           210150.52 
+[2026-03-25 05:44:14] INFO - P90 E2EL (ms):                           273542.12 
+[2026-03-25 05:44:14] INFO - P95 E2EL (ms):                           392550.58 
+[2026-03-25 05:44:14] INFO - P99 E2EL (ms):                           528061.17 
+[2026-03-25 05:44:14] INFO - ---------------Time to First Token----------------
+[2026-03-25 05:44:14] INFO - Mean TTFT (ms):                          15197.24  
+[2026-03-25 05:44:14] INFO - Median TTFT (ms):                        3155.94   
+[2026-03-25 05:44:14] INFO - P1 TTFT (ms):                            236.32    
+[2026-03-25 05:44:14] INFO - P5 TTFT (ms):                            402.81    
+[2026-03-25 05:44:14] INFO - P10 TTFT (ms):                           492.38    
+[2026-03-25 05:44:14] INFO - P25 TTFT (ms):                           1005.11   
+[2026-03-25 05:44:14] INFO - P50 TTFT (ms):                           3155.94   
+[2026-03-25 05:44:14] INFO - P75 TTFT (ms):                           25020.28  
+[2026-03-25 05:44:14] INFO - P90 TTFT (ms):                           43684.05  
+[2026-03-25 05:44:14] INFO - P95 TTFT (ms):                           56320.66  
+[2026-03-25 05:44:14] INFO - P99 TTFT (ms):                           82933.11  
+[2026-03-25 05:44:14] INFO - -----Time per Output Token (excl. 1st token)------
+[2026-03-25 05:44:14] INFO - Mean TPOT (ms):                          524.76    
+[2026-03-25 05:44:14] INFO - Median TPOT (ms):                        495.28    
+[2026-03-25 05:44:14] INFO - P1 TPOT (ms):                            47.04     
+[2026-03-25 05:44:14] INFO - P5 TPOT (ms):                            60.62     
+[2026-03-25 05:44:14] INFO - P10 TPOT (ms):                           87.83     
+[2026-03-25 05:44:14] INFO - P25 TPOT (ms):                           436.64    
+[2026-03-25 05:44:14] INFO - P50 TPOT (ms):                           495.28    
+[2026-03-25 05:44:14] INFO - P75 TPOT (ms):                           607.95    
+[2026-03-25 05:44:14] INFO - P90 TPOT (ms):                           965.42    
+[2026-03-25 05:44:14] INFO - P95 TPOT (ms):                           1095.43   
+[2026-03-25 05:44:14] INFO - P99 TPOT (ms):                           1224.44   
+[2026-03-25 05:44:14] INFO - ---------------Inter-token Latency----------------
+[2026-03-25 05:44:14] INFO - Mean ITL (ms):                           516.33    
+[2026-03-25 05:44:14] INFO - Median ITL (ms):                         257.53    
+[2026-03-25 05:44:14] INFO - P1 ITL (ms):                             44.45     
+[2026-03-25 05:44:14] INFO - P5 ITL (ms):                             47.69     
+[2026-03-25 05:44:14] INFO - P10 ITL (ms):                            56.39     
+[2026-03-25 05:44:14] INFO - P25 ITL (ms):                            235.20    
+[2026-03-25 05:44:14] INFO - P50 ITL (ms):                            257.53    
+[2026-03-25 05:44:14] INFO - P75 ITL (ms):                            634.85    
+[2026-03-25 05:44:14] INFO - P90 ITL (ms):                            1180.29   
+[2026-03-25 05:44:14] INFO - P95 ITL (ms):                            1636.96   
+[2026-03-25 05:44:14] INFO - P99 ITL (ms):                            2932.26   
+[2026-03-25 05:44:14] INFO - ==================================================
+[2026-03-25 05:44:14] INFO - Cleaning up...
+[2026-03-25 05:44:14] INFO - Stopping pipelines...
+[2026-03-25 05:44:15] INFO - All pipelines stopped

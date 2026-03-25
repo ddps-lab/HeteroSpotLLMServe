@@ -1,133 +1,133 @@
-[2026-03-24 07:52:37] INFO - ======================================================================
-[2026-03-24 07:52:37] INFO - Online Benchmark — Concurrent Initialization Spot Tolerance — Scenario A
-[2026-03-24 07:52:37] INFO -   Model: Qwen/Qwen3-32B
-[2026-03-24 07:52:37] INFO -   Pipelines: 4
-[2026-03-24 07:52:37] INFO -   SS-P1: tput=5.865  spot_g6e_xlarge_node_ip_1:16 → spot_g6e_xlarge_node_ip_2:16 → spot_g6e_xlarge_node_ip_3:16 → spot_g6e_xlarge_node_ip_4:16
-[2026-03-24 07:52:37] INFO -   SS-P2: tput=2.628  spot_g6_12xlarge_node_ip_1:24 → spot_g6_12xlarge_node_ip_2:24 → spot_g6_12xlarge_node_ip_3:16
-[2026-03-24 07:52:37] INFO -   SS-P3: tput=0.466  on_demand_g5_12xlarge_node_ip_1:64
-[2026-03-24 07:52:37] INFO -   SS-P4: tput=0.466  on_demand_g5_12xlarge_node_ip_2:64
-[2026-03-24 07:52:37] INFO -   Total predicted: 9.424 req/s
-[2026-03-24 07:52:37] INFO -   Events: 7
-[2026-03-24 07:52:37] INFO -     t=5min  interruption  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
-[2026-03-24 07:52:37] INFO -     t=15min  restore  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
-[2026-03-24 07:52:37] INFO -     t=25min  interruption  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
-[2026-03-24 07:52:37] INFO -     t=25min  restore  ['spot_g5_12xlarge_node_ip_1', 'spot_g5_12xlarge_node_ip_2']
-[2026-03-24 07:52:37] INFO -     t=35min  restore  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
-[2026-03-24 07:52:37] INFO -     t=45min  interruption  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
-[2026-03-24 07:52:37] INFO -     t=45min  interruption  ['spot_g5_12xlarge_node_ip_1', 'spot_g5_12xlarge_node_ip_2']
-[2026-03-24 07:52:37] INFO - ======================================================================
-[2026-03-24 07:52:37] INFO - Waiting for pipeline creation to complete...
-[2026-03-24 07:53:12] INFO - Pipeline creation completed
-[2026-03-24 07:54:04] INFO - Pipeline creation completed
-[2026-03-24 07:54:04] INFO - Pipeline creation completed
-[2026-03-24 07:54:04] INFO - Pipeline creation completed
-[2026-03-24 07:54:04] INFO - All pipelines are ready!
-[2026-03-24 07:54:04] INFO - Loading trace dataset from: /home/ubuntu/ShuntServe/ArtifactEvaluation/Datasets/AzureLLMInferenceConvTrace_pruned_2048.csv
-[2026-03-24 07:54:04] INFO - 
+[2026-03-25 06:47:11] INFO - ======================================================================
+[2026-03-25 06:47:11] INFO - Online Benchmark — Concurrent Initialization Spot Tolerance — Scenario A
+[2026-03-25 06:47:11] INFO -   Model: Qwen/Qwen3-32B
+[2026-03-25 06:47:11] INFO -   Pipelines: 4
+[2026-03-25 06:47:11] INFO -   SS-P1: tput=5.865  spot_g6e_xlarge_node_ip_1:16 → spot_g6e_xlarge_node_ip_2:16 → spot_g6e_xlarge_node_ip_3:16 → spot_g6e_xlarge_node_ip_4:16
+[2026-03-25 06:47:11] INFO -   SS-P2: tput=2.628  spot_g6_12xlarge_node_ip_1:24 → spot_g6_12xlarge_node_ip_2:24 → spot_g6_12xlarge_node_ip_3:16
+[2026-03-25 06:47:11] INFO -   SS-P3: tput=0.466  on_demand_g5_12xlarge_node_ip_1:64
+[2026-03-25 06:47:11] INFO -   SS-P4: tput=0.466  on_demand_g5_12xlarge_node_ip_2:64
+[2026-03-25 06:47:11] INFO -   Total predicted: 9.424 req/s
+[2026-03-25 06:47:11] INFO -   Events: 7
+[2026-03-25 06:47:11] INFO -     t=5min  interruption  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
+[2026-03-25 06:47:11] INFO -     t=15min  restore  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
+[2026-03-25 06:47:11] INFO -     t=25min  interruption  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
+[2026-03-25 06:47:11] INFO -     t=25min  restore  ['spot_g5_12xlarge_node_ip_1', 'spot_g5_12xlarge_node_ip_2']
+[2026-03-25 06:47:11] INFO -     t=35min  restore  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
+[2026-03-25 06:47:11] INFO -     t=45min  interruption  ['spot_g6e_xlarge_node_ip_1', 'spot_g6e_xlarge_node_ip_2', 'spot_g6e_xlarge_node_ip_3', 'spot_g6e_xlarge_node_ip_4']
+[2026-03-25 06:47:11] INFO -     t=45min  interruption  ['spot_g5_12xlarge_node_ip_1', 'spot_g5_12xlarge_node_ip_2']
+[2026-03-25 06:47:11] INFO - ======================================================================
+[2026-03-25 06:47:11] INFO - Waiting for pipeline creation to complete...
+[2026-03-25 06:47:47] INFO - Pipeline creation completed
+[2026-03-25 06:48:38] INFO - Pipeline creation completed
+[2026-03-25 06:48:38] INFO - Pipeline creation completed
+[2026-03-25 06:48:42] INFO - Pipeline creation completed
+[2026-03-25 06:48:42] INFO - All pipelines are ready!
+[2026-03-25 06:48:42] INFO - Loading trace dataset from: /home/ubuntu/ShuntServe/ArtifactEvaluation/Datasets/AzureLLMInferenceConvTrace_pruned_2048.csv
+[2026-03-25 06:48:42] INFO - 
 ============================================================
-[2026-03-24 07:54:04] INFO -                Azure Trace Dataset Loaded
-[2026-03-24 07:54:04] INFO - ============================================================
-[2026-03-24 07:54:04] INFO - Total requests:                          16663
-[2026-03-24 07:54:04] INFO - Time range (s):                          0.000 - 3501.722
-[2026-03-24 07:54:04] INFO - Duration (s):                            3501.722
-[2026-03-24 07:54:04] INFO - Average request rate (req/s):            4.76
-[2026-03-24 07:54:04] INFO - 
-[2026-03-24 07:54:04] INFO - Context tokens - Min:                    2
-[2026-03-24 07:54:04] INFO - Context tokens - Max:                    2047
-[2026-03-24 07:54:04] INFO - Context tokens - Mean:                   762.8
-[2026-03-24 07:54:04] INFO - Context tokens - Median (P50):           947.0
-[2026-03-24 07:54:04] INFO - Context tokens - P99:                    1911.4
-[2026-03-24 07:54:04] INFO - 
-[2026-03-24 07:54:04] INFO - Generated tokens - Min:                  7
-[2026-03-24 07:54:04] INFO - Generated tokens - Max:                  1000
-[2026-03-24 07:54:04] INFO - Generated tokens - Mean:                 232.4
-[2026-03-24 07:54:04] INFO - Generated tokens - Median (P50):         157.0
-[2026-03-24 07:54:04] INFO - Generated tokens - P99:                  608.4
-[2026-03-24 07:54:04] INFO - ============================================================
+[2026-03-25 06:48:42] INFO -                Azure Trace Dataset Loaded
+[2026-03-25 06:48:42] INFO - ============================================================
+[2026-03-25 06:48:42] INFO - Total requests:                          16663
+[2026-03-25 06:48:42] INFO - Time range (s):                          0.000 - 3501.722
+[2026-03-25 06:48:42] INFO - Duration (s):                            3501.722
+[2026-03-25 06:48:42] INFO - Average request rate (req/s):            4.76
+[2026-03-25 06:48:42] INFO - 
+[2026-03-25 06:48:42] INFO - Context tokens - Min:                    2
+[2026-03-25 06:48:42] INFO - Context tokens - Max:                    2047
+[2026-03-25 06:48:42] INFO - Context tokens - Mean:                   762.8
+[2026-03-25 06:48:42] INFO - Context tokens - Median (P50):           947.0
+[2026-03-25 06:48:42] INFO - Context tokens - P99:                    1911.4
+[2026-03-25 06:48:42] INFO - 
+[2026-03-25 06:48:42] INFO - Generated tokens - Min:                  7
+[2026-03-25 06:48:42] INFO - Generated tokens - Max:                  1000
+[2026-03-25 06:48:42] INFO - Generated tokens - Mean:                 232.4
+[2026-03-25 06:48:42] INFO - Generated tokens - Median (P50):         157.0
+[2026-03-25 06:48:42] INFO - Generated tokens - P99:                  608.4
+[2026-03-25 06:48:42] INFO - ============================================================
 
-[2026-03-24 07:54:04] INFO - Generating requests from trace data...
-[2026-03-24 07:54:11] INFO - Generated 16663 requests from trace
+[2026-03-25 06:48:42] INFO - Generating requests from trace data...
+[2026-03-25 06:48:50] INFO - Generated 16663 requests from trace
 
-[2026-03-24 07:54:11] INFO - 
+[2026-03-25 06:48:50] INFO - 
 ============================================================
-[2026-03-24 07:54:11] INFO -                Starting Trace Replay Benchmark
-[2026-03-24 07:54:11] INFO - ============================================================
-[2026-03-24 07:54:11] INFO - Total requests:                          16663
-[2026-03-24 07:54:11] INFO - Time scale:                              1.25x
-[2026-03-24 07:54:11] INFO - Original trace duration (s):             3501.722
-[2026-03-24 07:54:11] INFO - Scaled duration (s):                     4377.152
-[2026-03-24 07:54:11] INFO - ============================================================
+[2026-03-25 06:48:50] INFO -                Starting Trace Replay Benchmark
+[2026-03-25 06:48:50] INFO - ============================================================
+[2026-03-25 06:48:50] INFO - Total requests:                          16663
+[2026-03-25 06:48:50] INFO - Time scale:                              1.0x
+[2026-03-25 06:48:50] INFO - Original trace duration (s):             3501.722
+[2026-03-25 06:48:50] INFO - Scaled duration (s):                     3501.722
+[2026-03-25 06:48:50] INFO - ============================================================
 
-[2026-03-24 07:59:12] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8']
-[2026-03-24 08:00:36] INFO - Node switch completed in 84.43s
-[2026-03-24 08:09:12] INFO - Starting node switch: ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8'] -> ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22']
-[2026-03-24 08:10:37] INFO - Node switch completed in 85.06s
-[2026-03-24 08:19:12] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22', '192.168.0.124', '192.168.0.57'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8', '192.168.0.25', '192.168.0.189']
-[2026-03-24 08:20:46] INFO - Node switch completed in 94.44s
-[2026-03-24 08:29:12] INFO - Starting node switch: ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8'] -> ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22']
-[2026-03-24 08:30:46] INFO - Node switch completed in 94.69s
-[2026-03-24 08:39:12] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22', '192.168.0.25', '192.168.0.189'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8', '192.168.0.124', '192.168.0.57']
-[2026-03-24 08:40:41] INFO - Node switch completed in 89.54s
-[2026-03-24 08:54:18] INFO - 
+[2026-03-25 06:53:51] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8']
+[2026-03-25 06:55:21] INFO - Node switch completed in 90.48s
+[2026-03-25 07:03:51] INFO - Starting node switch: ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8'] -> ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22']
+[2026-03-25 07:05:14] INFO - Node switch completed in 83.59s
+[2026-03-25 07:13:51] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22', '192.168.0.124', '192.168.0.57'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8', '192.168.0.25', '192.168.0.189']
+[2026-03-25 07:15:28] INFO - Node switch completed in 97.00s
+[2026-03-25 07:23:51] INFO - Starting node switch: ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8'] -> ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22']
+[2026-03-25 07:25:25] INFO - Node switch completed in 94.27s
+[2026-03-25 07:33:51] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22', '192.168.0.25', '192.168.0.189'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8', '192.168.0.124', '192.168.0.57']
+[2026-03-25 07:35:18] INFO - Node switch completed in 87.53s
+[2026-03-25 07:48:58] INFO - 
 ==================================================
-[2026-03-24 08:54:18] INFO -             Serving Benchmark Result
-[2026-03-24 08:54:18] INFO - ==================================================
-[2026-03-24 08:54:18] INFO - Successful requests:                     14015     
-[2026-03-24 08:54:18] INFO - Benchmark duration (s):                  3600.47   
-[2026-03-24 08:54:18] INFO - Total input tokens:                      10477099  
-[2026-03-24 08:54:18] INFO - Total generated tokens:                  3103598   
-[2026-03-24 08:54:18] INFO - Request throughput (req/s):              3.89      
-[2026-03-24 08:54:18] INFO - Output token throughput (tok/s):         862.00    
-[2026-03-24 08:54:18] INFO - Total Token throughput (tok/s):          3771.92   
-[2026-03-24 08:54:18] INFO - ----------------End-to-end Latency----------------
-[2026-03-24 08:54:18] INFO - Mean E2EL (ms):                          88695.98  
-[2026-03-24 08:54:18] INFO - Median E2EL (ms):                        52688.61  
-[2026-03-24 08:54:18] INFO - P1 E2EL (ms):                            3585.95   
-[2026-03-24 08:54:18] INFO - P5 E2EL (ms):                            6747.14   
-[2026-03-24 08:54:18] INFO - P10 E2EL (ms):                           14248.81  
-[2026-03-24 08:54:18] INFO - P25 E2EL (ms):                           27295.54  
-[2026-03-24 08:54:18] INFO - P50 E2EL (ms):                           52688.61  
-[2026-03-24 08:54:18] INFO - P75 E2EL (ms):                           139776.98 
-[2026-03-24 08:54:18] INFO - P90 E2EL (ms):                           207706.23 
-[2026-03-24 08:54:18] INFO - P95 E2EL (ms):                           250090.20 
-[2026-03-24 08:54:18] INFO - P99 E2EL (ms):                           359309.65 
-[2026-03-24 08:54:18] INFO - ---------------Time to First Token----------------
-[2026-03-24 08:54:18] INFO - Mean TTFT (ms):                          13046.93  
-[2026-03-24 08:54:18] INFO - Median TTFT (ms):                        1050.98   
-[2026-03-24 08:54:18] INFO - P1 TTFT (ms):                            217.11    
-[2026-03-24 08:54:18] INFO - P5 TTFT (ms):                            282.33    
-[2026-03-24 08:54:18] INFO - P10 TTFT (ms):                           362.16    
-[2026-03-24 08:54:18] INFO - P25 TTFT (ms):                           562.55    
-[2026-03-24 08:54:18] INFO - P50 TTFT (ms):                           1050.98   
-[2026-03-24 08:54:18] INFO - P75 TTFT (ms):                           7176.70   
-[2026-03-24 08:54:18] INFO - P90 TTFT (ms):                           38150.30  
-[2026-03-24 08:54:18] INFO - P95 TTFT (ms):                           74565.08  
-[2026-03-24 08:54:18] INFO - P99 TTFT (ms):                           175717.08 
-[2026-03-24 08:54:18] INFO - -----Time per Output Token (excl. 1st token)------
-[2026-03-24 08:54:18] INFO - Mean TPOT (ms):                          348.34    
-[2026-03-24 08:54:18] INFO - Median TPOT (ms):                        372.48    
-[2026-03-24 08:54:18] INFO - P1 TPOT (ms):                            45.35     
-[2026-03-24 08:54:18] INFO - P5 TPOT (ms):                            53.83     
-[2026-03-24 08:54:18] INFO - P10 TPOT (ms):                           73.73     
-[2026-03-24 08:54:18] INFO - P25 TPOT (ms):                           238.33    
-[2026-03-24 08:54:18] INFO - P50 TPOT (ms):                           372.48    
-[2026-03-24 08:54:18] INFO - P75 TPOT (ms):                           451.91    
-[2026-03-24 08:54:18] INFO - P90 TPOT (ms):                           506.60    
-[2026-03-24 08:54:18] INFO - P95 TPOT (ms):                           561.51    
-[2026-03-24 08:54:18] INFO - P99 TPOT (ms):                           786.49    
-[2026-03-24 08:54:18] INFO - ---------------Inter-token Latency----------------
-[2026-03-24 08:54:18] INFO - Mean ITL (ms):                           343.16    
-[2026-03-24 08:54:18] INFO - Median ITL (ms):                         229.13    
-[2026-03-24 08:54:18] INFO - P1 ITL (ms):                             44.07     
-[2026-03-24 08:54:18] INFO - P5 ITL (ms):                             45.83     
-[2026-03-24 08:54:18] INFO - P10 ITL (ms):                            51.13     
-[2026-03-24 08:54:18] INFO - P25 ITL (ms):                            128.21    
-[2026-03-24 08:54:18] INFO - P50 ITL (ms):                            229.13    
-[2026-03-24 08:54:18] INFO - P75 ITL (ms):                            349.29    
-[2026-03-24 08:54:18] INFO - P90 ITL (ms):                            783.24    
-[2026-03-24 08:54:18] INFO - P95 ITL (ms):                            1046.00   
-[2026-03-24 08:54:18] INFO - P99 ITL (ms):                            1882.04   
-[2026-03-24 08:54:18] INFO - ==================================================
-[2026-03-24 08:54:18] INFO - Cleaning up...
-[2026-03-24 08:54:18] INFO - Stopping pipelines...
-[2026-03-24 08:54:19] INFO - All pipelines stopped
+[2026-03-25 07:48:58] INFO -             Serving Benchmark Result
+[2026-03-25 07:48:58] INFO - ==================================================
+[2026-03-25 07:48:58] INFO - Successful requests:                     16601     
+[2026-03-25 07:48:58] INFO - Benchmark duration (s):                  3600.16   
+[2026-03-25 07:48:58] INFO - Total input tokens:                      12644355  
+[2026-03-25 07:48:58] INFO - Total generated tokens:                  3838276   
+[2026-03-25 07:48:58] INFO - Request throughput (req/s):              4.61      
+[2026-03-25 07:48:58] INFO - Output token throughput (tok/s):         1066.14   
+[2026-03-25 07:48:58] INFO - Total Token throughput (tok/s):          4578.31   
+[2026-03-25 07:48:58] INFO - ----------------End-to-end Latency----------------
+[2026-03-25 07:48:58] INFO - Mean E2EL (ms):                          154015.13 
+[2026-03-25 07:48:58] INFO - Median E2EL (ms):                        98930.74  
+[2026-03-25 07:48:58] INFO - P1 E2EL (ms):                            4652.06   
+[2026-03-25 07:48:58] INFO - P5 E2EL (ms):                            10432.66  
+[2026-03-25 07:48:58] INFO - P10 E2EL (ms):                           23167.58  
+[2026-03-25 07:48:58] INFO - P25 E2EL (ms):                           47957.68  
+[2026-03-25 07:48:58] INFO - P50 E2EL (ms):                           98930.74  
+[2026-03-25 07:48:58] INFO - P75 E2EL (ms):                           212814.99 
+[2026-03-25 07:48:58] INFO - P90 E2EL (ms):                           381964.29 
+[2026-03-25 07:48:58] INFO - P95 E2EL (ms):                           473145.66 
+[2026-03-25 07:48:58] INFO - P99 E2EL (ms):                           582050.29 
+[2026-03-25 07:48:58] INFO - ---------------Time to First Token----------------
+[2026-03-25 07:48:58] INFO - Mean TTFT (ms):                          26745.05  
+[2026-03-25 07:48:58] INFO - Median TTFT (ms):                        10978.20  
+[2026-03-25 07:48:58] INFO - P1 TTFT (ms):                            241.45    
+[2026-03-25 07:48:58] INFO - P5 TTFT (ms):                            428.18    
+[2026-03-25 07:48:58] INFO - P10 TTFT (ms):                           552.46    
+[2026-03-25 07:48:58] INFO - P25 TTFT (ms):                           1169.01   
+[2026-03-25 07:48:58] INFO - P50 TTFT (ms):                           10978.20  
+[2026-03-25 07:48:58] INFO - P75 TTFT (ms):                           35600.82  
+[2026-03-25 07:48:58] INFO - P90 TTFT (ms):                           73530.83  
+[2026-03-25 07:48:58] INFO - P95 TTFT (ms):                           104499.13 
+[2026-03-25 07:48:58] INFO - P99 TTFT (ms):                           203667.10 
+[2026-03-25 07:48:58] INFO - -----Time per Output Token (excl. 1st token)------
+[2026-03-25 07:48:58] INFO - Mean TPOT (ms):                          563.52    
+[2026-03-25 07:48:58] INFO - Median TPOT (ms):                        478.98    
+[2026-03-25 07:48:58] INFO - P1 TPOT (ms):                            48.47     
+[2026-03-25 07:48:58] INFO - P5 TPOT (ms):                            66.38     
+[2026-03-25 07:48:58] INFO - P10 TPOT (ms):                           115.69    
+[2026-03-25 07:48:58] INFO - P25 TPOT (ms):                           371.81    
+[2026-03-25 07:48:58] INFO - P50 TPOT (ms):                           478.98    
+[2026-03-25 07:48:58] INFO - P75 TPOT (ms):                           821.97    
+[2026-03-25 07:48:58] INFO - P90 TPOT (ms):                           1039.00   
+[2026-03-25 07:48:58] INFO - P95 TPOT (ms):                           1165.60   
+[2026-03-25 07:48:58] INFO - P99 TPOT (ms):                           1411.10   
+[2026-03-25 07:48:58] INFO - ---------------Inter-token Latency----------------
+[2026-03-25 07:48:58] INFO - Mean ITL (ms):                           552.84    
+[2026-03-25 07:48:58] INFO - Median ITL (ms):                         264.82    
+[2026-03-25 07:48:58] INFO - P1 ITL (ms):                             45.16     
+[2026-03-25 07:48:58] INFO - P5 ITL (ms):                             48.84     
+[2026-03-25 07:48:58] INFO - P10 ITL (ms):                            61.81     
+[2026-03-25 07:48:58] INFO - P25 ITL (ms):                            229.73    
+[2026-03-25 07:48:58] INFO - P50 ITL (ms):                            264.82    
+[2026-03-25 07:48:58] INFO - P75 ITL (ms):                            634.85    
+[2026-03-25 07:48:58] INFO - P90 ITL (ms):                            1317.10   
+[2026-03-25 07:48:58] INFO - P95 ITL (ms):                            1870.34   
+[2026-03-25 07:48:58] INFO - P99 ITL (ms):                            3265.10   
+[2026-03-25 07:48:58] INFO - ==================================================
+[2026-03-25 07:48:58] INFO - Cleaning up...
+[2026-03-25 07:48:59] INFO - Stopping pipelines...
+[2026-03-25 07:49:00] INFO - All pipelines stopped
