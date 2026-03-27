@@ -34,13 +34,11 @@ sys.path.insert(0, os.path.join(_root, "ModelPlacement"))
 import torch
 import logging
 
-# ── Logger setup (terminal + file) ────────────────────────────────────
+# ── Logger setup (terminal handler first; file handler added in main) ─
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 _kst = timezone(timedelta(hours=9))
 _log_dir = os.path.join(_script_dir, "logs")
 os.makedirs(_log_dir, exist_ok=True)
-_log_filename = f"benchmark_{datetime.now(_kst).strftime('%Y%m%d_%H%M%S')}.log"
-_log_path = os.path.join(_log_dir, _log_filename)
 
 log = logging.getLogger("topk_benchmark")
 log.setLevel(logging.INFO)
@@ -52,11 +50,6 @@ _sh = logging.StreamHandler(sys.stdout)
 _sh.setLevel(logging.INFO)
 _sh.setFormatter(_fmt)
 log.addHandler(_sh)
-
-_fh = logging.FileHandler(_log_path, encoding="utf-8")
-_fh.setLevel(logging.INFO)
-_fh.setFormatter(_fmt)
-log.addHandler(_fh)
 
 # Suppress optimizer internal logging in workers
 logging.getLogger("shuntserve_optimizer").setLevel(logging.CRITICAL)
@@ -258,6 +251,18 @@ def main():
     k_values = args.k or K_VALUES
     max_workers = args.workers or max(1, mp.cpu_count() - 1)
 
+    # ── Attach file handler with config-based name ──────────────────
+    m_tag = "+".join(models)
+    c_tag = "+".join(clusters)
+    k_tag = f"{k_values[0]}-{k_values[-1]}"
+    _ts = datetime.now(_kst).strftime("%Y%m%d_%H%M%S")
+    _log_filename = f"benchmark_m={m_tag}_c={c_tag}_k={k_tag}_{_ts}.log"
+    _log_path = os.path.join(_log_dir, _log_filename)
+    _fh = logging.FileHandler(_log_path, encoding="utf-8")
+    _fh.setLevel(logging.INFO)
+    _fh.setFormatter(_fmt)
+    log.addHandler(_fh)
+
     experiments = [
         (m, c, k)
         for m in models
@@ -313,10 +318,6 @@ def main():
     output_dir = os.path.dirname(os.path.abspath(__file__))
     kst_now = datetime.now(_kst).strftime("%Y-%m-%d %H:%M:%S KST")
 
-    # Build descriptive filename from settings
-    m_tag = "+".join(models)
-    c_tag = "+".join(clusters)
-    k_tag = f"{k_values[0]}-{k_values[-1]}"
     output_filename = f"results_m={m_tag}_c={c_tag}_k={k_tag}.json"
 
     output = {
