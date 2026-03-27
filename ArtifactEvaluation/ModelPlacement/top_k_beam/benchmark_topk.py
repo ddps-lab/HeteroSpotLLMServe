@@ -312,18 +312,25 @@ def main():
     # ── Save JSON ─────────────────────────────────────────────────────
     output_dir = os.path.dirname(os.path.abspath(__file__))
     kst_now = datetime.now(_kst).strftime("%Y-%m-%d %H:%M:%S KST")
+
+    # Build descriptive filename from settings
+    m_tag = "+".join(models)
+    c_tag = "+".join(clusters)
+    k_tag = f"{k_values[0]}-{k_values[-1]}"
+    output_filename = f"results_m={m_tag}_c={c_tag}_k={k_tag}.json"
+
     output = {
         "benchmark": "shuntserve_topk_sweep",
         "timestamp": kst_now,
         "total_wall_time_sec": round(bench_elapsed, 2),
         "max_workers": max_workers,
         "k_values": k_values,
-        "models": dict(MODELS),
-        "clusters": {k: v for k, v in CLUSTERS.items()},
+        "models": {k: MODELS[k] for k in models},
+        "clusters": {k: CLUSTERS[k] for k in clusters},
         "workload": COMMON,
         "results": results,
     }
-    output_file = os.path.join(output_dir, "topk_benchmark_results.json")
+    output_file = os.path.join(output_dir, output_filename)
     with open(output_file, "w") as f:
         json.dump(output, f, indent=2)
 
