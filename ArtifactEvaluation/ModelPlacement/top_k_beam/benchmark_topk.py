@@ -74,7 +74,7 @@ K_VALUES = list(range(1, 9)) + [16, 32, 64, 128]
 
 CLUSTERS = {
     "eval_cluster": {
-        "description": "Evaluation cluster (9 nodes, 24 GPUs)",
+        "description": "Evaluation cluster (3type, 9 nodes, 24 GPUs)",
         "nodes": {
             "g5.12xlarge": 2,
             "g6.12xlarge": 3,
@@ -82,7 +82,7 @@ CLUSTERS = {
         },
     },
     "large_hetero_cluster": {
-        "description": "Large heterogeneous cluster (15 nodes, 76 GPUs)",
+        "description": "Large heterogeneous cluster (7 types, 15 nodes, 76 GPUs)",
         "nodes": {
             "g4dn.xlarge": 1,
             "g4dn.12xlarge": 1,
@@ -95,7 +95,10 @@ CLUSTERS = {
             "g6.48xlarge": 1,
             "g6e.xlarge": 1,
             "g6e.12xlarge": 1,
-            "g6e.48xlarge": 1
+            "g6e.48xlarge": 1,
+            "p4d.24xlarge": 1,
+            "p5.48xlarge": 1,
+            "p6-b200.48xlarge": 1,
         },
     },
 }
