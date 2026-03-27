@@ -95,10 +95,7 @@ CLUSTERS = {
             "g6.48xlarge": 1,
             "g6e.xlarge": 1,
             "g6e.12xlarge": 1,
-            "g6e.48xlarge": 1,
-            "p4d.24xlarge": 1,
-            "p5.48xlarge": 1,
-            "p6-b200.48xlarge": 1,
+            "g6e.48xlarge": 1
         },
     },
 }
