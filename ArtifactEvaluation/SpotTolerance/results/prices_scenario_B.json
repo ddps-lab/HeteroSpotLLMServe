@@ -1,0 +1,96 @@
+{
+  "spot": [
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g5.12xlarge",
+      "Price": "2.044800",
+      "Time": "2026-03-17T05:47:40+00:00"
+    },
+    {
+      "AZ": "us-west-2b",
+      "Instance": "g5.12xlarge",
+      "Price": "2.382600",
+      "Time": "2026-03-17T05:32:40+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g5.12xlarge",
+      "Price": "2.301200",
+      "Time": "2026-03-17T00:47:46+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g5.12xlarge",
+      "Price": "2.315000",
+      "Time": "2026-03-17T08:17:38+00:00"
+    },
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g6.12xlarge",
+      "Price": "2.408300",
+      "Time": "2026-03-17T00:18:01+00:00"
+    },
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g6.12xlarge",
+      "Price": "2.411400",
+      "Time": "2026-03-17T08:47:21+00:00"
+    },
+    {
+      "AZ": "us-west-2b",
+      "Instance": "g6.12xlarge",
+      "Price": "2.567000",
+      "Time": "2026-03-17T04:32:46+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g6.12xlarge",
+      "Price": "2.087400",
+      "Time": "2026-03-17T02:48:55+00:00"
+    },
+    {
+      "AZ": "us-west-2d",
+      "Instance": "g6.12xlarge",
+      "Price": "2.106100",
+      "Time": "2026-03-17T02:48:55+00:00"
+    },
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g6e.xlarge",
+      "Price": "0.851200",
+      "Time": "2026-03-17T08:02:16+00:00"
+    },
+    {
+      "AZ": "us-west-2b",
+      "Instance": "g6e.xlarge",
+      "Price": "1.415100",
+      "Time": "2026-03-17T07:47:49+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g6e.xlarge",
+      "Price": "0.891200",
+      "Time": "2026-03-17T07:02:44+00:00"
+    },
+    {
+      "AZ": "us-west-2d",
+      "Instance": "g6e.xlarge",
+      "Price": "1.332100",
+      "Time": "2026-03-17T05:47:12+00:00"
+    }
+  ],
+  "ondemand": [
+    {
+      "Instance": "g5.12xlarge",
+      "PricePerHour_USD": "5.6720000000"
+    },
+    {
+      "Instance": "g6.12xlarge",
+      "PricePerHour_USD": "4.6016000000"
+    },
+    {
+      "Instance": "g6e.xlarge",
+      "PricePerHour_USD": "1.8610000000"
+    }
+  ]
+}

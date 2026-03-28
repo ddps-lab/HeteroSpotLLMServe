@@ -1,0 +1,75 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "total_num_layers": 80,
+  "total_throughput_rps": 2.8305132690479464,
+  "pipelines": [
+    {
+      "label": "SS-P1",
+      "predicted_throughput_rps": 1.9951945710714936,
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-70B-Instruct",
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "14,14,13,13,13,13",
+        "parallel_strategy": [4, 4, 1, 1, 1, 1],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct",
+        "num_gpu_blocks": 15173,
+        "max_batch_size": 243
+      },
+      "node_layer_mapping": [
+        [
+          "on_demand_g6_12xlarge_node_ip_1", 14
+        ],
+        [
+          "on_demand_g6_12xlarge_node_ip_2", 14
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_1", 13
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_2", 13
+        ],
+        [
+          "on_demand_g6e_xlarge_node_ip_3", 13
+        ],
+        [
+          "on_demand_g6e_xlarge_node_ip_4", 13
+        ]
+      ]
+    },
+    {
+      "label": "SS-P2",
+      "predicted_throughput_rps": 0.835318697976453,
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-70B-Instruct",
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "26,26,28",
+        "parallel_strategy": [4, 4, 4],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct",
+        "num_gpu_blocks": 13867,
+        "max_batch_size": 222
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g5_12xlarge_node_ip_1", 26
+        ],
+        [
+          "spot_g5_12xlarge_node_ip_2", 26
+        ],
+        [
+          "on_demand_g6_12xlarge_node_ip_3", 28
+        ]
+      ]
+    }
+  ]
+}
