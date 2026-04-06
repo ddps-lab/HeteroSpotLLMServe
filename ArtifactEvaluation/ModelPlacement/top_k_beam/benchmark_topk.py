@@ -76,29 +76,51 @@ CLUSTERS = {
     "eval_cluster": {
         "description": "Evaluation cluster (3type, 9 nodes, 24 GPUs)",
         "nodes": {
-            "g5.12xlarge": 2,
-            "g6.12xlarge": 3,
-            "g6e.xlarge": 4,
+            "(spot)g5.12xlarge": 2,
+            "(spot)g6.12xlarge": 3,
+            "(spot)g6e.xlarge": 4,
+        },
+        "prices": {
+            "(spot)g5.12xlarge": 2.2915,
+            "(spot)g6.12xlarge": 1.9445,
+            "(spot)g6e.xlarge": 0.7040,
         },
     },
     "large_hetero_cluster": {
         "description": "Large heterogeneous cluster (7 types, 15 nodes, 76 GPUs)",
         "nodes": {
-            "g4dn.xlarge": 1,
-            "g4dn.12xlarge": 1,
-            "g4dn.metal": 1,
-            "g5.xlarge": 1,
-            "g5.12xlarge": 1,
-            "g5.48xlarge": 1,
-            "g6.xlarge": 1,
-            "g6.12xlarge": 1,
-            "g6.48xlarge": 1,
-            "g6e.xlarge": 1,
-            "g6e.12xlarge": 1,
-            "g6e.48xlarge": 1,
-            "p4d.24xlarge": 1,
-            "p5.48xlarge": 1,
-            "p6-b200.48xlarge": 1,
+            "(spot)g4dn.xlarge": 1,
+            "(spot)g4dn.12xlarge": 1,
+            "(spot)g4dn.metal": 1,
+            "(spot)g5.xlarge": 1,
+            "(spot)g5.12xlarge": 1,
+            "(spot)g5.48xlarge": 1,
+            "(spot)g6.xlarge": 1,
+            "(spot)g6.12xlarge": 1,
+            "(spot)g6.48xlarge": 1,
+            "(spot)g6e.xlarge": 1,
+            "(spot)g6e.12xlarge": 1,
+            "(spot)g6e.48xlarge": 1,
+            "(spot)p4d.24xlarge": 1,
+            "(spot)p5.48xlarge": 1,
+            "(spot)p6-b200.48xlarge": 1,
+        },
+        "prices": {
+            "(spot)g4dn.xlarge": 0.2104,
+            "(spot)g4dn.12xlarge": 1.5648,
+            "(spot)g4dn.metal": 3.1296,
+            "(spot)g5.xlarge": 0.4024,
+            "(spot)g5.12xlarge": 2.2915,
+            "(spot)g5.48xlarge": 6.5152,
+            "(spot)g6.xlarge": 0.3219,
+            "(spot)g6.12xlarge": 1.9445,
+            "(spot)g6.48xlarge": 5.3402,
+            "(spot)g6e.xlarge": 0.7040,
+            "(spot)g6e.12xlarge": 4.1971,
+            "(spot)g6e.48xlarge": 12.0525,
+            "(spot)p4d.24xlarge": 8.7831,
+            "(spot)p5.48xlarge": 22.016,
+            "(spot)p6-b200.48xlarge": 45.5731,
         },
     },
 }
@@ -139,6 +161,7 @@ def run_single_experiment(model_key: str, cluster_key: str, top_k: int) -> Dict[
 
     config = build_model_config(model_key)
     remaining = dict(CLUSTERS[cluster_key]["nodes"])
+    prices = CLUSTERS[cluster_key].get("prices")
     pipelines: List[Pipeline] = []
     total_opt_time = 0.0
 
@@ -148,7 +171,7 @@ def run_single_experiment(model_key: str, cluster_key: str, top_k: int) -> Dict[
         if all(v == 0 for v in remaining.values()):
             break
 
-        pool = ClusterPool(available_spot_nodes=remaining, spot_prices=None)
+        pool = ClusterPool(available_spot_nodes=remaining, spot_prices=prices)
         results, _, opt_time = run_test_case(
             config, budget=9999, latency_slo=99999999,
             cluster_pool=pool, max_stages=None, top_k=top_k,
@@ -166,7 +189,7 @@ def run_single_experiment(model_key: str, cluster_key: str, top_k: int) -> Dict[
                 merged = dict(remaining)
                 for inst, cnt in last_used.items():
                     merged[inst] = merged.get(inst, 0) + cnt
-                merged_pool = ClusterPool(available_spot_nodes=merged, spot_prices=None)
+                merged_pool = ClusterPool(available_spot_nodes=merged, spot_prices=prices)
                 merged_res, _, m_time = run_test_case(
                     config, budget=9999, latency_slo=99999999,
                     cluster_pool=merged_pool, max_stages=None, top_k=top_k,
