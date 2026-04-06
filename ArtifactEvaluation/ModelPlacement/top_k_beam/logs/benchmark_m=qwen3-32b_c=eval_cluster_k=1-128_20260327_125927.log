@@ -1,0 +1,51 @@
+2026-03-27 03:59:27 │ ════════════════════════════════════════════════════════
+2026-03-27 03:59:27 │ ShuntServe Top-K Beam Search Benchmark
+2026-03-27 03:59:27 │ ════════════════════════════════════════════════════════
+2026-03-27 03:59:27 │ Models    : ['qwen3-32b']
+2026-03-27 03:59:27 │ Clusters  : ['eval_cluster']
+2026-03-27 03:59:27 │ K values  : [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32, 48, 64, 96, 128]
+2026-03-27 03:59:27 │ Total runs: 15
+2026-03-27 03:59:27 │ Workers   : 31 (cpu_count - 1)
+2026-03-27 03:59:27 │ Log file  : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=qwen3-32b_c=eval_cluster_k=1-128_20260327_125927.log
+2026-03-27 03:59:27 │ ────────────────────────────────────────────────────────
+2026-03-27 03:59:39 │ [  1/15] qwen3-32b    | eval_cluster           | k=  1 | wall=   11.26s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 03:59:50 │ [  2/15] qwen3-32b    | eval_cluster           | k=  2 | wall=   22.73s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 03:59:59 │ [  3/15] qwen3-32b    | eval_cluster           | k=  3 | wall=   31.40s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:08 │ [  4/15] qwen3-32b    | eval_cluster           | k=  4 | wall=   40.60s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:17 │ [  5/15] qwen3-32b    | eval_cluster           | k=  5 | wall=   49.02s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:23 │ [  6/15] qwen3-32b    | eval_cluster           | k=  6 | wall=   55.71s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:29 │ [  7/15] qwen3-32b    | eval_cluster           | k=  7 | wall=   60.83s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:33 │ [  8/15] qwen3-32b    | eval_cluster           | k=  8 | wall=   65.72s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:41 │ [  9/15] qwen3-32b    | eval_cluster           | k= 48 | wall=   72.87s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:41 │ [ 10/15] qwen3-32b    | eval_cluster           | k= 24 | wall=   72.92s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:41 │ [ 11/15] qwen3-32b    | eval_cluster           | k= 64 | wall=   73.05s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:41 │ [ 12/15] qwen3-32b    | eval_cluster           | k= 16 | wall=   73.36s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:41 │ [ 13/15] qwen3-32b    | eval_cluster           | k=128 | wall=   73.49s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:42 │ [ 14/15] qwen3-32b    | eval_cluster           | k= 32 | wall=   73.96s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:42 │ [ 15/15] qwen3-32b    | eval_cluster           | k= 96 | wall=   74.22s | throughput=  10.293 req/s | pipelines=3
+2026-03-27 04:00:42 │ 
+2026-03-27 04:00:42 │ ════════════════════════════════════════════════════════
+2026-03-27 04:00:42 │ RESULTS SUMMARY  (total elapsed: 74.9s)
+2026-03-27 04:00:42 │ ════════════════════════════════════════════════════════
+2026-03-27 04:00:42 │ 
+2026-03-27 04:00:42 │   [qwen3-32b] [Evaluation cluster (3type, 9 nodes, 24 GPUs)]
+2026-03-27 04:00:42 │       k │  wall_time │   opt_time │     throughput │ pipelines
+2026-03-27 04:00:42 │   ──────┼────────────┼────────────┼────────────────┼──────────
+2026-03-27 04:00:42 │       1 │     11.26s │     11.24s │      10.293    │         3
+2026-03-27 04:00:42 │       2 │     22.73s │     22.68s │      10.293    │         3
+2026-03-27 04:00:42 │       3 │     31.40s │     31.34s │      10.293    │         3
+2026-03-27 04:00:42 │       4 │     40.60s │     40.52s │      10.293    │         3
+2026-03-27 04:00:42 │       5 │     49.02s │     48.92s │      10.293    │         3
+2026-03-27 04:00:42 │       6 │     55.71s │     55.60s │      10.293    │         3
+2026-03-27 04:00:42 │       7 │     60.83s │     60.71s │      10.293    │         3
+2026-03-27 04:00:42 │       8 │     65.72s │     65.59s │      10.293    │         3
+2026-03-27 04:00:42 │      16 │     73.36s │     73.21s │      10.293    │         3
+2026-03-27 04:00:42 │      24 │     72.92s │     72.77s │      10.293    │         3
+2026-03-27 04:00:42 │      32 │     73.96s │     73.81s │      10.293    │         3
+2026-03-27 04:00:42 │      48 │     72.87s │     72.72s │      10.293    │         3
+2026-03-27 04:00:42 │      64 │     73.05s │     72.91s │      10.293    │         3
+2026-03-27 04:00:42 │      96 │     74.22s │     74.07s │      10.293    │         3
+2026-03-27 04:00:42 │     128 │     73.49s │     73.34s │      10.293    │         3
+2026-03-27 04:00:42 │ 
+2026-03-27 04:00:42 │ JSON results : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/json/results_m=qwen3-32b_c=eval_cluster_k=1-128.json
+2026-03-27 04:00:42 │ Log file     : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=qwen3-32b_c=eval_cluster_k=1-128_20260327_125927.log

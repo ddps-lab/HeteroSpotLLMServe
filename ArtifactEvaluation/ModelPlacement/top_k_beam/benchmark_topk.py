@@ -151,7 +151,7 @@ def run_single_experiment(model_key: str, cluster_key: str, top_k: int) -> Dict[
         pool = ClusterPool(available_spot_nodes=remaining, spot_prices=None)
         results, _, opt_time = run_test_case(
             config, budget=9999, latency_slo=99999999,
-            cluster_pool=pool, max_stages=13, top_k=top_k,
+            cluster_pool=pool, max_stages=None, top_k=top_k,
             optimization_mode="soft_slo",
         )
         total_opt_time += opt_time
@@ -169,7 +169,7 @@ def run_single_experiment(model_key: str, cluster_key: str, top_k: int) -> Dict[
                 merged_pool = ClusterPool(available_spot_nodes=merged, spot_prices=None)
                 merged_res, _, m_time = run_test_case(
                     config, budget=9999, latency_slo=99999999,
-                    cluster_pool=merged_pool, max_stages=13, top_k=top_k,
+                    cluster_pool=merged_pool, max_stages=None, top_k=top_k,
                     optimization_mode="only_throughput",
                 )
                 total_opt_time += m_time
@@ -315,7 +315,8 @@ def main():
     results.sort(key=lambda r: (r["model"], r["cluster"], r.get("top_k", 0)))
 
     # ── Save JSON ─────────────────────────────────────────────────────
-    output_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "json")
+    os.makedirs(output_dir, exist_ok=True)
     kst_now = datetime.now(_kst).strftime("%Y-%m-%d %H:%M:%S KST")
 
     output_filename = f"results_m={m_tag}_c={c_tag}_k={k_tag}.json"
