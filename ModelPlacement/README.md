@@ -4,11 +4,19 @@ This module determines optimal model placement (pipeline parallelism configurati
 
 ## Quick Start
 
+Each (baseline × model) combination has its own entry point under
+[`ArtifactEvaluation/ModelPlacement/optimizer/`](../ArtifactEvaluation/ModelPlacement/optimizer/):
+
 ```bash
-cd ArtifactEvaluation
-python model_placement_optimizer.py --baseline shuntserve
-python model_placement_optimizer.py --baseline hexgen alpaserve shuntserve
+cd ArtifactEvaluation/ModelPlacement/optimizer/llama3-70b
+python shuntserve.py        # ShuntServe beam-search DP
+python hexgen.py            # HEXGEN genetic algorithm
+python alpaserve.py         # AlpaServe homogeneous DP
+python vllm.py              # Single-pipeline vLLM baseline
 ```
+
+Substitute `qwen3-32b` for the Qwen model. Results are written to
+`optimizer/results/<model>/{estimated,measured}/predicted_<baseline>_<ModelName>.json`.
 
 ### Requirements
 

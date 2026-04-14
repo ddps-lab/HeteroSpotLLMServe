@@ -14,7 +14,7 @@ All instances are on-demand. Spot interruptions are simulated at the application
 | Head instance | 1x `m5.large` (default, configurable via `head_instance_type`) |
 | Worker instances | Configurable via `instance_type_count` map |
 
-Default worker configuration (matches the paper):
+Example worker configuration:
 
 | Instance Type | GPU | Count |
 |---|---|---|
@@ -76,7 +76,7 @@ instance_type_count = {
 }
 ```
 
-For the simplified 8B test setup (see [ArtifactEvaluation Appendix C](../ArtifactEvaluation/README.md#appendix-c-simplified-8b-test-setup)):
+For the UnitTest8B minimum functional test (see [`ArtifactEvaluation/SpotTolerance/UnitTest8B`](../ArtifactEvaluation/SpotTolerance/UnitTest8B)):
 
 ```hcl
 instance_type_count = {

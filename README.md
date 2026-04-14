@@ -14,7 +14,7 @@ Each module has its own README with detailed documentation.
 | **Shared Tensor Store** | [`TensorStore/`](TensorStore/) | Downloads model weights from HuggingFace, partitions them for tensor parallelism, serializes in a custom binary format (TRAW), uploads to S3, and serves pre-partitioned weights directly to GPU memory. See [TensorStore/README.md](TensorStore/README.md). |
 | **API Server** | [`InferenceServer/`](InferenceServer/) | FastAPI-based OpenAI-compatible serving endpoint that wraps the vLLM engine. Each pipeline instance runs its own API server. |
 | **Infrastructure as Code** | [`IaC/`](IaC/) | Terraform configuration for provisioning the evaluation cluster on AWS (VPC, security groups, IAM, EC2 GPU instances). See [IaC/README.md](IaC/README.md). |
-| **Artifact Evaluation** | [`ArtifactEvaluation/`](ArtifactEvaluation/) | End-to-end scripts for reproducing experiments, including offline/online throughput, per-pipeline ranking, and spot interruption scenarios. See [ArtifactEvaluation/README.md](ArtifactEvaluation/README.md). |
+| **Experiment Scripts** | [`ArtifactEvaluation/`](ArtifactEvaluation/) | End-to-end benchmark scripts covering offline/online throughput, per-pipeline ranking, and spot interruption scenarios; plus reference results and figure-generating notebooks under `ReferenceData/`. See [ArtifactEvaluation/README.md](ArtifactEvaluation/README.md). |
 
 ### Directory Structure
 
@@ -25,20 +25,18 @@ ShuntServe/
 │   ├── VNode.py
 │   ├── request_handler.py
 │   ├── benchmark_utils.py
-│   ├── evaluation_utils.py
-│   └── ...
+│   └── evaluation_utils.py
 ├── ModelPlacement/                      # Serving Performance Estimator + Model Placement Optimizer
 │   ├── README.md
 │   ├── shuntserve_optimizer.py          # ShuntServe beam search DP optimizer
 │   ├── hexgen_optimizer.py              # HEXGEN genetic algorithm optimizer
-│   ├── alpaserve_optimizer.py           # AlpaServe DP layer partitioning (uses official code)
-│   ├── estimator_utils.py              # Profiling-free throughput/latency estimation (roofline model)
-│   ├── hardware_specs.py               # GPU, interconnect, and instance specifications
-│   ├── cluster_pool.py                 # Cluster resource and pricing management
-│   ├── alpaserve_lib/                  # AlpaServe official code (DP, simulator, placement policy)
-│   └── hexgen/                         # HEXGEN internal modules (cost model, GA, simulator)
-├── submodules/
-│   └── vLLM/                            # Inference Engine (modified vLLM v0.8.1)
+│   ├── alpaserve_optimizer.py           # AlpaServe DP (wraps official code)
+│   ├── estimator_utils.py               # Profiling-free throughput/latency estimation (roofline model)
+│   ├── hardware_specs.py                # GPU, interconnect, and instance specifications
+│   ├── cluster_pool.py                  # Cluster resource and pricing management
+│   ├── alpaserve_lib/                   # AlpaServe official code (DP, simulator, placement policy)
+│   └── hexgen/                          # HEXGEN internal modules (cost model, GA, simulator)
+├── submodules/vLLM/                     # Inference Engine (modified vLLM v0.8.1)
 ├── TensorStore/                         # Shared Tensor Store + Remote Storage (S3)
 │   ├── README.md
 │   ├── raw_s3_model_uploader.py
@@ -47,23 +45,29 @@ ShuntServe/
 ├── InferenceServer/                     # API Server (FastAPI + vLLM)
 │   ├── api_server.py
 │   └── launch_server_example.sh
-├── ArtifactEvaluation/                  # Experiment reproduction scripts
+├── ArtifactEvaluation/                  # Experiment scripts and reference data
 │   ├── README.md
-│   ├── model_placement_optimizer.py
-│   ├── Datasets/
-│   ├── ReferenceData/
+│   ├── Datasets/                        # Azure LLM conv trace
 │   ├── ModelPlacement/
-│   │   ├── offline/llama3-70b/          # Offline throughput benchmark
-│   │   ├── online/llama3-70b/           # Online serving benchmark
-│   │   ├── per_pipeline/                # Per-pipeline ranking evaluation
-│   │   │   ├── llama3-70b/              #   Llama-3.1-70B-Instruct
-│   │   │   └── qwen3-32b/              #   Qwen3-32B
-│   │   └── check_module_time/           # Module initialization timing
+│   │   ├── nodes.py                     # Shared node IP file
+│   │   ├── optimizer/{llama3-70b,qwen3-32b}/      # Optimizer runners per baseline
+│   │   ├── offline/{llama3-70b,qwen3-32b}/        # Offline throughput benchmark
+│   │   ├── online/{llama3-70b,qwen3-32b}/         # Online serving benchmark
+│   │   ├── per_pipeline/{llama3-70b,qwen3-32b}/   # Per-pipeline ranking evaluation
+│   │   ├── check_module_time/                     # Module initialization timing
+│   │   └── top_k_beam/                            # Beam-search top-k benchmark
 │   ├── PerformanceEstimation/           # Estimator accuracy evaluation
-│   └── SpotTolerance/
-│       ├── offline/                     # Offline interruption simulation
-│       ├── online/                      # Online interruption simulation
-│       └── 8B/                          # Simplified 8B test setup
+│   │   ├── micro-benchmark/             # Hardware micro-benchmarks
+│   │   ├── trtllm/                      # TRT-LLM reference benchmarks
+│   │   └── vllm/                        # vLLM reference benchmarks
+│   ├── SpotTolerance/                   # Spot interruption simulation
+│   │   ├── generate_pipelines.py        # Builds pipeline configs from optimizer results
+│   │   ├── nodes_scenario_A.json        # Node name -> IP mapping
+│   │   ├── spot_trace_events_scenario_A.json      # Interruption/restore event timeline
+│   │   ├── llama3-70b/{offline,online}/scenario_A/
+│   │   ├── qwen3-32b/{offline,online}/scenario_A/
+│   │   └── UnitTest8B/                  # Minimum functional test (3× single-GPU nodes)
+│   └── ReferenceData/                   # Reference results + figure-generating notebooks
 ├── IaC/                                 # Infrastructure as Code (Terraform)
 │   ├── README.md
 │   ├── main.tf
@@ -182,13 +186,13 @@ ray start --head --port=6379 --disable-usage-stats
 ray start --head --port=6380 --disable-usage-stats
 ```
 
-Once the cluster is ready, follow the [Artifact Evaluation guide](ArtifactEvaluation/README.md) to reproduce the experiments.
+Once the cluster is ready, follow the [experiment guide](ArtifactEvaluation/README.md) to run the benchmarks.
 
 ## Getting Started
 
 1. **Upload model weights** — Use the [Tensor Store](TensorStore/README.md) to partition and upload model weights to S3. This step does not require a GPU.
 2. **Run the placement optimizer** — Use the [Model Placement Optimizer](ModelPlacement/README.md) to determine optimal pipeline configurations for your cluster.
 3. **Provision the cluster** — Use the [IaC module](IaC/README.md) or set up GPU instances manually based on the placement result.
-4. **Run experiments** — Follow the [Artifact Evaluation guide](ArtifactEvaluation/README.md) to reproduce the experiments.
+4. **Run experiments** — Follow the [experiment guide](ArtifactEvaluation/README.md).
 
-> **Tip:** The full evaluation uses Llama-3.1-70B on 9 instances (24 GPUs), which can be costly. A simplified 8B test setup using Llama-3.1-8B-Instruct on 3x g6.xlarge (single L4 GPU each) is available to verify basic executability at reduced cost. See [Appendix C in ArtifactEvaluation/README.md](ArtifactEvaluation/README.md#appendix-c-simplified-8b-test-setup) for details.
+> **Tip:** [`ArtifactEvaluation/SpotTolerance/UnitTest8B`](ArtifactEvaluation/SpotTolerance/UnitTest8B) provides a minimum functional test on 3× g6.xlarge (single L4 GPU each) using Llama-3.1-8B — useful to verify interruption handling mechanics without provisioning the full 70B cluster.

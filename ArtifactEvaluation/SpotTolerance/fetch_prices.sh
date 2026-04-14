@@ -2,28 +2,28 @@
 set -e
 
 # ========== AWS Credentials ==========
-export AWS_ACCESS_KEY_ID="PLACEHOLDER"
-export AWS_SECRET_ACCESS_KEY="PLACEHOLDER"
-export AWS_DEFAULT_REGION="us-west-2"
+# Fill in either via the standard AWS chain (IAM instance profile, ~/.aws/credentials,
+# `aws configure`, AWS_PROFILE) or by exporting the variables below before running.
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-PLACEHOLDER}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-PLACEHOLDER}"
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
 
 # ========== Config ==========
-RESULT_DIR="$(dirname "$0")/results"
+# Save directly into ReferenceData so re-runs overwrite the tracked snapshot
+# that figure notebooks load from.
+RESULT_DIR="$(dirname "$0")/../ReferenceData/SpotTolerance"
 INSTANCE_TYPES=("g5.12xlarge" "g6.12xlarge" "g6e.xlarge")
 
 # Scenario A: 2026-03-18 12:55~13:45 UTC
 SCENARIO_A_START="2026-03-18T12:55:00Z"
 SCENARIO_A_END="2026-03-18T13:45:00Z"
 
-# Scenario B: 2026-03-17 08:05~08:55 UTC
-SCENARIO_B_START="2026-03-17T08:05:00Z"
-SCENARIO_B_END="2026-03-17T08:55:00Z"
-
 mkdir -p "$RESULT_DIR"
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
 # ========== Fetch Spot Prices ==========
-for scenario in A B; do
+for scenario in A; do
     eval "START=\$SCENARIO_${scenario}_START"
     eval "END=\$SCENARIO_${scenario}_END"
     echo "=== Fetching Spot Prices for Scenario $scenario ($START ~ $END) ==="
@@ -90,7 +90,7 @@ for itype in instance_types:
                     })
 
 # Merge per scenario
-for scenario in ['A', 'B']:
+for scenario in ['A']:
     spot_all = []
     for itype in instance_types:
         safe = itype.replace('.', '_')
@@ -117,7 +117,7 @@ import json
 
 result_dir = '$RESULT_DIR'
 
-for scenario in ['A', 'B']:
+for scenario in ['A']:
     path = f'{result_dir}/prices_scenario_{scenario}.json'
     with open(path) as f:
         data = json.load(f)
@@ -138,4 +138,3 @@ for scenario in ['A', 'B']:
 
 echo "Done! Results saved to:"
 echo "  $RESULT_DIR/prices_scenario_A.json"
-echo "  $RESULT_DIR/prices_scenario_B.json"
