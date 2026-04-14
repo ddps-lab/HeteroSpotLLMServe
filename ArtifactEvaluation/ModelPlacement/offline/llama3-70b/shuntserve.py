@@ -1,190 +1,197 @@
 """
-Benchmark test for GlobalServer that measures throughput and latency metrics.
-Similar to benchmark_serving.py but using GlobalServer's internal add_request.
+Offline benchmark — ShuntServe (Llama-3.1-70B)
+All pipelines loaded from predicted JSON, Azure Trace with time_scale=0.0 (offline).
 """
 import asyncio
 import concurrent.futures
+import json
 import logging
 import sys
 import os
-from typing import Dict, List, Tuple
 
-# Add GlobalServer to path
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+_REPO_ROOT = _d
 del _d
 
 from global_server import GlobalServer
-from benchmark_utils import print_benchmark_results, run_trace_benchmark, DEFAULT_DATASET_PATH
-
+from benchmark_utils import (
+    print_benchmark_results, run_trace_benchmark, DEFAULT_DATASET_PATH
+)
+from save_results import save_benchmark_results
 from nodes import *
 
+# ─── Load config from optimizer results ──────────────────────────────
+
+SYSTEM = "shuntserve"
+STAGE_LAYER_COUNT_IDX = 1
+
+PREDICTED_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "llama3-70b", "estimated"
+)
+OUTPUT_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "llama3-70b", "measured"
+)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+PREDICTED_FILE = [f for f in os.listdir(PREDICTED_DIR) if f.startswith(f"predicted_{SYSTEM}_")][0]
+with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
+    _data = json.load(f)
+
 S3_BUCKET = "hetero-spot-llm-serve-models"
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"offline_{SYSTEM}.json")
+
+# ─── Node assignments per pipeline ───────────────────────────────────
+# SS-P1: g6.12xl#1, g6.12xl#2, g6e.xl×4
+# SS-P2: g5.12xl#1, g5.12xl#2, g6.12xl#3
+
+NODE_MAPPINGS = [
+    # P1
+    [
+        (g6_12xlarge_node_ip_1, 0),
+        (g6_12xlarge_node_ip_2, 1),
+        (g6e_xlarge_node_ip_1, 2),
+        (g6e_xlarge_node_ip_2, 3),
+        (g6e_xlarge_node_ip_3, 4),
+        (g6e_xlarge_node_ip_4, 5),
+    ],
+    # P2
+    [
+        (g5_12xlarge_node_ip_1, 0),
+        (g5_12xlarge_node_ip_2, 1),
+        (g6_12xlarge_node_ip_3, 2),
+    ],
+]
 
 
-async def run_benchmark(
-    global_server: GlobalServer,
-    dataset_path: str,
-    num_requests: int = None,
-    time_scale: float = 1.0,
-    model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
-    percentiles: List[float] = None,
-    disable_tqdm: bool = False,
-    run_initial_test: bool = True,
-    test_requests_per_pipeline: int = 2
-):
-    return await run_trace_benchmark(
-        global_server=global_server,
-        dataset_path=dataset_path,
-        trace_output_prefix="modelplacement_offline_shuntserve",
-        num_requests=num_requests,
-        time_scale=time_scale,
-        model_name=model_name,
-        percentiles=percentiles,
-        disable_tqdm=disable_tqdm,
-        run_initial_test=run_initial_test,
-        test_requests_per_pipeline=test_requests_per_pipeline,
-    )
-
+# ─── Benchmark ───────────────────────────────────────────────────────
 
 async def test_benchmark():
-    """Test benchmark with a single node configuration."""
-    # Setup logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter(
+        '[%(asctime)s] %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.propagate = False
-    model_name = "meta-llama/Llama-3.1-70B-Instruct"
-    
-    # Create GlobalServer instance
+
+    model_name = _data["model"]
+    pipelines = _data["pipelines"]
+
+    print("=" * 70)
+    print(f"Offline Benchmark — ShuntServe — {PREDICTED_FILE}")
+    print(f"  Pipelines: {len(pipelines)}")
+    for i, p in enumerate(pipelines):
+        print(f"  P{i+1}: TP={p['parallel_strategy']}  layers={p['pp_layer_partition']}"
+              f"  mbs={p['max_batch_size']}  tput={p['predicted_throughput_rps']:.3f}")
+    print(f"  Total predicted: {_data['total_throughput_rps']:.3f} req/s")
+    print("=" * 70)
+
+    # ─── Validate layer counts ───────────────────────────────────────
+    for i, p in enumerate(pipelines):
+        total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in p["stages"])
+        assert total_layers == sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in pipelines[0]["stages"]), (
+            f"P{i+1} total layers ({total_layers}) != "
+            f"P1 total layers ({sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in pipelines[0]['stages'])})"
+        )
+    expected_total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in pipelines[0]["stages"])
+    print(f"  Layer check passed: all pipelines have {expected_total_layers} layers")
+
     global_server = GlobalServer()
-    
-    # Create pipeline in background
-    async def create_pipeline_async(config:Dict, node_layer_mapping:List[Tuple[str, int]], throughput:int):
+
+    async def create_pipeline_async(config, node_layer_mapping, throughput):
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor() as executor:
             await loop.run_in_executor(
-                executor,
-                global_server.create_pipeline,
-                node_layer_mapping,
-                config,
-                throughput
+                executor, global_server.create_pipeline,
+                node_layer_mapping, config, throughput
             )
         logger.info("Pipeline creation completed")
 
-    # Our Pipeline 1
-    pipeline_1_stage_0_node_ip = g6_12xlarge_node_ip_1
-    pipeline_1_stage_1_node_ip = g6_12xlarge_node_ip_2
-    pipeline_1_stage_2_node_ip = g6_12xlarge_node_ip_3
-    pipeline_1_stage_3_node_ip = g6e_xlarge_node_ip_1
-    pipeline_1_stage_4_node_ip = g6e_xlarge_node_ip_2
-    pipeline_1_config = {
-        "model_name": model_name,
-        "total_num_layers": 80,
-        "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "20,20,20,10,10",
-        "parallel_strategy": [4,4,4,1,1],
-        "max_model_len": 8192,
-        "max_num_batched_tokens": 8192,
-        "max_num_seqs": 512,
-        "model_source": "s3",
-        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
-        "num_gpu_blocks": 27549,
-        "max_batch_size": 442,
-    }
-    estimated_throughput_1 = 4.23
-    node_layer_mapping_1 = [
-        (pipeline_1_stage_0_node_ip, 20),
-        (pipeline_1_stage_1_node_ip, 20),
-        (pipeline_1_stage_2_node_ip, 20),
-        (pipeline_1_stage_3_node_ip, 10),
-        (pipeline_1_stage_4_node_ip, 10),
-    ]
+    # Build pipeline configs and node mappings
+    pipeline_tasks = []
+    for i, p in enumerate(pipelines):
+        config = {
+            "model_name": model_name,
+            "total_num_layers": sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in p["stages"]),
+            "gpu_memory_utilization": p.get("gpu_memory_utilization", 0.85),
+            "pp_layer_partition": p["pp_layer_partition"],
+            "parallel_strategy": p["parallel_strategy"],
+            "max_model_len": 8192,
+            "max_num_batched_tokens": 8192,
+            "max_num_seqs": 512,
+            "model_source": "s3",
+            "s3_path": f"s3://{S3_BUCKET}/{model_name}",
+            "num_gpu_blocks": p["num_blocks"],
+            "max_batch_size": int(p["max_batch_size"]),
+        }
 
-    # Pipeline 2
-    pipeline_2_stage_0_node_ip = g6e_xlarge_node_ip_3
-    pipeline_2_stage_1_node_ip = g5_12xlarge_node_ip_1
-    pipeline_2_stage_2_node_ip = g5_12xlarge_node_ip_2
-    pipeline_2_stage_3_node_ip = g6e_xlarge_node_ip_4
-    pipeline_2_config = {
-        "model_name": model_name,
-        "total_num_layers": 80,
-        "gpu_memory_utilization": 0.85,
-        "pp_layer_partition": "13,28,28,11",
-        "parallel_strategy": [1,4,4,1],
-        "max_model_len": 8192,
-        "max_num_batched_tokens": 8192,
-        "max_num_seqs": 512,
-        "model_source": "s3",
-        "s3_path": f"s3://{S3_BUCKET}/{model_name}",
-        "num_gpu_blocks": 15049,
-        "max_batch_size": 241,
-    }
-    estimated_throughput_2 = 3.49
-    node_layer_mapping_2 = [
-        (pipeline_2_stage_0_node_ip, 13),
-        (pipeline_2_stage_1_node_ip, 28),
-        (pipeline_2_stage_2_node_ip, 28),
-        (pipeline_2_stage_3_node_ip, 11),
-    ]
-    
-    # Start pipeline creation
-    pipeline_task_1 = asyncio.create_task(create_pipeline_async(pipeline_1_config, node_layer_mapping_1, estimated_throughput_1))
-    pipeline_task_2 = asyncio.create_task(create_pipeline_async(pipeline_2_config, node_layer_mapping_2, estimated_throughput_2))
+        node_layer_mapping = [
+            (ip, int(p["stages"][stage_idx][STAGE_LAYER_COUNT_IDX]))
+            for ip, stage_idx in NODE_MAPPINGS[i]
+        ]
 
-    # Start global server
+        task = asyncio.create_task(
+            create_pipeline_async(config, node_layer_mapping, p["predicted_throughput_rps"])
+        )
+        pipeline_tasks.append(task)
+
     server_task = asyncio.create_task(global_server.run_global_server())
-    
-    try:
-        # Wait for pipeline creation to complete
-        logger.info("Waiting for pipeline creation to complete...")
-        await pipeline_task_1
-        await pipeline_task_2
-        logger.info("Pipelines are ready!")
 
-        # Run benchmark
-        dataset_path = DEFAULT_DATASET_PATH
-        metrics = await run_benchmark(
-            global_server,
-            dataset_path=dataset_path,
+    try:
+        logger.info("Waiting for pipeline creation to complete...")
+        for task in pipeline_tasks:
+            await task
+        logger.info("All pipelines are ready!")
+
+        metrics = await run_trace_benchmark(
+            global_server=global_server,
+            dataset_path=DEFAULT_DATASET_PATH,
+            trace_output_prefix=f"modelplacement_offline_{SYSTEM}",
             num_requests=None,
-            time_scale=0.0,  # Original trace speed (0.0 = Offline)
+            time_scale=0.0,
             model_name=model_name,
             percentiles=[10, 25, 50, 75, 90, 99],
-            disable_tqdm=False,  # Show progress bars
-            run_initial_test=True,  # Run test requests first
-            test_requests_per_pipeline=2  # 2 test requests per pipeline
+            disable_tqdm=False,
+            run_initial_test=False,
+            start_time=0,
+            end_time=5 * 60,  # 5 minutes
         )
-        
-        # Print results
+
         print_benchmark_results(metrics)
-        
+
+        save_benchmark_results(metrics, OUTPUT_PATH, extra={
+            "system": "ShuntServe",
+            "benchmark_type": "offline",
+            "num_pipelines": len(pipelines),
+            "predicted_total_throughput_rps": _data["total_throughput_rps"],
+            "percentiles": [10, 25, 50, 75, 90, 99],
+        })
+
     except KeyboardInterrupt:
         logger.info("\nBenchmark interrupted by user")
     except Exception as e:
         logger.error(f"Benchmark failed: {e}")
         raise
     finally:
-        # Cleanup
         logger.info("Cleaning up...")
         server_task.cancel()
-        pipeline_task_1.cancel()
-        pipeline_task_2.cancel()
-
+        for task in pipeline_tasks:
+            task.cancel()
         try:
             await asyncio.gather(server_task, return_exceptions=True)
         except:
             pass
-
-        # Stop all pipelines
         logger.info("Stopping pipelines...")
         try:
             global_server.cluster.stop_all_pipelines()

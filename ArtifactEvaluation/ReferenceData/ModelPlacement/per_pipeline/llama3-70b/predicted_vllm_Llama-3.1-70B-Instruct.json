@@ -1,0 +1,100 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "pipelines": [
+    {
+      "label": "vL-P1",
+      "system": "vLLM",
+      "stages": [
+        [
+          "g6.12xlarge",
+          27
+        ],
+        [
+          "g6.12xlarge",
+          27
+        ],
+        [
+          "g6.12xlarge",
+          26
+        ]
+      ],
+      "parallel_strategy": [
+        4,
+        4,
+        4
+      ],
+      "pp_layer_partition": "27,27,26",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.2081358969404132,
+      "predicted_total_latency_ms": 204447.19888344014,
+      "predicted_single_latency_ms": 34282.277582409144,
+      "max_batch_size": 247.0,
+      "num_blocks": 15360
+    },
+    {
+      "label": "vL-P2",
+      "system": "vLLM",
+      "stages": [
+        [
+          "g5.12xlarge",
+          40
+        ],
+        [
+          "g5.12xlarge",
+          40
+        ]
+      ],
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": "40,40",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.5956007662979604,
+      "predicted_total_latency_ms": 50369.310614674294,
+      "predicted_single_latency_ms": 18437.115263487998,
+      "max_batch_size": 30.0,
+      "num_blocks": 1865
+    },
+    {
+      "label": "vL-P3",
+      "system": "vLLM",
+      "stages": [
+        [
+          "g6e.xlarge",
+          20
+        ],
+        [
+          "g6e.xlarge",
+          20
+        ],
+        [
+          "g6e.xlarge",
+          20
+        ],
+        [
+          "g6e.xlarge",
+          20
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "20,20,20,20",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.21528408197213109,
+      "predicted_total_latency_ms": 51095.27791945143,
+      "predicted_single_latency_ms": 47423.60350610287,
+      "max_batch_size": 11.0,
+      "num_blocks": 684
+    }
+  ],
+  "total_throughput_rps": 2.0190207452105047
+}

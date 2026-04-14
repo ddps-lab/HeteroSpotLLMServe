@@ -1,6 +1,6 @@
 """
-AlpaServe Pipeline 1 (llama3-70b)
-Config loaded from optimizer results (predicted_alpaserve_*.json)
+AlpaServe Pipeline 1 (AP-P1)
+g6.12xlarge×3, TP=[4,4,4], Layers=[27,27,26]
 """
 import asyncio
 import concurrent.futures
@@ -8,44 +8,55 @@ import json
 import logging
 import sys
 import os
+import argparse
 
 _d = os.path.dirname(os.path.abspath(__file__))
 while not os.path.exists(os.path.join(_d, ".git")):
     _d = os.path.dirname(_d)
 sys.path.insert(0, os.path.join(_d, "GlobalServer"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+_REPO_ROOT = _d
 del _d
 
 from global_server import GlobalServer
 from benchmark_utils import print_benchmark_results, run_latency_benchmark
 from save_results import save_benchmark_results
-
 from nodes import *
 
 # ─── Load config from optimizer results ──────────────────────────────
+
 PIPELINE_INDEX = 0  # AP-P1
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
-PREDICTED_FILE = [f for f in os.listdir(RESULTS_DIR) if f.startswith("predicted_alpaserve_")][0]
-with open(os.path.join(RESULTS_DIR, PREDICTED_FILE)) as f:
+STAGE_LAYER_COUNT_IDX = 1
+
+PREDICTED_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "llama3-70b", "estimated"
+)
+OUTPUT_DIR = os.path.join(
+    _REPO_ROOT, "ArtifactEvaluation", "ModelPlacement",
+    "optimizer", "results", "llama3-70b", "measured"
+)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+PREDICTED_FILE = [f for f in os.listdir(PREDICTED_DIR) if f.startswith("predicted_alpaserve_")][0]
+
+with open(os.path.join(PREDICTED_DIR, PREDICTED_FILE)) as f:
     _data = json.load(f)
 _pipeline = _data["pipelines"][PIPELINE_INDEX]
 
-# Stage field index: stages[i] = [instance_type, layer_count]
-STAGE_LAYER_COUNT_IDX = 1
-
 S3_BUCKET = "hetero-spot-llm-serve-models"
-OUTPUT_PATH = os.path.join(RESULTS_DIR, "alpaserve_p1.json")
+OUTPUT_PATH = os.path.join(OUTPUT_DIR, "alpaserve_p1.json")
 
-# ─── Node assignment (manual) ────────────────────────────────────────
+# ─── Node assignment ─────────────────────────────────────────────────
+# AP-P1: g6.12xlarge×3 (homogeneous, TP=4 each)
+
 NODE_LAYER_MAPPING = [
-    # stage[0]: g6.12xlarge (TP=4)
-    (g6_12xlarge_node_ip_1, int(_pipeline['stages'][0][STAGE_LAYER_COUNT_IDX])),
-    # stage[1]: g6.12xlarge (TP=4)
-    (g6_12xlarge_node_ip_2, int(_pipeline['stages'][1][STAGE_LAYER_COUNT_IDX])),
-    # stage[2]: g6.12xlarge (TP=4)
-    (g6_12xlarge_node_ip_3, int(_pipeline['stages'][2][STAGE_LAYER_COUNT_IDX])),
+    (g6_12xlarge_node_ip_1, int(_pipeline["stages"][0][STAGE_LAYER_COUNT_IDX])),  # g6.12xlarge TP=4
+    (g6_12xlarge_node_ip_2, int(_pipeline["stages"][1][STAGE_LAYER_COUNT_IDX])),  # g6.12xlarge TP=4
+    (g6_12xlarge_node_ip_3, int(_pipeline["stages"][2][STAGE_LAYER_COUNT_IDX])),  # g6.12xlarge TP=4
 ]
 
+
+# ─── Benchmark ───────────────────────────────────────────────────────
 
 async def test_benchmark():
     logger = logging.getLogger(__name__)
@@ -53,8 +64,10 @@ async def test_benchmark():
     logger.handlers.clear()
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter(
+        '[%(asctime)s] %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     logger.propagate = False
@@ -62,13 +75,10 @@ async def test_benchmark():
     model_name = _data["model"]
 
     print("=" * 70)
-    print(f"AlpaServe Pipeline 1 — Config loaded from {PREDICTED_FILE}")
-    print(f"  Model: {model_name}")
-    print(f"  Label: {_pipeline['label']}")
+    print(f"AlpaServe Pipeline 1 — {PREDICTED_FILE}")
     print(f"  Stages: {_pipeline['stages']}")
-    print(f"  PP layer partition: {_pipeline['pp_layer_partition']}")
-    print(f"  Parallel strategy: {_pipeline['parallel_strategy']}")
-    print(f"  Predicted throughput: {_pipeline['predicted_throughput_rps']:.3f} req/s")
+    print(f"  PP: {_pipeline['pp_layer_partition']}  TP: {_pipeline['parallel_strategy']}")
+    print(f"  Predicted: {_pipeline['predicted_throughput_rps']:.3f} req/s")
     print(f"  Max batch size: {_pipeline['max_batch_size']}")
     print(f"  Num GPU blocks: {_pipeline['num_blocks']}")
     print(f"  Node mapping:")
@@ -101,6 +111,13 @@ async def test_benchmark():
         "num_gpu_blocks": _pipeline["num_blocks"],
         "max_batch_size": int(_pipeline["max_batch_size"]),
     }
+
+
+    # Validate layer count
+    total_layers = sum(int(s[STAGE_LAYER_COUNT_IDX]) for s in _pipeline["stages"])
+    assert total_layers == config["total_num_layers"], (
+        f"Layer mismatch: stages sum={total_layers} != config total={config['total_num_layers']}"
+    )
     estimated_throughput = _pipeline["predicted_throughput_rps"]
     max_batch_size = int(_pipeline["max_batch_size"])
 
@@ -114,20 +131,34 @@ async def test_benchmark():
         await pipeline_task
         logger.info("Pipeline is ready!")
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--single-request", action="store_true",
+                            help="Run 5 requests sequentially (max_concurrency=1)")
+        args = parser.parse_args()
+
+        if args.single_request:
+            num_requests = 5
+            max_concurrency = 1
+        else:
+            num_requests = max_batch_size * 5
+            max_concurrency = None
+
         metrics = await run_latency_benchmark(
             global_server=global_server,
-            num_requests=max_batch_size * 10,
+            num_requests=num_requests,
             input_len=_data["workload"]["input_len"],
             output_len=_data["workload"]["output_len"],
             request_rate=float('inf'),
             model_name=model_name,
+            max_concurrency=max_concurrency,
             percentiles=[10, 25, 50, 75, 90, 99],
             disable_tqdm=False,
-            run_initial_test=True,
+            run_initial_test=False,
             test_requests_per_pipeline=2,
         )
 
         print_benchmark_results(metrics)
+
         save_benchmark_results(metrics, OUTPUT_PATH, extra={
             "system": "AlpaServe",
             "pipeline": f"P{PIPELINE_INDEX + 1}",
@@ -136,8 +167,9 @@ async def test_benchmark():
             "stages": _pipeline["stages"],
             "input_len": _data["workload"]["input_len"],
             "output_len": _data["workload"]["output_len"],
-            "num_requests": max_batch_size * 10,
+            "num_requests": num_requests,
             "predicted_throughput_rps": estimated_throughput,
+            "percentiles": [10, 25, 50, 75, 90, 99],
         })
 
     except KeyboardInterrupt:

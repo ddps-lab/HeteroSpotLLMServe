@@ -1,0 +1,113 @@
+2026-04-06 03:37:56 │ ════════════════════════════════════════════════════════
+2026-04-06 03:37:56 │ ShuntServe Top-K Beam Search Benchmark
+2026-04-06 03:37:56 │ ════════════════════════════════════════════════════════
+2026-04-06 03:37:56 │ Models    : ['llama3-70b', 'qwen3-32b']
+2026-04-06 03:37:56 │ Clusters  : ['eval_cluster']
+2026-04-06 03:37:56 │ K values  : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 24, 32, 48, 64, 96, 128]
+2026-04-06 03:37:56 │ Total runs: 44
+2026-04-06 03:37:56 │ Workers   : 31 (cpu_count - 1)
+2026-04-06 03:37:56 │ Log file  : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b+qwen3-32b_c=eval_cluster_k=1-128_20260406_123756.log
+2026-04-06 03:37:56 │ ────────────────────────────────────────────────────────
+2026-04-06 03:38:08 │ [  1/44] qwen3-32b    | eval_cluster           | k=  1 | wall=   11.67s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:38:11 │ [  2/44] llama3-70b   | eval_cluster           | k=  1 | wall=   14.30s | throughput=   3.082 req/s | pipelines=2
+2026-04-06 03:38:20 │ [  3/44] qwen3-32b    | eval_cluster           | k=  2 | wall=   23.51s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:38:26 │ [  4/44] llama3-70b   | eval_cluster           | k=  2 | wall=   29.41s | throughput=   3.205 req/s | pipelines=2
+2026-04-06 03:38:29 │ [  5/44] qwen3-32b    | eval_cluster           | k=  3 | wall=   32.30s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:38:34 │ [  6/44] llama3-70b   | eval_cluster           | k=  3 | wall=   37.71s | throughput=   3.210 req/s | pipelines=2
+2026-04-06 03:38:39 │ [  7/44] qwen3-32b    | eval_cluster           | k=  4 | wall=   42.19s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:38:47 │ [  8/44] llama3-70b   | eval_cluster           | k=  4 | wall=   50.80s | throughput=   3.324 req/s | pipelines=2
+2026-04-06 03:38:48 │ [  9/44] qwen3-32b    | eval_cluster           | k=  5 | wall=   51.08s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:38:53 │ [ 10/44] qwen3-32b    | eval_cluster           | k=  6 | wall=   56.50s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:38:59 │ [ 11/44] llama3-70b   | eval_cluster           | k=  5 | wall=   62.08s | throughput=   3.324 req/s | pipelines=2
+2026-04-06 03:39:00 │ [ 12/44] qwen3-32b    | eval_cluster           | k=  7 | wall=   63.02s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:05 │ [ 13/44] qwen3-32b    | eval_cluster           | k=  8 | wall=   68.19s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:05 │ [ 14/44] llama3-70b   | eval_cluster           | k=  6 | wall=   68.90s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:09 │ [ 15/44] qwen3-32b    | eval_cluster           | k=  9 | wall=   72.27s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:13 │ [ 16/44] llama3-70b   | eval_cluster           | k=  7 | wall=   76.05s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:20 │ [ 17/44] llama3-70b   | eval_cluster           | k=  8 | wall=   83.92s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:23 │ [ 18/44] qwen3-32b    | eval_cluster           | k= 10 | wall=   74.79s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:25 │ [ 19/44] llama3-70b   | eval_cluster           | k=  9 | wall=   88.69s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:27 │ [ 20/44] qwen3-32b    | eval_cluster           | k= 11 | wall=   76.44s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:29 │ [ 21/44] llama3-70b   | eval_cluster           | k= 10 | wall=   92.29s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:30 │ [ 22/44] llama3-70b   | eval_cluster           | k= 15 | wall=   93.19s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:30 │ [ 23/44] llama3-70b   | eval_cluster           | k= 96 | wall=   93.72s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:30 │ [ 24/44] llama3-70b   | eval_cluster           | k= 32 | wall=   93.72s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:30 │ [ 25/44] llama3-70b   | eval_cluster           | k=128 | wall=   93.89s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 26/44] llama3-70b   | eval_cluster           | k= 24 | wall=   93.96s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 27/44] llama3-70b   | eval_cluster           | k= 48 | wall=   94.08s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 28/44] llama3-70b   | eval_cluster           | k= 12 | wall=   94.16s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 29/44] llama3-70b   | eval_cluster           | k= 11 | wall=   94.24s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 30/44] llama3-70b   | eval_cluster           | k= 64 | wall=   94.30s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 31/44] llama3-70b   | eval_cluster           | k= 14 | wall=   94.47s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:31 │ [ 32/44] llama3-70b   | eval_cluster           | k= 16 | wall=   94.76s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:32 │ [ 33/44] llama3-70b   | eval_cluster           | k= 13 | wall=   94.98s | throughput=   3.504 req/s | pipelines=2
+2026-04-06 03:39:37 │ [ 34/44] qwen3-32b    | eval_cluster           | k= 12 | wall=   76.43s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:42 │ [ 35/44] qwen3-32b    | eval_cluster           | k= 13 | wall=   75.83s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:44 │ [ 36/44] qwen3-32b    | eval_cluster           | k= 14 | wall=   74.97s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:50 │ [ 37/44] qwen3-32b    | eval_cluster           | k= 15 | wall=   75.28s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:39:54 │ [ 38/44] qwen3-32b    | eval_cluster           | k= 16 | wall=   75.22s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:01 │ [ 39/44] qwen3-32b    | eval_cluster           | k= 24 | wall=   73.94s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:02 │ [ 40/44] qwen3-32b    | eval_cluster           | k= 32 | wall=   74.44s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:08 │ [ 41/44] qwen3-32b    | eval_cluster           | k= 48 | wall=   74.82s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:13 │ [ 42/44] qwen3-32b    | eval_cluster           | k= 64 | wall=   74.60s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:14 │ [ 43/44] qwen3-32b    | eval_cluster           | k= 96 | wall=   74.31s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:19 │ [ 44/44] qwen3-32b    | eval_cluster           | k=128 | wall=   74.27s | throughput=  10.293 req/s | pipelines=3
+2026-04-06 03:40:19 │ 
+2026-04-06 03:40:19 │ ════════════════════════════════════════════════════════
+2026-04-06 03:40:19 │ RESULTS SUMMARY  (total elapsed: 142.9s)
+2026-04-06 03:40:19 │ ════════════════════════════════════════════════════════
+2026-04-06 03:40:19 │ 
+2026-04-06 03:40:19 │   [llama3-70b] [Evaluation cluster (3type, 9 nodes, 24 GPUs)]
+2026-04-06 03:40:19 │       k │  wall_time │   opt_time │     throughput │ pipelines
+2026-04-06 03:40:19 │   ──────┼────────────┼────────────┼────────────────┼──────────
+2026-04-06 03:40:19 │       1 │     14.30s │     14.27s │       3.082    │         2
+2026-04-06 03:40:19 │       2 │     29.41s │     29.34s │       3.205    │         2
+2026-04-06 03:40:19 │       3 │     37.71s │     37.62s │       3.210    │         2
+2026-04-06 03:40:19 │       4 │     50.80s │     50.67s │       3.324    │         2
+2026-04-06 03:40:19 │       5 │     62.08s │     61.92s │       3.324    │         2
+2026-04-06 03:40:19 │       6 │     68.90s │     68.72s │       3.504    │         2
+2026-04-06 03:40:19 │       7 │     76.05s │     75.85s │       3.504    │         2
+2026-04-06 03:40:19 │       8 │     83.92s │     83.70s │       3.504    │         2
+2026-04-06 03:40:19 │       9 │     88.69s │     88.46s │       3.504    │         2
+2026-04-06 03:40:19 │      10 │     92.29s │     92.07s │       3.504    │         2
+2026-04-06 03:40:19 │      11 │     94.24s │     94.02s │       3.504    │         2
+2026-04-06 03:40:19 │      12 │     94.16s │     93.94s │       3.504    │         2
+2026-04-06 03:40:19 │      13 │     94.98s │     94.76s │       3.504    │         2
+2026-04-06 03:40:19 │      14 │     94.47s │     94.24s │       3.504    │         2
+2026-04-06 03:40:19 │      15 │     93.19s │     92.97s │       3.504    │         2
+2026-04-06 03:40:19 │      16 │     94.76s │     94.54s │       3.504    │         2
+2026-04-06 03:40:19 │      24 │     93.96s │     93.73s │       3.504    │         2
+2026-04-06 03:40:19 │      32 │     93.72s │     93.49s │       3.504    │         2
+2026-04-06 03:40:19 │      48 │     94.08s │     93.86s │       3.504    │         2
+2026-04-06 03:40:19 │      64 │     94.30s │     94.08s │       3.504    │         2
+2026-04-06 03:40:19 │      96 │     93.72s │     93.50s │       3.504    │         2
+2026-04-06 03:40:19 │     128 │     93.89s │     93.67s │       3.504    │         2
+2026-04-06 03:40:19 │ 
+2026-04-06 03:40:19 │   [qwen3-32b] [Evaluation cluster (3type, 9 nodes, 24 GPUs)]
+2026-04-06 03:40:19 │       k │  wall_time │   opt_time │     throughput │ pipelines
+2026-04-06 03:40:19 │   ──────┼────────────┼────────────┼────────────────┼──────────
+2026-04-06 03:40:19 │       1 │     11.67s │     11.64s │      10.293    │         3
+2026-04-06 03:40:19 │       2 │     23.51s │     23.46s │      10.293    │         3
+2026-04-06 03:40:19 │       3 │     32.30s │     32.23s │      10.293    │         3
+2026-04-06 03:40:19 │       4 │     42.19s │     42.09s │      10.293    │         3
+2026-04-06 03:40:19 │       5 │     51.08s │     50.97s │      10.293    │         3
+2026-04-06 03:40:19 │       6 │     56.50s │     56.38s │      10.293    │         3
+2026-04-06 03:40:19 │       7 │     63.02s │     62.88s │      10.293    │         3
+2026-04-06 03:40:19 │       8 │     68.19s │     68.03s │      10.293    │         3
+2026-04-06 03:40:19 │       9 │     72.27s │     72.11s │      10.293    │         3
+2026-04-06 03:40:19 │      10 │     74.79s │     74.62s │      10.293    │         3
+2026-04-06 03:40:19 │      11 │     76.44s │     76.27s │      10.293    │         3
+2026-04-06 03:40:19 │      12 │     76.43s │     76.26s │      10.293    │         3
+2026-04-06 03:40:19 │      13 │     75.83s │     75.67s │      10.293    │         3
+2026-04-06 03:40:19 │      14 │     74.97s │     74.82s │      10.293    │         3
+2026-04-06 03:40:19 │      15 │     75.28s │     75.11s │      10.293    │         3
+2026-04-06 03:40:19 │      16 │     75.22s │     75.05s │      10.293    │         3
+2026-04-06 03:40:19 │      24 │     73.94s │     73.78s │      10.293    │         3
+2026-04-06 03:40:19 │      32 │     74.44s │     74.28s │      10.293    │         3
+2026-04-06 03:40:19 │      48 │     74.82s │     74.65s │      10.293    │         3
+2026-04-06 03:40:19 │      64 │     74.60s │     74.43s │      10.293    │         3
+2026-04-06 03:40:19 │      96 │     74.31s │     74.14s │      10.293    │         3
+2026-04-06 03:40:19 │     128 │     74.27s │     74.10s │      10.293    │         3
+2026-04-06 03:40:19 │ 
+2026-04-06 03:40:19 │ JSON results : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/json/results_m=llama3-70b+qwen3-32b_c=eval_cluster_k=1-128.json
+2026-04-06 03:40:19 │ Log file     : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b+qwen3-32b_c=eval_cluster_k=1-128_20260406_123756.log

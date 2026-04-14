@@ -1,0 +1,51 @@
+2026-03-27 03:57:53 │ ════════════════════════════════════════════════════════
+2026-03-27 03:57:53 │ ShuntServe Top-K Beam Search Benchmark
+2026-03-27 03:57:53 │ ════════════════════════════════════════════════════════
+2026-03-27 03:57:53 │ Models    : ['llama3-70b']
+2026-03-27 03:57:53 │ Clusters  : ['eval_cluster']
+2026-03-27 03:57:53 │ K values  : [1, 2, 3, 4, 5, 6, 7, 8, 16, 24, 32, 48, 64, 96, 128]
+2026-03-27 03:57:53 │ Total runs: 15
+2026-03-27 03:57:53 │ Workers   : 31 (cpu_count - 1)
+2026-03-27 03:57:53 │ Log file  : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b_c=eval_cluster_k=1-128_20260327_125753.log
+2026-03-27 03:57:53 │ ────────────────────────────────────────────────────────
+2026-03-27 03:58:08 │ [  1/15] llama3-70b   | eval_cluster           | k=  1 | wall=   13.67s | throughput=   3.082 req/s | pipelines=2
+2026-03-27 03:58:22 │ [  2/15] llama3-70b   | eval_cluster           | k=  2 | wall=   28.31s | throughput=   3.205 req/s | pipelines=2
+2026-03-27 03:58:30 │ [  3/15] llama3-70b   | eval_cluster           | k=  3 | wall=   36.43s | throughput=   3.210 req/s | pipelines=2
+2026-03-27 03:58:43 │ [  4/15] llama3-70b   | eval_cluster           | k=  4 | wall=   48.80s | throughput=   3.324 req/s | pipelines=2
+2026-03-27 03:58:54 │ [  5/15] llama3-70b   | eval_cluster           | k=  5 | wall=   59.75s | throughput=   3.324 req/s | pipelines=2
+2026-03-27 03:59:00 │ [  6/15] llama3-70b   | eval_cluster           | k=  6 | wall=   66.27s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:08 │ [  7/15] llama3-70b   | eval_cluster           | k=  7 | wall=   74.12s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:16 │ [  8/15] llama3-70b   | eval_cluster           | k=  8 | wall=   82.29s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:24 │ [  9/15] llama3-70b   | eval_cluster           | k= 32 | wall=   90.47s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ [ 10/15] llama3-70b   | eval_cluster           | k= 96 | wall=   90.65s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ [ 11/15] llama3-70b   | eval_cluster           | k= 48 | wall=   90.83s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ [ 12/15] llama3-70b   | eval_cluster           | k= 64 | wall=   90.90s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ [ 13/15] llama3-70b   | eval_cluster           | k= 24 | wall=   91.07s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ [ 14/15] llama3-70b   | eval_cluster           | k=128 | wall=   91.10s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ [ 15/15] llama3-70b   | eval_cluster           | k= 16 | wall=   91.46s | throughput=   3.504 req/s | pipelines=2
+2026-03-27 03:59:25 │ 
+2026-03-27 03:59:25 │ ════════════════════════════════════════════════════════
+2026-03-27 03:59:25 │ RESULTS SUMMARY  (total elapsed: 92.2s)
+2026-03-27 03:59:25 │ ════════════════════════════════════════════════════════
+2026-03-27 03:59:25 │ 
+2026-03-27 03:59:25 │   [llama3-70b] [Evaluation cluster (3type, 9 nodes, 24 GPUs)]
+2026-03-27 03:59:25 │       k │  wall_time │   opt_time │     throughput │ pipelines
+2026-03-27 03:59:25 │   ──────┼────────────┼────────────┼────────────────┼──────────
+2026-03-27 03:59:25 │       1 │     13.67s │     13.65s │       3.082    │         2
+2026-03-27 03:59:25 │       2 │     28.31s │     28.25s │       3.205    │         2
+2026-03-27 03:59:25 │       3 │     36.43s │     36.34s │       3.210    │         2
+2026-03-27 03:59:25 │       4 │     48.80s │     48.69s │       3.324    │         2
+2026-03-27 03:59:25 │       5 │     59.75s │     59.61s │       3.324    │         2
+2026-03-27 03:59:25 │       6 │     66.27s │     66.12s │       3.504    │         2
+2026-03-27 03:59:25 │       7 │     74.12s │     73.95s │       3.504    │         2
+2026-03-27 03:59:25 │       8 │     82.29s │     82.10s │       3.504    │         2
+2026-03-27 03:59:25 │      16 │     91.46s │     91.24s │       3.504    │         2
+2026-03-27 03:59:25 │      24 │     91.07s │     90.86s │       3.504    │         2
+2026-03-27 03:59:25 │      32 │     90.47s │     90.25s │       3.504    │         2
+2026-03-27 03:59:25 │      48 │     90.83s │     90.61s │       3.504    │         2
+2026-03-27 03:59:25 │      64 │     90.90s │     90.68s │       3.504    │         2
+2026-03-27 03:59:25 │      96 │     90.65s │     90.43s │       3.504    │         2
+2026-03-27 03:59:25 │     128 │     91.10s │     90.87s │       3.504    │         2
+2026-03-27 03:59:25 │ 
+2026-03-27 03:59:25 │ JSON results : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/json/results_m=llama3-70b_c=eval_cluster_k=1-128.json
+2026-03-27 03:59:25 │ Log file     : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b_c=eval_cluster_k=1-128_20260327_125753.log

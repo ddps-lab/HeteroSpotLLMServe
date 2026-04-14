@@ -121,14 +121,17 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
     results_dir = os.path.join(base_dir, model_key, wl_dir, "results", "data", "estimated")
     os.makedirs(results_dir, exist_ok=True)
 
-    output_file = os.path.join(results_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
+    # Also output to ReferenceData/PerformanceEstimation/trtllm/predicted/
+    ref_dir = os.path.join(base_dir, "..", "ReferenceData", "PerformanceEstimation", "trtllm", model_key, wl_dir, "predicted")
+    os.makedirs(ref_dir, exist_ok=True)
+    ref_file = os.path.join(ref_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
 
-    # Check cache
-    if os.path.exists(output_file) and not force:
-        with open(output_file) as f:
-            cached = json.load(f)
-        print(f"  [cached] {instance_type} {strategy_label}")
-        return cached
+    # Legacy trtllm/predicted/ path (keep for backward compat)
+    trtllm_dir = os.path.join(base_dir, "trtllm", model_key, wl_dir, "predicted")
+    os.makedirs(trtllm_dir, exist_ok=True)
+    trtllm_file = os.path.join(trtllm_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
+
+    output_file = os.path.join(results_dir, f"est_{instance_to_dirname(instance_type)}_{strategy_label}.json")
 
     num_layers = model["num_hidden_layers"]
     node_layer_comb = build_node_layer_comb(instance_type, num_layers, strategy)
@@ -200,28 +203,30 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
         sweep_sizes.append(batch_size)  # always include max
 
         for bs in sweep_sizes:
-            bs_throughput, bs_latency, _ = get_throughput(
+            bs_throughput, bs_latency, _, latency_detail = get_throughput(
                 max_model_len=WORKLOAD["max_model_len"],
                 gpu_mem_utilization=0.85,
                 node_layer_comb=node_layer_comb,
                 tp_sizes=tp_sizes_list,
                 batch_override=(bs, 0),
+                detail=True,
                 **common_kwargs,
             )
+            prefill_ms = latency_detail["prefill_latency_ms"]
+            decode_ms = latency_detail["decode_latency_ms"]
 
-            # Pipeline bubble correction: when batch_size < PP,
-            # the estimator assumes full pipeline utilization but
-            # micro-batching cannot fill all stages simultaneously.
-            # Correction factor = PP / batch_size.
-            if bs < pp_size:
-                correction = pp_size / bs
-                bs_latency *= correction
-                bs_throughput = bs / (bs_latency / 1000)
+            # TPOT = decode_latency / (output_len * batch_size)
+            # (total decode time spread across all tokens of all requests)
+            tpot_ms = decode_ms / (WORKLOAD["output_len"] * bs) if bs > 0 else 0
 
             batch_sweep.append({
                 "batch_size": bs,
                 "throughput_rps": bs_throughput,
                 "batch_latency_ms": bs_latency,
+                "ttft_ms": prefill_ms,
+                "tpot_ms": tpot_ms,
+                "prefill_latency_ms": prefill_ms,
+                "decode_latency_ms": decode_ms,
             })
 
     result = {
@@ -248,6 +253,12 @@ def run_estimation(model_key: str, instance_type: str, strategy_label: str,
     }
 
     with open(output_file, "w") as f:
+        json.dump(result, f, indent=2)
+
+    # Copy to trtllm/predicted/ and ReferenceData
+    with open(trtllm_file, "w") as f:
+        json.dump(result, f, indent=2)
+    with open(ref_file, "w") as f:
         json.dump(result, f, indent=2)
 
     status = "✓" if batch_size > 0 else "✗ infeasible"

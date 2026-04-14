@@ -407,14 +407,16 @@ class Pipeline:
         for vnode in self.vnodes:
             num_gpu = None
             while True:
-                for node_info in ray.nodes():
-                    ray_node_ip = node_info.get("NodeManagerAddress")
-                    if ray_node_ip == vnode.node_ip:
-                        num_gpu = int(node_info.get("Resources").get("GPU", 0))
-                        break
+                with ray_init_lock:
+                    for node_info in ray.nodes():
+                        ray_node_ip = node_info.get("NodeManagerAddress")
+                        if ray_node_ip == vnode.node_ip:
+                            num_gpu = int(node_info.get("Resources").get("GPU", 0))
+                            break
                 if num_gpu is not None and num_gpu > 0:
                     break
                 cluster_logger.info(f"Waiting for node {vnode.node_ip} to be entered into Ray cluster...")
+                time.sleep(3)
             
             # Update the vnode's GPU count
             # Previously, tp size was always determined by num_gpu.
@@ -597,7 +599,8 @@ class Pipeline:
             init_ray()
         
         # Get currently connected nodes
-        ray_nodes = ray.nodes()
+        with ray_init_lock:
+            ray_nodes = ray.nodes()
         connected_ips = {node.get("NodeManagerAddress") for node in ray_nodes if node.get("Alive")}
         cluster_logger.info(f"Currently connected nodes: {connected_ips}")
         
@@ -639,7 +642,8 @@ class Pipeline:
             attempt = 0
             
             while attempt < max_attempts:
-                ray_nodes = ray.nodes()
+                with ray_init_lock:
+                    ray_nodes = ray.nodes()
                 connected_ips = {node.get("NodeManagerAddress") for node in ray_nodes if node.get("Alive")}
                 
                 if vnode_ips.issubset(connected_ips):
@@ -777,11 +781,12 @@ class Pipeline:
         # 5. Get GPU count for new node from Ray cluster
         new_tp_size = None
         while True:
-            for node_info in ray.nodes():
-                ray_node_ip = node_info.get("NodeManagerAddress")
-                if ray_node_ip == new_node_ip:
-                    new_tp_size = int(node_info.get("Resources").get("GPU", 0))
-                    break
+            with ray_init_lock:
+                for node_info in ray.nodes():
+                    ray_node_ip = node_info.get("NodeManagerAddress")
+                    if ray_node_ip == new_node_ip:
+                        new_tp_size = int(node_info.get("Resources").get("GPU", 0))
+                        break
             if new_tp_size is not None and new_tp_size > 0:
                 break
             cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
@@ -874,7 +879,8 @@ class Pipeline:
         # Stop tensor store on old node (target_vnode == old_vnode)
         cluster_logger.info(f"Stopping tensor store on old node {old_node_ip}")
         target_vnode.stop_tensor_store()
-        
+        target_vnode.assert_tensor_store_stopped()
+
         cluster_logger.info(f"Node switch completed in pipeline: {old_node_ip} -> {new_node_ip}")
 
     def switch_nodes(self, switch_pairs: List[Tuple[str, str]], ray_init_lock: threading.Lock = None):
@@ -948,11 +954,12 @@ class Pipeline:
             new_node_ip = new_vnode.node_ip
             new_tp_size = None
             while True:
-                for node_info in ray.nodes():
-                    ray_node_ip = node_info.get("NodeManagerAddress")
-                    if ray_node_ip == new_node_ip:
-                        new_tp_size = int(node_info.get("Resources").get("GPU", 0))
-                        break
+                with ray_init_lock:
+                    for node_info in ray.nodes():
+                        ray_node_ip = node_info.get("NodeManagerAddress")
+                        if ray_node_ip == new_node_ip:
+                            new_tp_size = int(node_info.get("Resources").get("GPU", 0))
+                            break
                 if new_tp_size is not None and new_tp_size > 0:
                     break
                 cluster_logger.info(f"Waiting for new node {new_node_ip} to be entered into Ray cluster...")
@@ -987,16 +994,6 @@ class Pipeline:
                     cluster_logger.error(f"Failed to start tensor store on {node_ip}: {e}")
                     raise
         
-        for new_vnode in new_vnodes:
-            new_node_ip = new_vnode.node_ip
-            # Wait until the Tensor Store is ready.
-            cluster_logger.info(f"Checking tensor store status on new node {new_node_ip}")
-            status_check_time = 0
-            while not new_vnode.check_tensor_store_status():
-                status_check_time += 1
-                cluster_logger.info(f"Waiting for tensor store to be ready on new node {new_node_ip} ({status_check_time})...")
-                time.sleep(2)
-        
         # Update the Node Rank Mapping Dictionary.
         self._generate_node_rank_mapping()
 
@@ -1014,6 +1011,22 @@ class Pipeline:
         # Start the new API server
         new_ray_address = f"{self.ray_head_ip}:{new_ray_port}"
         new_first_vnode.start_api_server(new_api_server_port, self.config, self.node_rank_mapping, new_ray_address)
+
+
+        # Wait for all tensor stores to be ready (parallel polling)
+        tensor_store_ready = [False] * len(new_vnodes)
+        status_check_time = 0
+        while not all(tensor_store_ready):
+            for i, new_vnode in enumerate(new_vnodes):
+                if not tensor_store_ready[i]:
+                    tensor_store_ready[i] = new_vnode.check_tensor_store_status()
+            if not all(tensor_store_ready):
+                status_check_time += 1
+                ready_count = sum(tensor_store_ready)
+                cluster_logger.info(
+                    f"Waiting for tensor stores ({ready_count}/{len(new_vnodes)}) ({status_check_time})..."
+                )
+                time.sleep(1)
 
         # Wait until the new API server is ready.
         cluster_logger.info(f"Checking API server status on node {new_first_vnode.node_ip}:{new_api_server_port}")
@@ -1069,6 +1082,7 @@ class Pipeline:
             # Stop tensor store on old node (target_vnode == old_vnode)
             cluster_logger.info(f"Stopping tensor store on old node {target_vnode.node_ip}")
             target_vnode.stop_tensor_store()
+            target_vnode.assert_tensor_store_stopped()
 
             cluster_logger.info(f"Node switch completed in pipeline: {target_vnode.node_ip} -> {new_node_ip}")
 
@@ -1531,9 +1545,98 @@ class VNode:
                     success_count += 1
             
             cluster_logger.info(f"TensorStore shutdown: {success_count}/{self.tp_size} processes stopped successfully")
-        
+
+        # Force kill any remaining tensor store processes on the remote node
+        if success_count < self.tp_size:
+            try:
+                ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+                check_cmd = (
+                    f"ssh {ssh_options} {self.node_ip} "
+                    f"\"pgrep -f 'tensor_store'\""
+                )
+                result = subprocess.run(
+                    check_cmd, shell=True, timeout=5,
+                    capture_output=True, text=True
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    cluster_logger.warning(
+                        f"Tensor store processes still running on {self.node_ip}, force killing..."
+                    )
+                    kill_cmd = (
+                        f"ssh {ssh_options} {self.node_ip} "
+                        f"\"pkill -9 -f 'tensor_store'\""
+                    )
+                    subprocess.run(kill_cmd, shell=True, timeout=5, capture_output=True)
+                    cluster_logger.info(f"Force killed tensor store on {self.node_ip}")
+                else:
+                    cluster_logger.info(f"Tensor store processes already stopped on {self.node_ip}")
+            except Exception as e:
+                cluster_logger.error(f"Failed to force-kill tensor store on {self.node_ip}: {e}")
+
         self.is_tensor_store_ready = False
         cluster_logger.info(f"TensorStore shutdown completed on {self.node_ip}")
+
+    def assert_tensor_store_stopped(self, max_attempts: int = 6, interval: float = 5.0):
+        """Ensure tensor store processes are killed on this node.
+        
+        Spawns a daemon thread that repeatedly checks and force-kills
+        any remaining tensor store processes. Non-blocking.
+        
+        Args:
+            max_attempts: Maximum number of check-kill cycles.
+            interval: Seconds between each attempt.
+        """
+        def _cleanup_worker():
+            ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=3 -o LogLevel=ERROR"
+            check_cmd = (
+                f"ssh {ssh_options} {self.node_ip} "
+                f"\"pgrep -f 'tensor_store'\""
+            )
+            kill_cmd = (
+                f"ssh {ssh_options} {self.node_ip} "
+                f"\"pkill -9 -f 'tensor_store'\""
+            )
+
+            for attempt in range(max_attempts):
+                try:
+                    result = subprocess.run(
+                        check_cmd, shell=True, timeout=5,
+                        capture_output=True, text=True
+                    )
+                    pids = result.stdout.strip()
+
+                    if result.returncode != 0 or not pids:
+                        cluster_logger.info(
+                            f"Tensor store processes confirmed stopped on {self.node_ip}"
+                        )
+                        return
+
+                    cluster_logger.warning(
+                        f"Tensor store still running on {self.node_ip} "
+                        f"(attempt {attempt + 1}/{max_attempts}): PIDs={pids}. "
+                        f"Sending pkill -9..."
+                    )
+                    subprocess.run(kill_cmd, shell=True, timeout=5, capture_output=True)
+
+                except subprocess.TimeoutExpired:
+                    cluster_logger.warning(
+                        f"Tensor store cleanup timed out on {self.node_ip} "
+                        f"(attempt {attempt + 1}, node may be unreachable)"
+                    )
+                except Exception as e:
+                    cluster_logger.error(
+                        f"Tensor store cleanup error on {self.node_ip}: {e}"
+                    )
+
+                time.sleep(interval)
+
+            cluster_logger.error(
+                f"Failed to kill tensor store on {self.node_ip} "
+                f"after {max_attempts} attempts"
+            )
+
+        thread = threading.Thread(target=_cleanup_worker, daemon=True)
+        thread.start()
 
     def stop_api_server(self, api_server_port: int = None):
         """Stop the API server on this VNode (only applicable for first node)."""

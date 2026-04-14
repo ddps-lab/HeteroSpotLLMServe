@@ -3,6 +3,7 @@ Benchmark utilities for GlobalServer testing.
 Contains metrics calculation and display functions.
 """
 import asyncio
+import logging
 import os
 import time
 from datetime import datetime
@@ -154,54 +155,56 @@ def calculate_benchmark_metrics(
     )
 
 
-def print_benchmark_results(metrics: BenchmarkMetrics):
+def print_benchmark_results(metrics: BenchmarkMetrics, logger=None):
     """Print benchmark results in a formatted manner similar to benchmark_serving.py."""
-    print("\n" + "=" * 50)
-    print(" " * 12 + "Serving Benchmark Result")
-    print("=" * 50)
-    
+    if logger is None:
+        logger = logging.getLogger(__name__)
+    logger.info("\n" + "=" * 50)
+    logger.info(" " * 12 + "Serving Benchmark Result")
+    logger.info("=" * 50)
+
     # Basic statistics
-    print(f"{'Successful requests:':<40} {metrics.completed:<10}")
-    print(f"{'Benchmark duration (s):':<40} {metrics.benchmark_duration:<10.2f}")
-    print(f"{'Total input tokens:':<40} {metrics.total_input:<10}")
-    print(f"{'Total generated tokens:':<40} {metrics.total_output:<10}")
-    print(f"{'Request throughput (req/s):':<40} {metrics.request_throughput:<10.2f}")
-    print(f"{'Output token throughput (tok/s):':<40} {metrics.output_throughput:<10.2f}")
-    print(f"{'Total Token throughput (tok/s):':<40} {metrics.total_token_throughput:<10.2f}")
-    
+    logger.info(f"{'Successful requests:':<40} {metrics.completed:<10}")
+    logger.info(f"{'Benchmark duration (s):':<40} {metrics.benchmark_duration:<10.2f}")
+    logger.info(f"{'Total input tokens:':<40} {metrics.total_input:<10}")
+    logger.info(f"{'Total generated tokens:':<40} {metrics.total_output:<10}")
+    logger.info(f"{'Request throughput (req/s):':<40} {metrics.request_throughput:<10.2f}")
+    logger.info(f"{'Output token throughput (tok/s):':<40} {metrics.output_throughput:<10.2f}")
+    logger.info(f"{'Total Token throughput (tok/s):':<40} {metrics.total_token_throughput:<10.2f}")
+
     # End-to-end Latency
-    print("-" * 16 + "End-to-end Latency" + "-" * 16)
-    print(f"{'Mean E2EL (ms):':<40} {metrics.mean_e2el_ms:<10.2f}")
-    print(f"{'Median E2EL (ms):':<40} {metrics.median_e2el_ms:<10.2f}")
+    logger.info("-" * 16 + "End-to-end Latency" + "-" * 16)
+    logger.info(f"{'Mean E2EL (ms):':<40} {metrics.mean_e2el_ms:<10.2f}")
+    logger.info(f"{'Median E2EL (ms):':<40} {metrics.median_e2el_ms:<10.2f}")
     if metrics.percentiles_e2el_ms:
         for p, v in metrics.percentiles_e2el_ms:
-            print(f"{f'P{int(p)} E2EL (ms):':<40} {v:<10.2f}")
-    
+            logger.info(f"{f'P{int(p)} E2EL (ms):':<40} {v:<10.2f}")
+
     # Time to First Token
-    print("-" * 15 + "Time to First Token" + "-" * 16)
-    print(f"{'Mean TTFT (ms):':<40} {metrics.mean_ttft_ms:<10.2f}")
-    print(f"{'Median TTFT (ms):':<40} {metrics.median_ttft_ms:<10.2f}")
+    logger.info("-" * 15 + "Time to First Token" + "-" * 16)
+    logger.info(f"{'Mean TTFT (ms):':<40} {metrics.mean_ttft_ms:<10.2f}")
+    logger.info(f"{'Median TTFT (ms):':<40} {metrics.median_ttft_ms:<10.2f}")
     if metrics.percentiles_ttft_ms:
         for p, v in metrics.percentiles_ttft_ms:
-            print(f"{f'P{int(p)} TTFT (ms):':<40} {v:<10.2f}")
-    
+            logger.info(f"{f'P{int(p)} TTFT (ms):':<40} {v:<10.2f}")
+
     # Time per Output Token
-    print("-" * 5 + "Time per Output Token (excl. 1st token)" + "-" * 6)
-    print(f"{'Mean TPOT (ms):':<40} {metrics.mean_tpot_ms:<10.2f}")
-    print(f"{'Median TPOT (ms):':<40} {metrics.median_tpot_ms:<10.2f}")
+    logger.info("-" * 5 + "Time per Output Token (excl. 1st token)" + "-" * 6)
+    logger.info(f"{'Mean TPOT (ms):':<40} {metrics.mean_tpot_ms:<10.2f}")
+    logger.info(f"{'Median TPOT (ms):':<40} {metrics.median_tpot_ms:<10.2f}")
     if metrics.percentiles_tpot_ms:
         for p, v in metrics.percentiles_tpot_ms:
-            print(f"{f'P{int(p)} TPOT (ms):':<40} {v:<10.2f}")
-    
+            logger.info(f"{f'P{int(p)} TPOT (ms):':<40} {v:<10.2f}")
+
     # Inter-token Latency
-    print("-" * 15 + "Inter-token Latency" + "-" * 16)
-    print(f"{'Mean ITL (ms):':<40} {metrics.mean_itl_ms:<10.2f}")
-    print(f"{'Median ITL (ms):':<40} {metrics.median_itl_ms:<10.2f}")
+    logger.info("-" * 15 + "Inter-token Latency" + "-" * 16)
+    logger.info(f"{'Mean ITL (ms):':<40} {metrics.mean_itl_ms:<10.2f}")
+    logger.info(f"{'Median ITL (ms):':<40} {metrics.median_itl_ms:<10.2f}")
     if metrics.percentiles_itl_ms:
         for p, v in metrics.percentiles_itl_ms:
-            print(f"{f'P{int(p)} ITL (ms):':<40} {v:<10.2f}")
-    
-    print("=" * 50)
+            logger.info(f"{f'P{int(p)} ITL (ms):':<40} {v:<10.2f}")
+
+    logger.info("=" * 50)
 
 
 async def run_benchmark_requests(
@@ -368,7 +371,9 @@ async def run_trace_benchmark(
     run_initial_test: bool = True,
     test_requests_per_pipeline: int = 2,
     start_time: float = None,
-    end_time: float = None
+    end_time: float = None,
+    max_duration: float = None,
+    logger=None
 ):
     """
     Run a trace-based benchmark test on the GlobalServer using Azure dataset.
@@ -387,10 +392,16 @@ async def run_trace_benchmark(
         test_requests_per_pipeline: Number of test requests per pipeline
         start_time: Start time in seconds from the first request (None for no lower bound)
         end_time: End time in seconds from the first request (None for no upper bound)
+        max_duration: Maximum wall-clock duration in seconds (None for no limit).
+                      When reached, pending requests are cancelled and metrics are
+                      computed from completed requests only.
+        logger: Optional logger instance. If None, creates a default logger.
 
     Returns:
         BenchmarkMetrics object with results
     """
+    if logger is None:
+        logger = logging.getLogger(__name__)
     from request_handler import generate_random_requests
     from evaluation_utils import (
         load_azure_trace,
@@ -404,7 +415,7 @@ async def run_trace_benchmark(
     # Run initial test if requested
     if run_initial_test:
         num_pipelines = len(global_server.cluster.pipelines)
-        print(f"\nRunning initial test on {num_pipelines} pipeline(s)...")
+        logger.info(f"\nRunning initial test on {num_pipelines} pipeline(s)...")
 
         # Generate test requests with fixed length for stability
         test_count = test_requests_per_pipeline * num_pipelines
@@ -417,7 +428,7 @@ async def run_trace_benchmark(
         )
 
         # Send test requests
-        print(f"Sending {test_count} test requests ({test_requests_per_pipeline} per pipeline)...")
+        logger.info(f"Sending {test_count} test requests ({test_requests_per_pipeline} per pipeline)...")
         test_requests = []
         for test_input in test_inputs:
             request = await global_server.add_request_and_wait(test_input)
@@ -429,7 +440,7 @@ async def run_trace_benchmark(
             if not (request.output and request.output.success):
                 failed_count += 1
                 error_msg = request.output.error if request.output else "No output"
-                print(f"  Test request {i+1} failed: {error_msg}")
+                logger.info(f"  Test request {i+1} failed: {error_msg}")
 
         if failed_count > 0:
             raise ValueError(
@@ -437,23 +448,24 @@ async def run_trace_benchmark(
                 "Please check pipeline configuration and server status."
             )
         else:
-            print(f"Initial test completed successfully - all {test_count} requests succeeded!")
-            print("Starting trace benchmark...\n")
+            logger.info(f"Initial test completed successfully - all {test_count} requests succeeded!")
+            logger.info("Starting trace benchmark...\n")
 
     # Load Azure trace dataset
-    print(f"Loading trace dataset from: {dataset_path}")
+    logger.info(f"Loading trace dataset from: {dataset_path}")
     trace_data = load_azure_trace(
         csv_path=dataset_path,
         max_requests=num_requests,
         start_time=start_time,
-        end_time=end_time
+        end_time=end_time,
+        logger=logger
     )
 
     if not trace_data:
         raise ValueError("No trace data loaded. Check dataset path and filters.")
 
     # Generate requests from trace
-    print("Generating requests from trace data...")
+    logger.info("Generating requests from trace data...")
     trace_requests = generate_requests_from_trace(
         trace_data=trace_data,
         model_name=model_name,
@@ -461,7 +473,7 @@ async def run_trace_benchmark(
         ignore_eos=True
     )
 
-    print(f"Generated {len(trace_requests)} requests from trace\n")
+    logger.info(f"Generated {len(trace_requests)} requests from trace\n")
 
     # Prepare trace output path with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -476,7 +488,9 @@ async def run_trace_benchmark(
         time_scale=time_scale,
         percentiles=percentiles,
         disable_tqdm=disable_tqdm,
-        save_trace_path=trace_output_path
+        save_trace_path=trace_output_path,
+        max_duration=max_duration,
+        logger=logger
     )
 
     return metrics

@@ -1,0 +1,2259 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232,
+    "max_model_len": 8192
+  },
+  "instances": [
+    "g5.48xlarge",
+    "g6.48xlarge",
+    "g6e.48xlarge",
+    "p4d.24xlarge",
+    "p5.48xlarge"
+  ],
+  "strategies": [
+    [
+      "tp1_pp8",
+      [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    ],
+    [
+      "tp2_pp4",
+      [
+        2,
+        2,
+        2,
+        2
+      ]
+    ],
+    [
+      "tp4_pp2",
+      [
+        4,
+        4
+      ]
+    ],
+    [
+      "tp8_pp1",
+      [
+        8
+      ]
+    ]
+  ],
+  "results": [
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g5.48xlarge",
+      "gpu_type": "A10G",
+      "gpu_count": 8,
+      "tp_size": 1,
+      "pp_size": 8,
+      "strategy_label": "tp1_pp8",
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "pp_layer_partition_str": "10,10,10,10,10,10,10,10",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 0,
+      "num_blocks": 0,
+      "estimated_throughput_rps": 0.0,
+      "estimated_batch_latency_ms": 0.0,
+      "estimated_single_latency_ms": 0.0,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [],
+      "feasible": false
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g5.48xlarge",
+      "gpu_type": "A10G",
+      "gpu_count": 8,
+      "tp_size": 2,
+      "pp_size": 4,
+      "strategy_label": "tp2_pp4",
+      "parallel_strategy": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pp_layer_partition": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "pp_layer_partition_str": "20,20,20,20",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 11,
+      "num_blocks": 684,
+      "estimated_throughput_rps": 0.21820979925219744,
+      "estimated_batch_latency_ms": 50410.20173107201,
+      "estimated_single_latency_ms": 36802.69245886171,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.025909936250411086,
+          "batch_latency_ms": 38595.23197337601,
+          "ttft_ms": 2789.3710411093334,
+          "tpot_ms": 154.3356074666667,
+          "prefill_latency_ms": 2789.3710411093334,
+          "decode_latency_ms": 35805.860932266674
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.05090020222795525,
+          "batch_latency_ms": 39292.57473365334,
+          "ttft_ms": 3486.713801386667,
+          "tpot_ms": 77.16780373333334,
+          "prefill_latency_ms": 3486.713801386667,
+          "decode_latency_ms": 35805.860932266674
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.09831087114267684,
+          "batch_latency_ms": 40687.260254208006,
+          "ttft_ms": 4881.399321941333,
+          "tpot_ms": 38.58390186666667,
+          "prefill_latency_ms": 4881.399321941333,
+          "decode_latency_ms": 35805.860932266674
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.17299830810794659,
+          "batch_latency_ms": 46243.226812416,
+          "ttft_ms": 9747.476327082666,
+          "tpot_ms": 19.663658666666667,
+          "prefill_latency_ms": 9747.476327082666,
+          "decode_latency_ms": 36495.75048533333
+        },
+        {
+          "batch_size": 11,
+          "throughput_rps": 0.21820979925219744,
+          "batch_latency_ms": 50410.20173107201,
+          "ttft_ms": 13397.034080938667,
+          "tpot_ms": 14.503592339393943,
+          "prefill_latency_ms": 13397.034080938667,
+          "decode_latency_ms": 37013.16765013334
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g5.48xlarge",
+      "gpu_type": "A10G",
+      "gpu_count": 8,
+      "tp_size": 4,
+      "pp_size": 2,
+      "strategy_label": "tp4_pp2",
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": [
+        40,
+        40
+      ],
+      "pp_layer_partition_str": "40,40",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 30,
+      "num_blocks": 1865,
+      "estimated_throughput_rps": 0.3094904734229156,
+      "estimated_batch_latency_ms": 96933.51678390858,
+      "estimated_single_latency_ms": 19917.741695488,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.047892228967146726,
+          "batch_latency_ms": 20880.21421358324,
+          "ttft_ms": 2996.697578154667,
+          "tpot_ms": 77.08412342857143,
+          "prefill_latency_ms": 2996.697578154667,
+          "decode_latency_ms": 17883.516635428572
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.08937124335294545,
+          "batch_latency_ms": 22378.563002660572,
+          "ttft_ms": 4495.046367232,
+          "tpot_ms": 38.542061714285715,
+          "prefill_latency_ms": 4495.046367232,
+          "decode_latency_ms": 17883.516635428572
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.1443851381903866,
+          "batch_latency_ms": 27703.68231892115,
+          "ttft_ms": 8986.809380864002,
+          "tpot_ms": 20.169044114285718,
+          "prefill_latency_ms": 8986.809380864002,
+          "decode_latency_ms": 18716.872938057146
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.20858362851945028,
+          "batch_latency_ms": 38353.92095144229,
+          "ttft_ms": 17970.335408128005,
+          "tpot_ms": 10.982535314285714,
+          "prefill_latency_ms": 17970.335408128005,
+          "decode_latency_ms": 20383.585543314286
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.2682115733015415,
+          "batch_latency_ms": 59654.39821648458,
+          "ttft_ms": 35937.387462656014,
+          "tpot_ms": 6.389280914285714,
+          "prefill_latency_ms": 35937.387462656014,
+          "decode_latency_ms": 23717.01075382857
+        },
+        {
+          "batch_size": 30,
+          "throughput_rps": 0.3094904734229156,
+          "batch_latency_ms": 96933.51678390858,
+          "ttft_ms": 67383.01191168,
+          "tpot_ms": 4.245762194285715,
+          "prefill_latency_ms": 67383.01191168,
+          "decode_latency_ms": 29550.504872228576
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g5.48xlarge",
+      "gpu_type": "A10G",
+      "gpu_count": 8,
+      "tp_size": 8,
+      "pp_size": 1,
+      "strategy_label": "tp8_pp1",
+      "parallel_strategy": [
+        8
+      ],
+      "pp_layer_partition": [
+        80
+      ],
+      "pp_layer_partition_str": "80",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 33,
+      "num_blocks": 2052,
+      "estimated_throughput_rps": 0.24734968220630604,
+      "estimated_batch_latency_ms": 133414.361828352,
+      "estimated_single_latency_ms": 11436.260690944,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.08205481287614826,
+          "batch_latency_ms": 12186.975570944,
+          "ttft_ms": 2934.6482834773333,
+          "tpot_ms": 39.880721066666666,
+          "prefill_latency_ms": 2934.6482834773333,
+          "decode_latency_ms": 9252.327287466667
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.12519342314167692,
+          "batch_latency_ms": 15975.280089088,
+          "ttft_ms": 5868.749341354667,
+          "tpot_ms": 21.781316266666668,
+          "prefill_latency_ms": 5868.749341354667,
+          "decode_latency_ms": 10106.530747733334
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.16983775605882065,
+          "batch_latency_ms": 23551.889125376,
+          "ttft_ms": 11736.951457109333,
+          "tpot_ms": 12.731613866666667,
+          "prefill_latency_ms": 11736.951457109333,
+          "decode_latency_ms": 11814.937668266666
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.2066910694520258,
+          "batch_latency_ms": 38705.107197952,
+          "ttft_ms": 23473.355688618667,
+          "tpot_ms": 8.206762666666666,
+          "prefill_latency_ms": 23473.355688618667,
+          "decode_latency_ms": 15231.751509333333
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.23184343305860916,
+          "batch_latency_ms": 69012.090568704,
+          "ttft_ms": 46946.71137723734,
+          "tpot_ms": 5.944337066666666,
+          "prefill_latency_ms": 46946.71137723734,
+          "decode_latency_ms": 22065.379191466665
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 0.24686394590727098,
+          "batch_latency_ms": 129626.05731020801,
+          "ttft_ms": 93893.42275447468,
+          "tpot_ms": 4.813124266666667,
+          "prefill_latency_ms": 93893.42275447468,
+          "decode_latency_ms": 35732.63455573333
+        },
+        {
+          "batch_size": 33,
+          "throughput_rps": 0.24734968220630604,
+          "batch_latency_ms": 133414.361828352,
+          "ttft_ms": 96827.52381235201,
+          "tpot_ms": 4.7788450909090905,
+          "prefill_latency_ms": 96827.52381235201,
+          "decode_latency_ms": 36586.838015999994
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6.48xlarge",
+      "gpu_type": "L4",
+      "gpu_count": 8,
+      "tp_size": 1,
+      "pp_size": 8,
+      "strategy_label": "tp1_pp8",
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "pp_layer_partition_str": "10,10,10,10,10,10,10,10",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 0,
+      "num_blocks": 0,
+      "estimated_throughput_rps": 0.0,
+      "estimated_batch_latency_ms": 0.0,
+      "estimated_single_latency_ms": 0.0,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [],
+      "feasible": false
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6.48xlarge",
+      "gpu_type": "L4",
+      "gpu_count": 8,
+      "tp_size": 2,
+      "pp_size": 4,
+      "strategy_label": "tp2_pp4",
+      "parallel_strategy": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pp_layer_partition": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "pp_layer_partition_str": "20,20,20,20",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 11,
+      "num_blocks": 684,
+      "estimated_throughput_rps": 0.1427553600240799,
+      "estimated_batch_latency_ms": 77054.900062208,
+      "estimated_single_latency_ms": 66984.27366261029,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.014367460619602155,
+          "batch_latency_ms": 69601.722007552,
+          "ttft_ms": 1789.7267199999997,
+          "tpot_ms": 292.293083136,
+          "prefill_latency_ms": 1789.7267199999997,
+          "decode_latency_ms": 67811.995287552
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.028551379919889135,
+          "batch_latency_ms": 70049.153687552,
+          "ttft_ms": 2237.1583999999993,
+          "tpot_ms": 146.146541568,
+          "prefill_latency_ms": 2237.1583999999993,
+          "decode_latency_ms": 67811.995287552
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.05638248532387023,
+          "batch_latency_ms": 70944.017047552,
+          "ttft_ms": 3132.0217599999996,
+          "tpot_ms": 73.073270784,
+          "prefill_latency_ms": 3132.0217599999996,
+          "decode_latency_ms": 67811.995287552
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.1074749496531676,
+          "batch_latency_ms": 74435.95019878399,
+          "ttft_ms": 6234.624671743999,
+          "tpot_ms": 36.74640384,
+          "prefill_latency_ms": 6234.624671743999,
+          "decode_latency_ms": 68201.32552704
+        },
+        {
+          "batch_size": 11,
+          "throughput_rps": 0.1427553600240799,
+          "batch_latency_ms": 77054.900062208,
+          "ttft_ms": 8561.576855552,
+          "tpot_ms": 26.839076491636366,
+          "prefill_latency_ms": 8561.576855552,
+          "decode_latency_ms": 68493.323206656
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6.48xlarge",
+      "gpu_type": "L4",
+      "gpu_count": 8,
+      "tp_size": 4,
+      "pp_size": 2,
+      "strategy_label": "tp4_pp2",
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": [
+        40,
+        40
+      ],
+      "pp_layer_partition_str": "40,40",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 30,
+      "num_blocks": 1865,
+      "estimated_throughput_rps": 0.41097624912814407,
+      "estimated_batch_latency_ms": 72996.91907657144,
+      "estimated_single_latency_ms": 34028.785879552,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.028852000624035347,
+          "batch_latency_ms": 34659.641562843426,
+          "ttft_ms": 1532.3410513919998,
+          "tpot_ms": 142.79008841142854,
+          "prefill_latency_ms": 1532.3410513919998,
+          "decode_latency_ms": 33127.30051145142
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.056456009956847776,
+          "batch_latency_ms": 35425.812088539424,
+          "ttft_ms": 2298.5115770879997,
+          "tpot_ms": 71.39504420571427,
+          "prefill_latency_ms": 2298.5115770879997,
+          "decode_latency_ms": 33127.30051145142
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.10496204857256113,
+          "batch_latency_ms": 38109.01229919086,
+          "ttft_ms": 4590.719115264,
+          "tpot_ms": 36.118850413714284,
+          "prefill_latency_ms": 4590.719115264,
+          "decode_latency_ms": 33518.29318392686
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.1840120541565074,
+          "batch_latency_ms": 43475.41272049372,
+          "ttft_ms": 9175.134191616,
+          "tpot_ms": 18.480753517714287,
+          "prefill_latency_ms": 9175.134191616,
+          "decode_latency_ms": 34300.278528877716
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.29515822323448615,
+          "batch_latency_ms": 54208.21356309943,
+          "ttft_ms": 18343.96434432,
+          "tpot_ms": 9.661705069714287,
+          "prefill_latency_ms": 18343.96434432,
+          "decode_latency_ms": 35864.249218779434
+        },
+        {
+          "batch_size": 30,
+          "throughput_rps": 0.41097624912814407,
+          "batch_latency_ms": 72996.91907657144,
+          "ttft_ms": 34395.72115046401,
+          "tpot_ms": 5.546149127314286,
+          "prefill_latency_ms": 34395.72115046401,
+          "decode_latency_ms": 38601.19792610743
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6.48xlarge",
+      "gpu_type": "L4",
+      "gpu_count": 8,
+      "tp_size": 8,
+      "pp_size": 1,
+      "strategy_label": "tp8_pp1",
+      "parallel_strategy": [
+        8
+      ],
+      "pp_layer_partition": [
+        80
+      ],
+      "pp_layer_partition_str": "80",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 33,
+      "num_blocks": 2052,
+      "estimated_throughput_rps": 0.45474745803615724,
+      "estimated_batch_latency_ms": 72567.750334464,
+      "estimated_single_latency_ms": 17535.43973888,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.05606724488431292,
+          "batch_latency_ms": 17835.725690879997,
+          "ttft_ms": 1339.8585405439999,
+          "tpot_ms": 71.102875648,
+          "prefill_latency_ms": 1339.8585405439999,
+          "decode_latency_ms": 16495.867150336
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.10232271037989794,
+          "batch_latency_ms": 19546.002960384,
+          "ttft_ms": 2678.666407936,
+          "tpot_ms": 36.352018432,
+          "prefill_latency_ms": 2678.666407936,
+          "decode_latency_ms": 16867.336552448
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.17416628504754764,
+          "batch_latency_ms": 22966.557499391998,
+          "ttft_ms": 5356.28214272,
+          "tpot_ms": 18.976589823999998,
+          "prefill_latency_ms": 5356.28214272,
+          "decode_latency_ms": 17610.275356672
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.26838732844869534,
+          "batch_latency_ms": 29807.666577408,
+          "ttft_ms": 10711.513612288,
+          "tpot_ms": 10.28887552,
+          "prefill_latency_ms": 10711.513612288,
+          "decode_latency_ms": 19096.15296512
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.3678927539823586,
+          "batch_latency_ms": 43490.935406592,
+          "ttft_ms": 21423.027224576,
+          "tpot_ms": 5.9450183679999995,
+          "prefill_latency_ms": 21423.027224576,
+          "decode_latency_ms": 22067.908182016
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 0.4516107986332418,
+          "batch_latency_ms": 70857.47306496,
+          "ttft_ms": 42846.054449152,
+          "tpot_ms": 3.773089792,
+          "prefill_latency_ms": 42846.054449152,
+          "decode_latency_ms": 28011.418615808
+        },
+        {
+          "batch_size": 33,
+          "throughput_rps": 0.45474745803615724,
+          "batch_latency_ms": 72567.750334464,
+          "ttft_ms": 44184.862316544,
+          "tpot_ms": 3.7072737745454543,
+          "prefill_latency_ms": 44184.862316544,
+          "decode_latency_ms": 28382.88801792
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6e.48xlarge",
+      "gpu_type": "L40S",
+      "gpu_count": 8,
+      "tp_size": 1,
+      "pp_size": 8,
+      "strategy_label": "tp1_pp8",
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "pp_layer_partition_str": "10,10,10,10,10,10,10,10",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 443,
+      "num_blocks": 27549,
+      "estimated_throughput_rps": 3.856515560280394,
+      "estimated_batch_latency_ms": 114870.53353618285,
+      "estimated_single_latency_ms": 48368.64517010287,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.019374219178066487,
+          "batch_latency_ms": 51614.98333476572,
+          "ttft_ms": 568.7281693257142,
+          "tpot_ms": 220.02696192000002,
+          "prefill_latency_ms": 568.7281693257142,
+          "decode_latency_ms": 51046.25516544
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.03869514225876747,
+          "batch_latency_ms": 51686.07435593143,
+          "ttft_ms": 639.8191904914286,
+          "tpot_ms": 110.01348096000001,
+          "prefill_latency_ms": 639.8191904914286,
+          "decode_latency_ms": 51046.25516544
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.07717797738096528,
+          "batch_latency_ms": 51828.256398262856,
+          "ttft_ms": 782.0012328228571,
+          "tpot_ms": 55.006740480000005,
+          "prefill_latency_ms": 782.0012328228571,
+          "decode_latency_ms": 51046.25516544
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.15351367722183795,
+          "batch_latency_ms": 52112.62048292572,
+          "ttft_ms": 1066.3653174857143,
+          "tpot_ms": 27.503370240000002,
+          "prefill_latency_ms": 1066.3653174857143,
+          "decode_latency_ms": 51046.25516544
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.30038255771556643,
+          "batch_latency_ms": 53265.409688502856,
+          "ttft_ms": 2117.7306349714286,
+          "tpot_ms": 13.779008365714287,
+          "prefill_latency_ms": 2117.7306349714286,
+          "decode_latency_ms": 51147.67905353143
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 0.575840039817421,
+          "batch_latency_ms": 55570.988099657145,
+          "ttft_ms": 4220.461269942857,
+          "tpot_ms": 6.9168274285714295,
+          "prefill_latency_ms": 4220.461269942857,
+          "decode_latency_ms": 51350.52682971429
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 1.0634383351238919,
+          "batch_latency_ms": 60182.144921965715,
+          "ttft_ms": 8425.922539885714,
+          "tpot_ms": 3.48573696,
+          "prefill_latency_ms": 8425.922539885714,
+          "decode_latency_ms": 51756.22238208
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 1.8438634158638718,
+          "batch_latency_ms": 69419.45856658286,
+          "ttft_ms": 16851.84507977143,
+          "tpot_ms": 1.7701917257142858,
+          "prefill_latency_ms": 16851.84507977143,
+          "decode_latency_ms": 52567.61348681143
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 2.9125964222433183,
+          "batch_latency_ms": 87894.08585581713,
+          "ttft_ms": 33703.69015954286,
+          "tpot_ms": 0.9124191085714285,
+          "prefill_latency_ms": 33703.69015954286,
+          "decode_latency_ms": 54190.39569627428
+        },
+        {
+          "batch_size": 443,
+          "throughput_rps": 3.856515560280394,
+          "batch_latency_ms": 114870.53353618285,
+          "ttft_ms": 58309.35445577142,
+          "tpot_ms": 0.5503345049467914,
+          "prefill_latency_ms": 58309.35445577142,
+          "decode_latency_ms": 56561.17908041143
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6e.48xlarge",
+      "gpu_type": "L40S",
+      "gpu_count": 8,
+      "tp_size": 2,
+      "pp_size": 4,
+      "strategy_label": "tp2_pp4",
+      "parallel_strategy": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pp_layer_partition": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "pp_layer_partition_str": "20,20,20,20",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 481,
+      "num_blocks": 29912,
+      "estimated_throughput_rps": 1.6748754903119558,
+      "estimated_batch_latency_ms": 287185.52679424,
+      "estimated_single_latency_ms": 24733.687543588574,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.039273292498853245,
+          "batch_latency_ms": 25462.596496822858,
+          "ttft_ms": 1085.8064632685714,
+          "tpot_ms": 105.07237083428572,
+          "prefill_latency_ms": 1085.8064632685714,
+          "decode_latency_ms": 24376.790033554287
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.077718048526444,
+          "batch_latency_ms": 25734.04811264,
+          "ttft_ms": 1357.2580790857141,
+          "tpot_ms": 52.53618541714286,
+          "prefill_latency_ms": 1357.2580790857141,
+          "decode_latency_ms": 24376.790033554287
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.1522246606005759,
+          "batch_latency_ms": 26276.951344274286,
+          "ttft_ms": 1900.16131072,
+          "tpot_ms": 26.26809270857143,
+          "prefill_latency_ms": 1900.16131072,
+          "decode_latency_ms": 24376.790033554287
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.2810580301959873,
+          "batch_latency_ms": 28463.872725577145,
+          "ttft_ms": 3789.8158899200002,
+          "tpot_ms": 13.294211657142858,
+          "prefill_latency_ms": 3789.8158899200002,
+          "decode_latency_ms": 24674.056835657146
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.48724461376607764,
+          "batch_latency_ms": 32837.715488182854,
+          "ttft_ms": 7569.12504832,
+          "tpot_ms": 6.807271131428571,
+          "prefill_latency_ms": 7569.12504832,
+          "decode_latency_ms": 25268.590439862855
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 0.7695008156755078,
+          "batch_latency_ms": 41585.401013394294,
+          "ttft_ms": 15127.74336512,
+          "tpot_ms": 3.563800868571429,
+          "prefill_latency_ms": 15127.74336512,
+          "decode_latency_ms": 26457.65764827429
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 1.083070146809045,
+          "batch_latency_ms": 59091.278795337144,
+          "ttft_ms": 30255.48673024,
+          "tpot_ms": 1.9420657371428571,
+          "prefill_latency_ms": 30255.48673024,
+          "decode_latency_ms": 28835.792065097143
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 1.3602111862980002,
+          "batch_latency_ms": 94103.03435922286,
+          "ttft_ms": 60510.97346048,
+          "tpot_ms": 1.1311981714285715,
+          "prefill_latency_ms": 60510.97346048,
+          "decode_latency_ms": 33592.06089874286
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 1.559871917097809,
+          "batch_latency_ms": 164116.0387554743,
+          "ttft_ms": 121011.44018944,
+          "tpot_ms": 0.7257643885714286,
+          "prefill_latency_ms": 121011.44018944,
+          "decode_latency_ms": 43104.598566034285
+        },
+        {
+          "batch_size": 481,
+          "throughput_rps": 1.6748754903119558,
+          "batch_latency_ms": 287185.52679424,
+          "ttft_ms": 227359.67060992,
+          "tpot_ms": 0.5361124111434511,
+          "prefill_latency_ms": 227359.67060992,
+          "decode_latency_ms": 59825.85618432
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6e.48xlarge",
+      "gpu_type": "L40S",
+      "gpu_count": 8,
+      "tp_size": 4,
+      "pp_size": 2,
+      "strategy_label": "tp4_pp2",
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": [
+        40,
+        40
+      ],
+      "pp_layer_partition_str": "40,40",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 499,
+      "num_blocks": 31031,
+      "estimated_throughput_rps": 0.9243694660135315,
+      "estimated_batch_latency_ms": 539827.4373471087,
+      "estimated_single_latency_ms": 12902.70597376,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.07530936373567741,
+          "batch_latency_ms": 13278.561262445714,
+          "ttft_ms": 1183.0826539885716,
+          "tpot_ms": 52.135683657142856,
+          "prefill_latency_ms": 1183.0826539885716,
+          "decode_latency_ms": 12095.478608457142
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.14419504016666032,
+          "batch_latency_ms": 13870.102589439999,
+          "ttft_ms": 1774.6239809828573,
+          "tpot_ms": 26.067841828571428,
+          "prefill_latency_ms": 1774.6239809828573,
+          "decode_latency_ms": 12095.478608457142
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.25108849492234514,
+          "batch_latency_ms": 15930.638324297144,
+          "ttft_ms": 3546.996519497143,
+          "tpot_ms": 13.344441600000001,
+          "prefill_latency_ms": 3546.996519497143,
+          "decode_latency_ms": 12383.641804800001
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.39682547215204966,
+          "batch_latency_ms": 20159.996173165717,
+          "ttft_ms": 7091.741596525715,
+          "tpot_ms": 7.04108544,
+          "prefill_latency_ms": 7091.741596525715,
+          "decode_latency_ms": 13068.25457664
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.5589284873365258,
+          "batch_latency_ms": 28626.202389942857,
+          "ttft_ms": 14181.231750582858,
+          "tpot_ms": 3.8914252799999995,
+          "prefill_latency_ms": 14181.231750582858,
+          "decode_latency_ms": 14444.970639359999
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 0.7023571460032625,
+          "batch_latency_ms": 45560.86626596571,
+          "ttft_ms": 28362.463501165716,
+          "tpot_ms": 2.3165952,
+          "prefill_latency_ms": 28362.463501165716,
+          "decode_latency_ms": 17198.4027648
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 0.8057389358193872,
+          "batch_latency_ms": 79430.19401801145,
+          "ttft_ms": 56724.92700233144,
+          "tpot_ms": 1.5291801600000001,
+          "prefill_latency_ms": 56724.92700233144,
+          "decode_latency_ms": 22705.26701568
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 0.8697625797583298,
+          "batch_latency_ms": 147166.5980796343,
+          "ttft_ms": 113447.60256219431,
+          "tpot_ms": 1.1354726400000001,
+          "prefill_latency_ms": 113447.60256219431,
+          "decode_latency_ms": 33718.99551744
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 0.905747727959214,
+          "batch_latency_ms": 282639.4062028801,
+          "ttft_ms": 226892.95368192007,
+          "tpot_ms": 0.9386188799999999,
+          "prefill_latency_ms": 226892.95368192007,
+          "decode_latency_ms": 55746.452520959996
+        },
+        {
+          "batch_size": 499,
+          "throughput_rps": 0.9243694660135315,
+          "batch_latency_ms": 539827.4373471087,
+          "ttft_ms": 442263.2344210287,
+          "tpot_ms": 0.8427562273346694,
+          "prefill_latency_ms": 442263.2344210287,
+          "decode_latency_ms": 97564.20292608
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "g6e.48xlarge",
+      "gpu_type": "L40S",
+      "gpu_count": 8,
+      "tp_size": 8,
+      "pp_size": 1,
+      "strategy_label": "tp8_pp1",
+      "parallel_strategy": [
+        8
+      ],
+      "pp_layer_partition": [
+        80
+      ],
+      "pp_layer_partition_str": "80",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 502,
+      "num_blocks": 31218,
+      "estimated_throughput_rps": 0.6530534881187651,
+      "estimated_batch_latency_ms": 768696.6062245512,
+      "estimated_single_latency_ms": 6971.612939702858,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.1375156633628373,
+          "batch_latency_ms": 7271.898891702858,
+          "ttft_ms": 1165.904774582857,
+          "tpot_ms": 26.318940160000004,
+          "prefill_latency_ms": 1165.904774582857,
+          "decode_latency_ms": 6105.994117120001
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.22766832526856046,
+          "batch_latency_ms": 8784.709061485713,
+          "ttft_ms": 2331.4343087542857,
+          "tpot_ms": 13.907919725714283,
+          "prefill_latency_ms": 2331.4343087542857,
+          "decode_latency_ms": 6453.274752731428
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.33868657377531697,
+          "batch_latency_ms": 11810.32940105143,
+          "ttft_ms": 4662.493377097143,
+          "tpot_ms": 7.70240950857143,
+          "prefill_latency_ms": 4662.493377097143,
+          "decode_latency_ms": 7147.836023954287
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.4478889573585627,
+          "batch_latency_ms": 17861.570080182857,
+          "ttft_ms": 9324.611513782856,
+          "tpot_ms": 4.5996544,
+          "prefill_latency_ms": 9324.611513782856,
+          "decode_latency_ms": 8536.9585664
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.533966498724622,
+          "batch_latency_ms": 29964.42667885714,
+          "ttft_ms": 18649.223027565713,
+          "tpot_ms": 3.0482768457142857,
+          "prefill_latency_ms": 18649.223027565713,
+          "decode_latency_ms": 11315.20365129143
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 0.5907313526073436,
+          "batch_latency_ms": 54170.139876205714,
+          "ttft_ms": 37298.446055131426,
+          "tpot_ms": 2.272588068571429,
+          "prefill_latency_ms": 37298.446055131426,
+          "decode_latency_ms": 16871.69382107429
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 0.6238960510896828,
+          "batch_latency_ms": 102581.19103049143,
+          "ttft_ms": 74596.51686985143,
+          "tpot_ms": 1.8847436800000001,
+          "prefill_latency_ms": 74596.51686985143,
+          "decode_latency_ms": 27984.674160640003
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 0.6419151753043035,
+          "batch_latency_ms": 199403.29333906286,
+          "ttft_ms": 149192.65849929143,
+          "tpot_ms": 1.6908214857142858,
+          "prefill_latency_ms": 149192.65849929143,
+          "decode_latency_ms": 50210.63483977143
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 0.6513201506930411,
+          "batch_latency_ms": 393047.87319661723,
+          "ttft_ms": 298385.3169985829,
+          "tpot_ms": 1.5938603885714286,
+          "prefill_latency_ms": 298385.3169985829,
+          "decode_latency_ms": 94662.55619803429
+        },
+        {
+          "batch_size": 502,
+          "throughput_rps": 0.6530534881187651,
+          "batch_latency_ms": 768696.6062245512,
+          "ttft_ms": 585114.96341504,
+          "tpot_ms": 1.576295188294333,
+          "prefill_latency_ms": 585114.96341504,
+          "decode_latency_ms": 183581.6428095112
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p4d.24xlarge",
+      "gpu_type": "A100_40GB",
+      "gpu_count": 8,
+      "tp_size": 1,
+      "pp_size": 8,
+      "strategy_label": "tp1_pp8",
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "pp_layer_partition_str": "10,10,10,10,10,10,10,10",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 339,
+      "num_blocks": 21081,
+      "estimated_throughput_rps": 5.325917971030785,
+      "estimated_batch_latency_ms": 63650.99910361358,
+      "estimated_single_latency_ms": 27305.21510780619,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.03528101468853475,
+          "batch_latency_ms": 28343.85600380619,
+          "ttft_ms": 427.9352102061887,
+          "tpot_ms": 120.3272448,
+          "prefill_latency_ms": 427.9352102061887,
+          "decode_latency_ms": 27915.920793600002
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.07042911213698522,
+          "batch_latency_ms": 28397.347905081966,
+          "ttft_ms": 481.42711148196224,
+          "tpot_ms": 60.1636224,
+          "prefill_latency_ms": 481.42711148196224,
+          "decode_latency_ms": 27915.920793600002
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.14032954854117113,
+          "batch_latency_ms": 28504.33170763351,
+          "ttft_ms": 588.4109140335095,
+          "tpot_ms": 30.0818112,
+          "prefill_latency_ms": 588.4109140335095,
+          "decode_latency_ms": 27915.920793600002
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.2785680277540665,
+          "batch_latency_ms": 28718.299312736606,
+          "ttft_ms": 802.3785191366038,
+          "tpot_ms": 15.0409056,
+          "prefill_latency_ms": 802.3785191366038,
+          "decode_latency_ms": 27915.920793600002
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 0.5412510418680213,
+          "batch_latency_ms": 29561.144020673204,
+          "ttft_ms": 1589.7570382732076,
+          "tpot_ms": 7.535395199999999,
+          "prefill_latency_ms": 1589.7570382732076,
+          "decode_latency_ms": 27971.386982399996
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 1.0241037724665143,
+          "batch_latency_ms": 31246.833436546414,
+          "ttft_ms": 3164.5140765464153,
+          "tpot_ms": 3.78264,
+          "prefill_latency_ms": 3164.5140765464153,
+          "decode_latency_ms": 28082.319359999998
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 1.8487378696507166,
+          "batch_latency_ms": 34618.21226829284,
+          "ttft_ms": 6314.0281530928305,
+          "tpot_ms": 1.9062624000000004,
+          "prefill_latency_ms": 6314.0281530928305,
+          "decode_latency_ms": 28304.184115200005
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 3.0935830679263043,
+          "batch_latency_ms": 41375.969931785665,
+          "ttft_ms": 12628.056306185661,
+          "tpot_ms": 0.9680736000000001,
+          "prefill_latency_ms": 12628.056306185661,
+          "decode_latency_ms": 28747.913625600002
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 4.663747005444579,
+          "batch_latency_ms": 54891.485258771325,
+          "ttft_ms": 25256.112612371322,
+          "tpot_ms": 0.49897920000000007,
+          "prefill_latency_ms": 25256.112612371322,
+          "decode_latency_ms": 29635.372646400003
+        },
+        {
+          "batch_size": 339,
+          "throughput_rps": 5.325917971030785,
+          "batch_latency_ms": 63650.99910361358,
+          "ttft_ms": 33440.16474841358,
+          "tpot_ms": 0.38412717876106195,
+          "prefill_latency_ms": 33440.16474841358,
+          "decode_latency_ms": 30210.8343552
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p4d.24xlarge",
+      "gpu_type": "A100_40GB",
+      "gpu_count": 8,
+      "tp_size": 2,
+      "pp_size": 4,
+      "strategy_label": "tp2_pp4",
+      "parallel_strategy": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pp_layer_partition": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "pp_layer_partition_str": "20,20,20,20",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 377,
+      "num_blocks": 23444,
+      "estimated_throughput_rps": 7.145280270574728,
+      "estimated_batch_latency_ms": 52762.10109665526,
+      "estimated_single_latency_ms": 13545.328691939458,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.07357338835799984,
+          "batch_latency_ms": 13591.870951139457,
+          "ttft_ms": 223.28652641218522,
+          "tpot_ms": 57.623208727272726,
+          "prefill_latency_ms": 223.28652641218522,
+          "decode_latency_ms": 13368.584424727273
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.14654491870142197,
+          "batch_latency_ms": 13647.692582742504,
+          "ttft_ms": 279.10815801523154,
+          "tpot_ms": 28.811604363636363,
+          "prefill_latency_ms": 279.10815801523154,
+          "decode_latency_ms": 13368.584424727273
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.29071170620330417,
+          "batch_latency_ms": 13759.335845948597,
+          "ttft_ms": 390.7514212213241,
+          "tpot_ms": 14.405802181818181,
+          "prefill_latency_ms": 390.7514212213241,
+          "decode_latency_ms": 13368.584424727273
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.5642974454593233,
+          "batch_latency_ms": 14176.920459897192,
+          "ttft_ms": 774.5028424426482,
+          "tpot_ms": 7.2211301818181814,
+          "prefill_latency_ms": 774.5028424426482,
+          "decode_latency_ms": 13402.417617454545
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 1.0658076478858796,
+          "batch_latency_ms": 15012.089687794385,
+          "ttft_ms": 1542.0056848852964,
+          "tpot_ms": 3.628794181818181,
+          "prefill_latency_ms": 1542.0056848852964,
+          "decode_latency_ms": 13470.084002909089
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 1.9181859933440157,
+          "batch_latency_ms": 16682.428143588775,
+          "ttft_ms": 3077.011369770593,
+          "tpot_ms": 1.8326261818181822,
+          "prefill_latency_ms": 3077.011369770593,
+          "decode_latency_ms": 13605.416773818184
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 3.1951904307889163,
+          "batch_latency_ms": 20030.105055177548,
+          "ttft_ms": 6154.022739541186,
+          "tpot_ms": 0.9345421818181818,
+          "prefill_latency_ms": 6154.022739541186,
+          "decode_latency_ms": 13876.082315636364
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 4.7894406821080615,
+          "batch_latency_ms": 26725.458878355097,
+          "ttft_ms": 12308.045479082371,
+          "tpot_ms": 0.4855001818181818,
+          "prefill_latency_ms": 12308.045479082371,
+          "decode_latency_ms": 14417.413399272726
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 6.382580895623577,
+          "batch_latency_ms": 40109.1665247102,
+          "ttft_ms": 24609.090958164743,
+          "tpot_ms": 0.26097918181818186,
+          "prefill_latency_ms": 24609.090958164743,
+          "decode_latency_ms": 15500.075566545456
+        },
+        {
+          "batch_size": 377,
+          "throughput_rps": 7.145280270574728,
+          "batch_latency_ms": 52762.10109665526,
+          "ttft_ms": 36238.571450109805,
+          "tpot_ms": 0.1889180651073065,
+          "prefill_latency_ms": 36238.571450109805,
+          "decode_latency_ms": 16523.529646545456
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p4d.24xlarge",
+      "gpu_type": "A100_40GB",
+      "gpu_count": 8,
+      "tp_size": 4,
+      "pp_size": 2,
+      "strategy_label": "tp4_pp2",
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": [
+        40,
+        40
+      ],
+      "pp_layer_partition_str": "40,40",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 395,
+      "num_blocks": 24564,
+      "estimated_throughput_rps": 8.625204110947413,
+      "estimated_batch_latency_ms": 45796.01768480494,
+      "estimated_single_latency_ms": 6665.170667424274,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.1468885861163561,
+          "batch_latency_ms": 6807.880901024274,
+          "ttft_ms": 120.62124836972899,
+          "tpot_ms": 28.82439505454545,
+          "prefill_latency_ms": 120.62124836972899,
+          "decode_latency_ms": 6687.259652654545
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.291197470638255,
+          "batch_latency_ms": 6868.1915252091385,
+          "ttft_ms": 180.9318725545935,
+          "tpot_ms": 14.412197527272726,
+          "prefill_latency_ms": 180.9318725545935,
+          "decode_latency_ms": 6687.259652654545
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.5660905450673798,
+          "batch_latency_ms": 7066.007434418278,
+          "ttft_ms": 358.863745109187,
+          "tpot_ms": 7.227525527272727,
+          "prefill_latency_ms": 358.863745109187,
+          "decode_latency_ms": 6707.14368930909
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 1.0721504657249123,
+          "batch_latency_ms": 7461.639252836556,
+          "ttft_ms": 714.727490218374,
+          "tpot_ms": 3.6351895272727273,
+          "prefill_latency_ms": 714.727490218374,
+          "decode_latency_ms": 6746.9117626181815
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 1.9387117737712458,
+          "batch_latency_ms": 8252.902889673112,
+          "ttft_ms": 1426.454980436748,
+          "tpot_ms": 1.8390215272727275,
+          "prefill_latency_ms": 1426.454980436748,
+          "decode_latency_ms": 6826.4479092363645
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 3.2525514201664296,
+          "batch_latency_ms": 9838.430163346224,
+          "ttft_ms": 2852.909960873496,
+          "tpot_ms": 0.9409375272727274,
+          "prefill_latency_ms": 2852.909960873496,
+          "decode_latency_ms": 6985.520202472728
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 4.919487698647944,
+          "batch_latency_ms": 13009.484710692446,
+          "ttft_ms": 5705.819921746992,
+          "tpot_ms": 0.49189552727272734,
+          "prefill_latency_ms": 5705.819921746992,
+          "decode_latency_ms": 7303.664788945455
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 6.615467836446926,
+          "batch_latency_ms": 19348.593805384895,
+          "ttft_ms": 11408.639843493984,
+          "tpot_ms": 0.26737452727272726,
+          "prefill_latency_ms": 11408.639843493984,
+          "decode_latency_ms": 7939.953961890909
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 7.993302612879692,
+          "batch_latency_ms": 32026.811994769785,
+          "ttft_ms": 22814.279686987968,
+          "tpot_ms": 0.1551140272727273,
+          "prefill_latency_ms": 22814.279686987968,
+          "decode_latency_ms": 9212.53230778182
+        },
+        {
+          "batch_size": 395,
+          "throughput_rps": 8.625204110947413,
+          "batch_latency_ms": 45796.01768480494,
+          "ttft_ms": 35201.54482953221,
+          "tpot_ms": 0.115609699424626,
+          "prefill_latency_ms": 35201.54482953221,
+          "decode_latency_ms": 10594.472855272727
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p4d.24xlarge",
+      "gpu_type": "A100_40GB",
+      "gpu_count": 8,
+      "tp_size": 8,
+      "pp_size": 1,
+      "strategy_label": "tp8_pp1",
+      "parallel_strategy": [
+        8
+      ],
+      "pp_layer_partition": [
+        80
+      ],
+      "pp_layer_partition_str": "80",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 398,
+      "num_blocks": 24750,
+      "estimated_throughput_rps": 10.638561827086436,
+      "estimated_batch_latency_ms": 37411.07176598508,
+      "estimated_single_latency_ms": 3224.8434375666825,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.3096338822827286,
+          "batch_latency_ms": 3229.620714075774,
+          "ttft_ms": 67.66413167577358,
+          "tpot_ms": 13.6291232,
+          "prefill_latency_ms": 67.66413167577358,
+          "decode_latency_ms": 3161.9565824
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.6042771126782471,
+          "batch_latency_ms": 3309.739783351547,
+          "ttft_ms": 135.12305375154716,
+          "tpot_ms": 6.8418464,
+          "prefill_latency_ms": 135.12305375154716,
+          "decode_latency_ms": 3174.6167296
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 1.1527450865757145,
+          "batch_latency_ms": 3469.977921903094,
+          "ttft_ms": 270.04089790309433,
+          "tpot_ms": 3.4482079999999993,
+          "prefill_latency_ms": 270.04089790309433,
+          "decode_latency_ms": 3199.9370239999994
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 2.110565008831264,
+          "batch_latency_ms": 3790.4541990061894,
+          "ttft_ms": 539.8765862061887,
+          "tpot_ms": 1.7513888000000004,
+          "prefill_latency_ms": 539.8765862061887,
+          "decode_latency_ms": 3250.5776128000007
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 3.6104244086041617,
+          "batch_latency_ms": 4431.611962812376,
+          "ttft_ms": 1079.7531724123774,
+          "tpot_ms": 0.9029791999999998,
+          "prefill_latency_ms": 1079.7531724123774,
+          "decode_latency_ms": 3351.858790399999
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 5.600351081392744,
+          "batch_latency_ms": 5713.927490424754,
+          "ttft_ms": 2159.5063448247547,
+          "tpot_ms": 0.47877439999999993,
+          "prefill_latency_ms": 2159.5063448247547,
+          "decode_latency_ms": 3554.4211455999994
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 7.731006083214765,
+          "batch_latency_ms": 8278.35333604951,
+          "ttft_ms": 4318.80748004951,
+          "tpot_ms": 0.266672,
+          "prefill_latency_ms": 4318.80748004951,
+          "decode_latency_ms": 3959.545856
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 9.547105436172073,
+          "batch_latency_ms": 13407.20502729902,
+          "ttft_ms": 8637.40975049902,
+          "tpot_ms": 0.16062079999999998,
+          "prefill_latency_ms": 8637.40975049902,
+          "decode_latency_ms": 4769.7952768
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 10.60030288619585,
+          "batch_latency_ms": 24150.253322796438,
+          "ttft_ms": 17274.819500998037,
+          "tpot_ms": 0.11576363519999998,
+          "prefill_latency_ms": 17274.819500998037,
+          "decode_latency_ms": 6875.433821798399
+        },
+        {
+          "batch_size": 398,
+          "throughput_rps": 10.638561827086436,
+          "batch_latency_ms": 37411.07176598508,
+          "ttft_ms": 26856.859370157883,
+          "tpot_ms": 0.11430224826532662,
+          "prefill_latency_ms": 26856.859370157883,
+          "decode_latency_ms": 10554.212395827199
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p5.48xlarge",
+      "gpu_type": "H100",
+      "gpu_count": 8,
+      "tp_size": 1,
+      "pp_size": 8,
+      "strategy_label": "tp1_pp8",
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "pp_layer_partition_str": "10,10,10,10,10,10,10,10",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 1166,
+      "num_blocks": 72510,
+      "estimated_throughput_rps": 23.1936591034434,
+      "estimated_batch_latency_ms": 50272.36085516546,
+      "estimated_single_latency_ms": 11409.24844541106,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.08696140381346057,
+          "batch_latency_ms": 11499.354381917328,
+          "ttft_ms": 135.10862115314805,
+          "tpot_ms": 48.983817934328364,
+          "prefill_latency_ms": 135.10862115314805,
+          "decode_latency_ms": 11364.24576076418
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.1736677497186251,
+          "batch_latency_ms": 11516.242959561472,
+          "ttft_ms": 151.99719879729156,
+          "tpot_ms": 24.491908967164182,
+          "prefill_latency_ms": 151.99719879729156,
+          "decode_latency_ms": 11364.24576076418
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.34631974318877895,
+          "batch_latency_ms": 11550.02011484976,
+          "ttft_ms": 185.77435408557858,
+          "tpot_ms": 12.245954483582091,
+          "prefill_latency_ms": 185.77435408557858,
+          "decode_latency_ms": 11364.24576076418
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 0.6886119001304717,
+          "batch_latency_ms": 11617.574425426334,
+          "ttft_ms": 253.3286646621526,
+          "tpot_ms": 6.1229772417910455,
+          "prefill_latency_ms": 253.3286646621526,
+          "decode_latency_ms": 11364.24576076418
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 1.346442204321277,
+          "batch_latency_ms": 11883.168804906396,
+          "ttft_ms": 491.6573293243052,
+          "tpot_ms": 3.0688339104477613,
+          "prefill_latency_ms": 491.6573293243052,
+          "decode_latency_ms": 11391.51147558209
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 2.5776605704623687,
+          "batch_latency_ms": 12414.35756386652,
+          "ttft_ms": 968.3146586486104,
+          "tpot_ms": 1.5417622447761192,
+          "prefill_latency_ms": 968.3146586486104,
+          "decode_latency_ms": 11446.04290521791
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 4.748924692189968,
+          "batch_latency_ms": 13476.735081786774,
+          "ttft_ms": 1921.6293172972207,
+          "tpot_ms": 0.7782264119402986,
+          "prefill_latency_ms": 1921.6293172972207,
+          "decode_latency_ms": 11555.105764489554
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 8.196464060481725,
+          "batch_latency_ms": 15616.490117627278,
+          "ttft_ms": 3843.2586345944414,
+          "tpot_ms": 0.39645849552238804,
+          "prefill_latency_ms": 3843.2586345944414,
+          "decode_latency_ms": 11773.231483032836
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 12.866907798762952,
+          "batch_latency_ms": 19896.000189308288,
+          "ttft_ms": 7686.517269188885,
+          "tpot_ms": 0.20557453731343284,
+          "prefill_latency_ms": 7686.517269188885,
+          "decode_latency_ms": 12209.482920119402
+        },
+        {
+          "batch_size": 512,
+          "throughput_rps": 18.00280006874127,
+          "batch_latency_ms": 28440.020332670305,
+          "ttft_ms": 15358.034538377768,
+          "tpot_ms": 0.11013255820895523,
+          "prefill_latency_ms": 15358.034538377768,
+          "decode_latency_ms": 13081.98579429254
+        },
+        {
+          "batch_size": 1024,
+          "throughput_rps": 22.49162354092873,
+          "batch_latency_ms": 45528.06061939434,
+          "ttft_ms": 30701.069076755535,
+          "tpot_ms": 0.062411568656716425,
+          "prefill_latency_ms": 30701.069076755535,
+          "decode_latency_ms": 14826.991542638807
+        },
+        {
+          "batch_size": 1166,
+          "throughput_rps": 23.1936591034434,
+          "batch_latency_ms": 50272.36085516546,
+          "ttft_ms": 34961.40287450874,
+          "tpot_ms": 0.05659992155858785,
+          "prefill_latency_ms": 34961.40287450874,
+          "decode_latency_ms": 15310.957980656716
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p5.48xlarge",
+      "gpu_type": "H100",
+      "gpu_count": 8,
+      "tp_size": 2,
+      "pp_size": 4,
+      "strategy_label": "tp2_pp4",
+      "parallel_strategy": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pp_layer_partition": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "pp_layer_partition_str": "20,20,20,20",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 1203,
+      "num_blocks": 74811,
+      "estimated_throughput_rps": 25.76943359804379,
+      "estimated_batch_latency_ms": 46683.2146474233,
+      "estimated_single_latency_ms": 5592.526077094629,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.17371452955845454,
+          "batch_latency_ms": 5756.570866822642,
+          "ttft_ms": 72.77100952822798,
+          "tpot_ms": 24.499137315924195,
+          "prefill_latency_ms": 72.77100952822798,
+          "decode_latency_ms": 5683.799857294413
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.3463345223947782,
+          "batch_latency_ms": 5774.763619204698,
+          "ttft_ms": 90.96376191028497,
+          "tpot_ms": 12.249568657962097,
+          "prefill_latency_ms": 90.96376191028497,
+          "decode_latency_ms": 5683.799857294413
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 0.6883320174148516,
+          "batch_latency_ms": 5811.149123968812,
+          "ttft_ms": 127.34926667439896,
+          "tpot_ms": 6.124784328981049,
+          "prefill_latency_ms": 127.34926667439896,
+          "decode_latency_ms": 5683.799857294413
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 1.345259456394824,
+          "batch_latency_ms": 5946.808224964491,
+          "ttft_ms": 247.69853334879792,
+          "tpot_ms": 3.0706409976377658,
+          "prefill_latency_ms": 247.69853334879792,
+          "decode_latency_ms": 5699.109691615693
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 2.5731223364387246,
+          "batch_latency_ms": 6218.126426955845,
+          "ttft_ms": 488.39706669759585,
+          "tpot_ms": 1.5435693319661232,
+          "prefill_latency_ms": 488.39706669759585,
+          "decode_latency_ms": 5729.7293602582495
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 4.7331936942916855,
+          "batch_latency_ms": 6760.76283093856,
+          "ttft_ms": 969.7941333951917,
+          "tpot_ms": 0.7800334991303027,
+          "prefill_latency_ms": 969.7941333951917,
+          "decode_latency_ms": 5790.968697543368
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 8.149714701782791,
+          "batch_latency_ms": 7853.0356389039825,
+          "ttft_ms": 1939.5882667903834,
+          "tpot_ms": 0.3982655827123922,
+          "prefill_latency_ms": 1939.5882667903834,
+          "decode_latency_ms": 5913.447372113599
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 12.752076097849354,
+          "batch_latency_ms": 10037.581254834833,
+          "ttft_ms": 3879.1765335807668,
+          "tpot_ms": 0.207381624503437,
+          "prefill_latency_ms": 3879.1765335807668,
+          "decode_latency_ms": 6158.404721254065
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 17.778182124385918,
+          "batch_latency_ms": 14399.67248669653,
+          "ttft_ms": 7751.3530671615335,
+          "tpot_ms": 0.11193964539895941,
+          "prefill_latency_ms": 7751.3530671615335,
+          "decode_latency_ms": 6648.319419534997
+        },
+        {
+          "batch_size": 512,
+          "throughput_rps": 22.141636898250056,
+          "batch_latency_ms": 23123.854950419925,
+          "ttft_ms": 15495.706134323067,
+          "tpot_ms": 0.06421865584672061,
+          "prefill_latency_ms": 15495.706134323067,
+          "decode_latency_ms": 7628.14881609686
+        },
+        {
+          "batch_size": 1024,
+          "throughput_rps": 25.234590588039477,
+          "batch_latency_ms": 40579.21987786672,
+          "ttft_ms": 30991.412268646134,
+          "tpot_ms": 0.040358161070601195,
+          "prefill_latency_ms": 30991.412268646134,
+          "decode_latency_ms": 9587.807609220585
+        },
+        {
+          "batch_size": 1203,
+          "throughput_rps": 25.76943359804379,
+          "batch_latency_ms": 46683.2146474233,
+          "ttft_ms": 36410.29195232548,
+          "tpot_ms": 0.036807846386540194,
+          "prefill_latency_ms": 36410.29195232548,
+          "decode_latency_ms": 10272.922695097823
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p5.48xlarge",
+      "gpu_type": "H100",
+      "gpu_count": 8,
+      "tp_size": 4,
+      "pp_size": 2,
+      "strategy_label": "tp4_pp2",
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": [
+        40,
+        40
+      ],
+      "pp_layer_partition_str": "40,40",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 1222,
+      "num_blocks": 75993,
+      "estimated_throughput_rps": 26.063946027064095,
+      "estimated_batch_latency_ms": 46884.68886219717,
+      "estimated_single_latency_ms": 2684.0446393791603,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.34662883427156627,
+          "batch_latency_ms": 2884.9302225577408,
+          "ttft_ms": 41.411348876073276,
+          "tpot_ms": 12.256546869317534,
+          "prefill_latency_ms": 41.411348876073276,
+          "decode_latency_ms": 2843.5188736816676
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 0.6883174874277466,
+          "batch_latency_ms": 2905.6358969957773,
+          "ttft_ms": 62.117023314109915,
+          "tpot_ms": 6.128273434658767,
+          "prefill_latency_ms": 62.117023314109915,
+          "decode_latency_ms": 2843.5188736816676
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 1.3449778003111477,
+          "batch_latency_ms": 2974.026782504989,
+          "ttft_ms": 121.23404662821983,
+          "tpot_ms": 3.074130103315484,
+          "prefill_latency_ms": 121.23404662821983,
+          "decode_latency_ms": 2852.7927358767693
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 2.5716786688589117,
+          "batch_latency_ms": 3110.8085535234104,
+          "ttft_ms": 239.46809325643966,
+          "tpot_ms": 1.5470584376438419,
+          "prefill_latency_ms": 239.46809325643966,
+          "decode_latency_ms": 2871.3404602669707
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 4.727612552115473,
+          "batch_latency_ms": 3384.3720955602535,
+          "ttft_ms": 475.9361865128793,
+          "tpot_ms": 0.783522604808021,
+          "prefill_latency_ms": 475.9361865128793,
+          "decode_latency_ms": 2908.435909047374
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 8.133182532008368,
+          "batch_latency_ms": 3934.4991796339386,
+          "ttft_ms": 951.8723730257584,
+          "tpot_ms": 0.40175468839011047,
+          "prefill_latency_ms": 951.8723730257584,
+          "decode_latency_ms": 2982.6268066081802
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 12.711645552249982,
+          "batch_latency_ms": 5034.75334778131,
+          "ttft_ms": 1903.7447460515173,
+          "tpot_ms": 0.21087073018115526,
+          "prefill_latency_ms": 1903.7447460515173,
+          "decode_latency_ms": 3131.0086017297936
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 17.69847463924453,
+          "batch_latency_ms": 7232.261684076055,
+          "ttft_ms": 3804.4894921030345,
+          "tpot_ms": 0.11542875107667769,
+          "prefill_latency_ms": 3804.4894921030345,
+          "decode_latency_ms": 3427.7721919730207
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 22.017190278518054,
+          "batch_latency_ms": 11627.278356665543,
+          "ttft_ms": 7605.978984206069,
+          "tpot_ms": 0.06770776152443889,
+          "prefill_latency_ms": 7605.978984206069,
+          "decode_latency_ms": 4021.299372459474
+        },
+        {
+          "batch_size": 512,
+          "throughput_rps": 25.07307466583638,
+          "batch_latency_ms": 20420.31170184452,
+          "ttft_ms": 15211.957968412138,
+          "tpot_ms": 0.04384726674831947,
+          "prefill_latency_ms": 15211.957968412138,
+          "decode_latency_ms": 5208.35373343238
+        },
+        {
+          "batch_size": 1024,
+          "throughput_rps": 25.99418311793969,
+          "batch_latency_ms": 39393.428728033155,
+          "ttft_ms": 30423.915936824276,
+          "tpot_ms": 0.037755559634331554,
+          "prefill_latency_ms": 30423.915936824276,
+          "decode_latency_ms": 8969.51279120888
+        },
+        {
+          "batch_size": 1222,
+          "throughput_rps": 26.063946027064095,
+          "batch_latency_ms": 46884.68886219717,
+          "ttft_ms": 36306.50124492116,
+          "tpot_ms": 0.0373123046492325,
+          "prefill_latency_ms": 36306.50124492116,
+          "decode_latency_ms": 10578.18761727601
+        }
+      ],
+      "feasible": true
+    },
+    {
+      "model": "meta-llama/Llama-3.1-70B-Instruct",
+      "model_key": "llama3-70b",
+      "instance_type": "p5.48xlarge",
+      "gpu_type": "H100",
+      "gpu_count": 8,
+      "tp_size": 8,
+      "pp_size": 1,
+      "strategy_label": "tp8_pp1",
+      "parallel_strategy": [
+        8
+      ],
+      "pp_layer_partition": [
+        80
+      ],
+      "pp_layer_partition_str": "80",
+      "workload": {
+        "input_len": 763,
+        "output_len": 232,
+        "max_model_len": 8192
+      },
+      "max_batch_size": 1225,
+      "num_blocks": 76179,
+      "estimated_throughput_rps": 30.779916237813776,
+      "estimated_batch_latency_ms": 39798.678805209405,
+      "estimated_single_latency_ms": 1229.6649691931827,
+      "gpu_memory_utilization": 0.85,
+      "batch_sweep": [
+        {
+          "batch_size": 1,
+          "throughput_rps": 0.8114648482558817,
+          "batch_latency_ms": 1232.339271564684,
+          "ttft_ms": 23.244872497643946,
+          "tpot_ms": 5.211613789082069,
+          "prefill_latency_ms": 23.244872497643946,
+          "decode_latency_ms": 1209.09439906704
+        },
+        {
+          "batch_size": 2,
+          "throughput_rps": 1.5856820900472013,
+          "batch_latency_ms": 1261.286869892354,
+          "ttft_ms": 46.41133655110878,
+          "tpot_ms": 2.618266235649235,
+          "prefill_latency_ms": 46.41133655110878,
+          "decode_latency_ms": 1214.875533341245
+        },
+        {
+          "batch_size": 4,
+          "throughput_rps": 3.0321819113778767,
+          "batch_latency_ms": 1319.1820665476926,
+          "ttft_ms": 92.74426465803846,
+          "tpot_ms": 1.321592458932817,
+          "prefill_latency_ms": 92.74426465803846,
+          "decode_latency_ms": 1226.437801889654
+        },
+        {
+          "batch_size": 8,
+          "throughput_rps": 5.575019886297741,
+          "batch_latency_ms": 1434.97245985837,
+          "ttft_ms": 185.41012087189782,
+          "tpot_ms": 0.6732555705746079,
+          "prefill_latency_ms": 185.41012087189782,
+          "decode_latency_ms": 1249.5623389864722
+        },
+        {
+          "batch_size": 16,
+          "throughput_rps": 9.60020167187484,
+          "batch_latency_ms": 1666.6316549239043,
+          "ttft_ms": 370.82024174379563,
+          "tpot_ms": 0.34908712639550343,
+          "prefill_latency_ms": 370.82024174379563,
+          "decode_latency_ms": 1295.8114131801087
+        },
+        {
+          "batch_size": 32,
+          "throughput_rps": 15.023826532595557,
+          "batch_latency_ms": 2129.9500450549726,
+          "ttft_ms": 741.6404834875913,
+          "tpot_ms": 0.18700290430595118,
+          "prefill_latency_ms": 741.6404834875913,
+          "decode_latency_ms": 1388.3095615673815
+        },
+        {
+          "batch_size": 64,
+          "throughput_rps": 20.93892483550805,
+          "batch_latency_ms": 3056.5084168729304,
+          "ttft_ms": 1483.2025585310034,
+          "tpot_ms": 0.10596079326117504,
+          "prefill_latency_ms": 1483.2025585310034,
+          "decode_latency_ms": 1573.305858341927
+        },
+        {
+          "batch_size": 128,
+          "throughput_rps": 26.07123676764231,
+          "batch_latency_ms": 4909.6251605088455,
+          "ttft_ms": 2966.3267086178275,
+          "tpot_ms": 0.06543973773878699,
+          "prefill_latency_ms": 2966.3267086178275,
+          "decode_latency_ms": 1943.2984518910184
+        },
+        {
+          "batch_size": 256,
+          "throughput_rps": 29.71238047927065,
+          "batch_latency_ms": 8615.937056224855,
+          "ttft_ms": 5932.653417235655,
+          "tpot_ms": 0.045179209977592956,
+          "prefill_latency_ms": 5932.653417235655,
+          "decode_latency_ms": 2683.283638989201
+        },
+        {
+          "batch_size": 512,
+          "throughput_rps": 30.680046976919993,
+          "batch_latency_ms": 16688.370796340947,
+          "ttft_ms": 11865.306834471312,
+          "tpot_ms": 0.040603650002269974,
+          "prefill_latency_ms": 11865.306834471312,
+          "decode_latency_ms": 4823.063961869637
+        },
+        {
+          "batch_size": 1024,
+          "throughput_rps": 30.765798830066718,
+          "batch_latency_ms": 33283.71239947354,
+          "ttft_ms": 23730.535260498444,
+          "tpot_ms": 0.04021239030077744,
+          "prefill_latency_ms": 23730.535260498444,
+          "decode_latency_ms": 9553.177138975094
+        },
+        {
+          "batch_size": 1225,
+          "throughput_rps": 30.779916237813776,
+          "batch_latency_ms": 39798.678805209405,
+          "ttft_ms": 28388.56270412846,
+          "tpot_ms": 0.04014819177016519,
+          "prefill_latency_ms": 28388.56270412846,
+          "decode_latency_ms": 11410.116101080946
+        }
+      ],
+      "feasible": true
+    }
+  ]
+}

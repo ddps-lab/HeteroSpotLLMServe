@@ -1,0 +1,112 @@
+============================================================
+               Azure Trace Dataset Loaded                   
+============================================================
+Total requests:                          16663              
+Time range (s):                          0.000 - 3501.722   
+Duration (s):                            3501.722           
+Average request rate (req/s):            4.76               
+                                                            
+Context tokens - Min:                    2                  
+Context tokens - Max:                    2047               
+Context tokens - Mean:                   762.8              
+Context tokens - Median (P50):           947.0              
+Context tokens - P99:                    1911.4             
+                                                            
+Generated tokens - Min:                  7                  
+Generated tokens - Max:                  1000               
+Generated tokens - Mean:                 232.4              
+Generated tokens - Median (P50):         157.0              
+Generated tokens - P99:                  608.4              
+============================================================
+                                                            
+Generating requests from trace data...                      
+Generated 16663 requests from trace                         
+                                                            
+                                                            
+============================================================
+               Starting Trace Replay Benchmark              
+============================================================
+Total requests:                          16663              
+Time scale:                              0.0x               
+Original trace duration (s):             3501.722           
+Scaled duration (s):                     0.000              
+============================================================
+
+[2026-03-22 06:59:47] INFO - Waiting for pipeline creation to complete...
+[2026-03-22 07:00:58] INFO - Pipeline creation completed
+[2026-03-22 07:01:48] INFO - Pipeline creation completed
+[2026-03-22 07:01:48] INFO - All pipelines are ready!
+[2026-03-22 07:06:57] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8']
+[2026-03-22 07:08:50] INFO - Node switch completed in 112.88s
+[2026-03-22 07:16:57] INFO - Starting node switch: ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8'] -> ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22']
+[2026-03-22 07:19:03] INFO - Node switch completed in 125.39s
+[2026-03-22 07:26:57] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22', '192.168.0.124', '192.168.0.57'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8', '192.168.0.25', '192.168.0.189']
+[2026-03-22 07:29:01] INFO - Node switch completed in 123.70s
+[2026-03-22 07:36:57] INFO - Starting node switch: ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8'] -> ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22']
+[2026-03-22 07:38:57] INFO - Node switch completed in 119.33s
+[2026-03-22 07:46:57] INFO - Starting node switch: ['192.168.0.15', '192.168.0.197', '192.168.0.190', '192.168.0.22', '192.168.0.25', '192.168.0.189'] -> ['192.168.0.188', '192.168.0.67', '192.168.0.14', '192.168.0.8', '192.168.0.124', '192.168.0.57']
+[2026-03-22 07:49:01] INFO - Node switch completed in 123.86s
+
+==================================================
+            Serving Benchmark Result              
+==================================================
+Successful requests:                     4295     
+Benchmark duration (s):                  3600.51  
+Total input tokens:                      3610071  
+Total generated tokens:                  1165055  
+Request throughput (req/s):              1.19     
+Output token throughput (tok/s):         323.58   
+Total Token throughput (tok/s):          1326.23  
+----------------End-to-end Latency----------------
+Mean E2EL (ms):                          365502.38
+Median E2EL (ms):                        361192.35
+P1 E2EL (ms):                            45416.17 
+P5 E2EL (ms):                            91971.60 
+P10 E2EL (ms):                           118811.67
+P25 E2EL (ms):                           180829.97
+P50 E2EL (ms):                           361192.35
+P75 E2EL (ms):                           507674.90
+P90 E2EL (ms):                           639152.14
+P95 E2EL (ms):                           734731.07
+P99 E2EL (ms):                           889181.96
+---------------Time to First Token----------------
+Mean TTFT (ms):                          62303.20 
+Median TTFT (ms):                        59353.79 
+P1 TTFT (ms):                            0.00     
+P5 TTFT (ms):                            0.00     
+P10 TTFT (ms):                           2046.69  
+P25 TTFT (ms):                           28910.08 
+P50 TTFT (ms):                           59353.79 
+P75 TTFT (ms):                           92559.94 
+P90 TTFT (ms):                           117527.27
+P95 TTFT (ms):                           136953.53
+P99 TTFT (ms):                           169144.79
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          1224.15  
+Median TPOT (ms):                        1052.40  
+P1 TPOT (ms):                            530.96   
+P5 TPOT (ms):                            671.00   
+P10 TPOT (ms):                           766.65   
+P25 TPOT (ms):                           858.98   
+P50 TPOT (ms):                           1052.40  
+P75 TPOT (ms):                           1307.70  
+P90 TPOT (ms):                           1699.07  
+P95 TPOT (ms):                           2180.45  
+P99 TPOT (ms):                           4198.45  
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           1108.32  
+Median ITL (ms):                         342.87   
+P1 ITL (ms):                             321.81   
+P5 ITL (ms):                             326.86   
+P10 ITL (ms):                            330.39   
+P25 ITL (ms):                            336.84   
+P50 ITL (ms):                            342.87   
+P75 ITL (ms):                            1277.41  
+P90 ITL (ms):                            2424.96  
+P95 ITL (ms):                            3319.22  
+P99 ITL (ms):                            5921.94  
+==================================================
+
+[2026-03-22 08:02:00] INFO - Cleaning up...
+[2026-03-22 08:02:00] INFO - Stopping pipelines...
+[2026-03-22 08:02:01] INFO - All pipelines stopped

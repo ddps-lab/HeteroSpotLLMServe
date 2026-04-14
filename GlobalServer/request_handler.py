@@ -156,37 +156,34 @@ async def async_request_without_migration(request: Request, logger: logging.Logg
 
         output = RequestOutput()
         output.prompt_len = request_input.prompt_len
-        if request.output:
-            output.latency = request.output.latency
-            output.ttft = request.output.latency
-        
+
         most_recent_timestamp = request.sended_at
-        
+
         try:
-            async with session.post(url=request_input.api_url, 
-                                  json=payload, 
+            async with session.post(url=request_input.api_url,
+                                  json=payload,
                                   headers=headers) as response:
                 if response.status == 200:
                     async for chunk_bytes in response.content:
                         chunk_bytes = chunk_bytes.strip()
                         if not chunk_bytes:
                             continue
-                        
+
                         chunk = chunk_bytes.decode("utf-8")
                         if chunk.startswith("data: "):
                             chunk = chunk.removeprefix("data: ")
-                        
+
                         if chunk == "[DONE]":
                             break
-                            
+
                         try:
                             data = json.loads(chunk)
-                            
+
                             if choices := data.get("choices"):
                                 text = choices[0].get("text", "")
                                 if text:
                                     output.generated_text += text
-                                    
+
                                 timestamp = time.time()
                                 # First token
                                 if not first_chunk_received:
@@ -203,26 +200,39 @@ async def async_request_without_migration(request: Request, logger: logging.Logg
                                 most_recent_timestamp = timestamp
 
                                 if choices[0].get("finish_reason") is not None:
-                                    output.latency += time.time() - request.sended_at
                                     output.output_tokens = len(output.itl) + 1
-                                    
-                            # Check for usage stats
-                            # Can find out how many tokens were generated in this request (completion_tokens)
-                            # For now, not needed, so commented out.
-                            # if usage := data.get("usage"):
-                            #     output.output_tokens = usage.get("completion_tokens", output.output_tokens)
-                                
+
                         except json.JSONDecodeError:
                             continue
-                    
+
                     output.success = True
-                    output.latency += time.time() - request.sended_at
-                        
+                    output.latency = time.time() - request.sended_at
+
+                    # Sanity checks
+                    assert output.output_tokens == request_input.expected_output_len, (
+                        f"Request {request.request_id}: output_tokens mismatch — "
+                        f"expected {request_input.expected_output_len}, got {output.output_tokens}"
+                    )
+                    token_time = output.ttft + sum(output.itl)
+                    tolerance = max(1.0, output.latency * 0.1)
+                    assert abs(token_time - output.latency) <= tolerance, (
+                        f"Request {request.request_id}: latency consistency check failed — "
+                        f"ttft({output.ttft:.4f}) + sum(itl)({sum(output.itl):.4f}) = {token_time:.4f}, "
+                        f"but latency = {output.latency:.4f}"
+                    )
+
                 else:
+                    logger.error(
+                        f"Request {request.request_id}: HTTP error {response.status} "
+                        f"from {request_input.api_url}"
+                    )
                     output.error = f"HTTP {response.status}: {await response.text()}"
                     output.success = False
-                    
+
         except Exception as e:
+            logger.error(
+                f"Request {request.request_id}: connection exception — {e}"
+            )
             output.success = False
             output.error = str(e)
     return output
@@ -273,42 +283,44 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
         if request.output:
             output = request.output
             first_chunk_received = True
+            # retry 시 halted_at 사용 — ITL에 중간 queueing이 포함되지 않도록
+            most_recent_timestamp = request.halted_at
         else:
             output = RequestOutput()
             output.prompt_len = request_input.prompt_len
+            most_recent_timestamp = request.sended_at
         
-        most_recent_timestamp = request.sended_at
 
         if remaining_tokens <= 0:
             output.success = True
-            output.latency += time.time() - request.sended_at
+            output.latency = time.time() - request.sended_at
             return output
-        
+
         try:
-            async with session.post(url=request_input.api_url, 
-                                  json=payload, 
+            async with session.post(url=request_input.api_url,
+                                  json=payload,
                                   headers=headers) as response:
                 if response.status == 200:
                     async for chunk_bytes in response.content:
                         chunk_bytes = chunk_bytes.strip()
                         if not chunk_bytes:
                             continue
-                        
+
                         chunk = chunk_bytes.decode("utf-8")
                         if chunk.startswith("data: "):
                             chunk = chunk.removeprefix("data: ")
-                        
+
                         if chunk == "[DONE]":
                             break
-                            
+
                         try:
                             data = json.loads(chunk)
-                            
+
                             if choices := data.get("choices"):
                                 text = choices[0].get("text", "")
                                 if text:
                                     output.generated_text += text
-                                    
+
                                 timestamp = time.time()
                                 # First token
                                 if not first_chunk_received:
@@ -325,26 +337,41 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
                                 most_recent_timestamp = timestamp
 
                                 if choices[0].get("finish_reason") is not None:
-                                    output.latency = time.time() - request.sended_at
                                     output.output_tokens = len(output.itl) + 1
-                                    
-                            # Check for usage stats
-                            # Can find out how many tokens were generated in this request (completion_tokens)
-                            # For now, not needed, so commented out.
-                            # if usage := data.get("usage"):
-                            #     output.output_tokens = usage.get("completion_tokens", output.output_tokens)
-                                
+
                         except json.JSONDecodeError:
                             continue
-                    
+
                     output.success = True
-                    output.latency += time.time() - request.sended_at
-                        
+                    output.latency = time.time() - request.sended_at
+
+                    # Sanity checks
+                    assert output.output_tokens == request_input.expected_output_len, (
+                        f"Request {request.request_id}: output_tokens mismatch — "
+                        f"expected {request_input.expected_output_len}, got {output.output_tokens}"
+                    )
+                    # Only check latency consistency for non-migration requests
+                    if request.retry_count == 0:
+                        token_time = output.ttft + sum(output.itl)
+                        tolerance = max(1.0, output.latency * 0.1)
+                        assert abs(token_time - output.latency) <= tolerance, (
+                            f"Request {request.request_id}: latency consistency check failed — "
+                            f"ttft({output.ttft:.4f}) + sum(itl)({sum(output.itl):.4f}) = {token_time:.4f}, "
+                            f"but latency = {output.latency:.4f}"
+                        )
+
                 else:
+                    logger.error(
+                        f"Request {request.request_id}: HTTP error {response.status} "
+                        f"from {request_input.api_url}"
+                    )
                     output.error = f"HTTP {response.status}: {await response.text()}"
                     output.success = False
-                    
+
         except Exception as e:
+            logger.error(
+                f"Request {request.request_id}: connection exception — {e}"
+            )
             output.success = False
             output.error = str(e)
     return output
