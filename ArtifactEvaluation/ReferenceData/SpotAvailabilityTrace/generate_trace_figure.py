@@ -25,8 +25,8 @@ LINESTYLES = ['-', '--', '-.']
 COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c']
 
 # ── Window to plot (edit here) ──────────────────────────────────
-WINDOW_START = '2026-03-17 03:55'
-WINDOW_END   = '2026-03-17 04:45'
+WINDOW_START = '2026-03-18 12:55'
+WINDOW_END   = '2026-03-18 13:45'
 
 # ── Font sizes (edit here) ──────────────────────────────────────
 FONT_XLABEL = 16
@@ -35,7 +35,7 @@ FONT_TICK = 16
 FONT_LEGEND = 16
 
 # ── Figure sizes ────────────────────────────────────────────────
-FIGSIZE_TRACE = (4, 3)
+FIGSIZE_TRACE = (5, 3)
 FIGSIZE_LEGEND = (4, 0.4)
 
 # ── Output directory ────────────────────────────────────────────
