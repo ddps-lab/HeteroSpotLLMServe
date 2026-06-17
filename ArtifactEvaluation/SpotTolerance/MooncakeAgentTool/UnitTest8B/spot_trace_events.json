@@ -1,0 +1,25 @@
+{
+  "description": "Unit test: single interrupt, same-time restore+interrupt, restore",
+  "events": [
+    {
+      "time_min": 3,
+      "type": "interruption",
+      "instances": ["spot_g6_xlarge_node_ip_1"]
+    },
+    {
+      "time_min": 6,
+      "type": "restore",
+      "instances": ["spot_g6_xlarge_node_ip_1"]
+    },
+    {
+      "time_min": 6,
+      "type": "interruption",
+      "instances": ["spot_g6_xlarge_node_ip_2"]
+    },
+    {
+      "time_min": 9,
+      "type": "restore",
+      "instances": ["spot_g6_xlarge_node_ip_2"]
+    }
+  ]
+}

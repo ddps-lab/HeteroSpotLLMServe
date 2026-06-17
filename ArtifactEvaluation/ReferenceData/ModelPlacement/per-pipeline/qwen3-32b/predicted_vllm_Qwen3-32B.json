@@ -1,0 +1,96 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "pipelines": [
+    {
+      "label": "vL-P1",
+      "system": "vLLM",
+      "stages": [
+        [
+          "(spot)g6.12xlarge",
+          22
+        ],
+        [
+          "(spot)g6.12xlarge",
+          21
+        ],
+        [
+          "(spot)g6.12xlarge",
+          21
+        ]
+      ],
+      "parallel_strategy": [
+        4,
+        4,
+        4
+      ],
+      "pp_layer_partition": "22,21,21",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 2.238380212229508,
+      "predicted_total_latency_ms": 261796.45298790536,
+      "max_batch_size": 586.0,
+      "num_blocks": 36441
+    },
+    {
+      "label": "vL-P2",
+      "system": "vLLM",
+      "stages": [
+        [
+          "(spot)g5.12xlarge",
+          32
+        ],
+        [
+          "(spot)g5.12xlarge",
+          32
+        ]
+      ],
+      "parallel_strategy": [
+        4,
+        4
+      ],
+      "pp_layer_partition": "32,32",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.8003281999857474,
+      "predicted_total_latency_ms": 182189.00309543376,
+      "max_batch_size": 328.0,
+      "num_blocks": 20397
+    },
+    {
+      "label": "vL-P3",
+      "system": "vLLM",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          16
+        ],
+        [
+          "(spot)g6e.xlarge",
+          16
+        ],
+        [
+          "(spot)g6e.xlarge",
+          16
+        ],
+        [
+          "(spot)g6e.xlarge",
+          16
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "16,16,16,16",
+      "gpu_memory_utilization": 0.9,
+      "predicted_throughput_rps": 6.16016531437057,
+      "predicted_total_latency_ms": 55842.65720881049,
+      "max_batch_size": 344.0,
+      "num_blocks": 21392
+    }
+  ]
+}

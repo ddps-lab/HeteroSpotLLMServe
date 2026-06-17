@@ -1,0 +1,115 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "model_key": "qwen3-32b",
+  "total_num_layers": 64,
+  "total_throughput_rps": 9.424062756635378,
+  "pipelines": [
+    {
+      "label": "SS-P1",
+      "predicted_throughput_rps": 5.865183789888193,
+      "config": {
+        "model_name": "Qwen/Qwen3-32B",
+        "total_num_layers": 64,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "16,16,16,16",
+        "parallel_strategy": [1, 1, 1, 1],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/Qwen/Qwen3-32B",
+        "num_gpu_blocks": 19278,
+        "max_batch_size": 309
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g6e_xlarge_node_ip_1", 16
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_2", 16
+        ],
+        [
+          "on_demand_g6e_xlarge_node_ip_3", 16
+        ],
+        [
+          "on_demand_g6e_xlarge_node_ip_4", 16
+        ]
+      ]
+    },
+    {
+      "label": "SS-P2",
+      "predicted_throughput_rps": 2.627769793087521,
+      "config": {
+        "model_name": "Qwen/Qwen3-32B",
+        "total_num_layers": 64,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "24,24,16",
+        "parallel_strategy": [4, 4, 4],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/Qwen/Qwen3-32B",
+        "num_gpu_blocks": 32213,
+        "max_batch_size": 517
+      },
+      "node_layer_mapping": [
+        [
+          "on_demand_g6_12xlarge_node_ip_1", 24
+        ],
+        [
+          "on_demand_g6_12xlarge_node_ip_2", 24
+        ],
+        [
+          "on_demand_g6_12xlarge_node_ip_3", 16
+        ]
+      ]
+    },
+    {
+      "label": "SS-P3",
+      "predicted_throughput_rps": 0.46555458682983164,
+      "config": {
+        "model_name": "Qwen/Qwen3-32B",
+        "total_num_layers": 64,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "64",
+        "parallel_strategy": [4],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/Qwen/Qwen3-32B",
+        "num_gpu_blocks": 2363,
+        "max_batch_size": 37
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g5_12xlarge_node_ip_1", 64
+        ]
+      ]
+    },
+    {
+      "label": "SS-P4",
+      "predicted_throughput_rps": 0.46555458682983164,
+      "config": {
+        "model_name": "Qwen/Qwen3-32B",
+        "total_num_layers": 64,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "64",
+        "parallel_strategy": [4],
+        "max_model_len": 8192,
+        "max_num_batched_tokens": 8192,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/Qwen/Qwen3-32B",
+        "num_gpu_blocks": 2363,
+        "max_batch_size": 37
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g5_12xlarge_node_ip_2", 64
+        ]
+      ]
+    }
+  ]
+}

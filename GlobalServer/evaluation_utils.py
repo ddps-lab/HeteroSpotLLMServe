@@ -101,7 +101,7 @@ def load_azure_trace(
         generated_tokens = [t[2] for t in trace_data]
 
         logger.info("\n" + "=" * 60)
-        logger.info(" " * 15 + "Azure Trace Dataset Loaded")
+        logger.info(f"{os.path.basename(csv_path)} Loaded".center(60))
         logger.info("=" * 60)
         logger.info(f"{'Total requests:':<40} {len(trace_data)}")
         logger.info(f"{'Time range (s):':<40} {min(arrival_times):.3f} - {max(arrival_times):.3f}")
