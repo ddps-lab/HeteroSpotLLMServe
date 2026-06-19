@@ -1,0 +1,2 @@
+RequestID,ArrivalTime,CompletionTime,InputTokens,OutputTokens,Latency,TTFT,TPOT,Success,QueueingDelay,SendCount
+56,1781834291.947690,1781834453.137506,8772,1,159.398620,159.396392,0.000000,True,1.791196,1
