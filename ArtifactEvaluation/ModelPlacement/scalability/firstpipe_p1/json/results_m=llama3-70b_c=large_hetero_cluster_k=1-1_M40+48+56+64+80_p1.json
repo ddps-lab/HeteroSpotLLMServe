@@ -1,0 +1,207 @@
+{
+  "benchmark": "shuntserve_size_sensitivity_sweep",
+  "timestamp": "2026-06-18 18:57:08 KST",
+  "first_pipeline_only": true,
+  "total_wall_time_sec": 1348.5,
+  "max_workers": 7,
+  "node_multipliers": [
+    40,
+    48,
+    56,
+    64,
+    80
+  ],
+  "k_values": [
+    1
+  ],
+  "models": {
+    "llama3-70b": "meta-llama/Llama-3.1-70B-Instruct"
+  },
+  "clusters": {
+    "large_hetero_cluster": {
+      "description": "large heterogeneous cluster (7 GPU types, 15 instance types, 15*M nodes, 76 GPUs)",
+      "nodes": {
+        "(spot)g4dn.xlarge": 1,
+        "(spot)g4dn.12xlarge": 1,
+        "(spot)g4dn.metal": 1,
+        "(spot)g5.xlarge": 1,
+        "(spot)g5.12xlarge": 1,
+        "(spot)g5.48xlarge": 1,
+        "(spot)g6.xlarge": 1,
+        "(spot)g6.12xlarge": 1,
+        "(spot)g6.48xlarge": 1,
+        "(spot)g6e.xlarge": 1,
+        "(spot)g6e.12xlarge": 1,
+        "(spot)g6e.48xlarge": 1,
+        "(spot)p4d.24xlarge": 1,
+        "(spot)p5.48xlarge": 1,
+        "(spot)p6-b200.48xlarge": 1
+      },
+      "prices": {
+        "(spot)g4dn.xlarge": 0.2104,
+        "(spot)g4dn.12xlarge": 1.5648,
+        "(spot)g4dn.metal": 3.1296,
+        "(spot)g5.xlarge": 0.4024,
+        "(spot)g5.12xlarge": 2.2915,
+        "(spot)g5.48xlarge": 6.5152,
+        "(spot)g6.xlarge": 0.3219,
+        "(spot)g6.12xlarge": 1.9445,
+        "(spot)g6.48xlarge": 5.3402,
+        "(spot)g6e.xlarge": 0.704,
+        "(spot)g6e.12xlarge": 4.1971,
+        "(spot)g6e.48xlarge": 12.0525,
+        "(spot)p4d.24xlarge": 8.7831,
+        "(spot)p5.48xlarge": 22.016,
+        "(spot)p6-b200.48xlarge": 45.5731
+      }
+    }
+  },
+  "workload": {
+    "expected_input_len": 763,
+    "expected_output_len": 232,
+    "max_model_len": 8192,
+    "gpu_mem_utilization": 0.85
+  },
+  "results": [
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "node_multiplier": 40,
+      "total_nodes": 600,
+      "top_k": 1,
+      "wall_time_sec": 1336.307,
+      "optimizer_time_sec": 1334.32,
+      "total_throughput_rps": 66.566,
+      "num_pipelines": 1,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "node_multiplier": 48,
+      "total_nodes": 720,
+      "top_k": 1,
+      "wall_time_sec": 1334.1554,
+      "optimizer_time_sec": 1332.1298,
+      "total_throughput_rps": 66.566,
+      "num_pipelines": 1,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "node_multiplier": 56,
+      "total_nodes": 840,
+      "top_k": 1,
+      "wall_time_sec": 1347.6805,
+      "optimizer_time_sec": 1345.6492,
+      "total_throughput_rps": 66.566,
+      "num_pipelines": 1,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "node_multiplier": 64,
+      "total_nodes": 960,
+      "top_k": 1,
+      "wall_time_sec": 1343.3177,
+      "optimizer_time_sec": 1341.2733,
+      "total_throughput_rps": 66.566,
+      "num_pipelines": 1,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "node_multiplier": 80,
+      "total_nodes": 1200,
+      "top_k": 1,
+      "wall_time_sec": 1335.8877,
+      "optimizer_time_sec": 1333.7808,
+      "total_throughput_rps": 66.566,
+      "num_pipelines": 1,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        }
+      ]
+    }
+  ]
+}

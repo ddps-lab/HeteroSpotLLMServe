@@ -1,0 +1,1719 @@
+{
+  "benchmark": "shuntserve_topk_sweep_uswest2",
+  "timestamp": "2026-06-15 10:27:52 KST",
+  "total_wall_time_sec": 127773.06,
+  "max_workers": 1,
+  "node_multiplier": 6,
+  "k_values": [
+    1
+  ],
+  "models": {
+    "llama3-70b": "meta-llama/Llama-3.1-70B-Instruct"
+  },
+  "clusters": {
+    "uswest2_full_cluster": {
+      "description": "us-west-2 full NVIDIA cluster (46 types, 46 nodes, 139 GPUs)",
+      "nodes": {
+        "(spot)g4dn.xlarge": 1,
+        "(spot)g4dn.2xlarge": 1,
+        "(spot)g4dn.4xlarge": 1,
+        "(spot)g4dn.8xlarge": 1,
+        "(spot)g4dn.16xlarge": 1,
+        "(spot)g4dn.12xlarge": 1,
+        "(spot)g4dn.metal": 1,
+        "(spot)g5g.xlarge": 1,
+        "(spot)g5g.2xlarge": 1,
+        "(spot)g5g.4xlarge": 1,
+        "(spot)g5g.8xlarge": 1,
+        "(spot)g5g.16xlarge": 1,
+        "(spot)g5g.metal": 1,
+        "(spot)g5.xlarge": 1,
+        "(spot)g5.2xlarge": 1,
+        "(spot)g5.4xlarge": 1,
+        "(spot)g5.8xlarge": 1,
+        "(spot)g5.16xlarge": 1,
+        "(spot)g5.12xlarge": 1,
+        "(spot)g5.24xlarge": 1,
+        "(spot)g5.48xlarge": 1,
+        "(spot)g6.xlarge": 1,
+        "(spot)g6.2xlarge": 1,
+        "(spot)g6.4xlarge": 1,
+        "(spot)g6.8xlarge": 1,
+        "(spot)g6.16xlarge": 1,
+        "(spot)g6.12xlarge": 1,
+        "(spot)g6.24xlarge": 1,
+        "(spot)g6.48xlarge": 1,
+        "(spot)gr6.4xlarge": 1,
+        "(spot)gr6.8xlarge": 1,
+        "(spot)g6e.xlarge": 1,
+        "(spot)g6e.2xlarge": 1,
+        "(spot)g6e.4xlarge": 1,
+        "(spot)g6e.8xlarge": 1,
+        "(spot)g6e.16xlarge": 1,
+        "(spot)g6e.12xlarge": 1,
+        "(spot)g6e.24xlarge": 1,
+        "(spot)g6e.48xlarge": 1,
+        "(spot)p4d.24xlarge": 1,
+        "(spot)p4de.24xlarge": 1,
+        "(spot)p5.4xlarge": 1,
+        "(spot)p5.48xlarge": 1,
+        "(spot)p5en.48xlarge": 1,
+        "(spot)p6-b200.48xlarge": 1,
+        "(spot)p6-b300.48xlarge": 1
+      },
+      "prices": {
+        "(spot)g4dn.xlarge": 0.1998,
+        "(spot)g4dn.2xlarge": 0.2577,
+        "(spot)g4dn.4xlarge": 0.3834,
+        "(spot)g4dn.8xlarge": 0.7623,
+        "(spot)g4dn.16xlarge": 1.3833,
+        "(spot)g4dn.12xlarge": 1.3584,
+        "(spot)g4dn.metal": 3.4908,
+        "(spot)g5g.xlarge": 0.122,
+        "(spot)g5g.2xlarge": 0.1611,
+        "(spot)g5g.4xlarge": 0.2636,
+        "(spot)g5g.8xlarge": 0.3896,
+        "(spot)g5g.16xlarge": 0.7884,
+        "(spot)g5g.metal": 0.398,
+        "(spot)g5.xlarge": 0.5501,
+        "(spot)g5.2xlarge": 0.5263,
+        "(spot)g5.4xlarge": 0.5503,
+        "(spot)g5.8xlarge": 1.0524,
+        "(spot)g5.16xlarge": 1.287,
+        "(spot)g5.12xlarge": 3.5309,
+        "(spot)g5.24xlarge": 4.0043,
+        "(spot)g5.48xlarge": 6.7089,
+        "(spot)g6.xlarge": 0.3561,
+        "(spot)g6.2xlarge": 0.5535,
+        "(spot)g6.4xlarge": 0.5812,
+        "(spot)g6.8xlarge": 0.8312,
+        "(spot)g6.16xlarge": 1.4345,
+        "(spot)g6.12xlarge": 1.6448,
+        "(spot)g6.24xlarge": 2.3192,
+        "(spot)g6.48xlarge": 5.2547,
+        "(spot)gr6.4xlarge": 0.4824,
+        "(spot)gr6.8xlarge": 0.7193,
+        "(spot)g6e.xlarge": 0.9048,
+        "(spot)g6e.2xlarge": 1.0629,
+        "(spot)g6e.4xlarge": 1.4975,
+        "(spot)g6e.8xlarge": 1.3962,
+        "(spot)g6e.16xlarge": 2.6257,
+        "(spot)g6e.12xlarge": 3.0612,
+        "(spot)g6e.24xlarge": 4.1323,
+        "(spot)g6e.48xlarge": 8.3206,
+        "(spot)p4d.24xlarge": 11.642,
+        "(spot)p4de.24xlarge": 15.4059,
+        "(spot)p5.4xlarge": 1.6634,
+        "(spot)p5.48xlarge": 14.083,
+        "(spot)p5en.48xlarge": 17.037,
+        "(spot)p6-b200.48xlarge": 28.0809,
+        "(spot)p6-b300.48xlarge": 33.0176
+      }
+    }
+  },
+  "workload": {
+    "expected_input_len": 763,
+    "expected_output_len": 232,
+    "max_model_len": 8192,
+    "gpu_mem_utilization": 0.85
+  },
+  "results": [
+    {
+      "model": "llama3-70b",
+      "cluster": "uswest2_full_cluster",
+      "node_multiplier": 6,
+      "total_nodes": 276,
+      "top_k": 1,
+      "wall_time_sec": 127770.8266,
+      "optimizer_time_sec": 127504.8915,
+      "total_throughput_rps": 1410.7197,
+      "num_pipelines": 63,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "(spot)p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "(spot)p5.4xlarge",
+            "(spot)p5.4xlarge",
+            "(spot)p5.4xlarge",
+            "(spot)p5.4xlarge",
+            "(spot)p5.4xlarge",
+            "(spot)p5.4xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            13,
+            14,
+            14,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 23.6028,
+          "batch_size": 749,
+          "num_blocks": 46640
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "(spot)p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "(spot)p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "(spot)p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P11",
+          "stages": [
+            "(spot)p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P12",
+          "stages": [
+            "(spot)p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P13",
+          "stages": [
+            "(spot)p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P14",
+          "stages": [
+            "(spot)p6-b300.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.7692,
+          "batch_size": 5194,
+          "num_blocks": 323064
+        },
+        {
+          "label": "P15",
+          "stages": [
+            "(spot)p6-b300.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.7692,
+          "batch_size": 5194,
+          "num_blocks": 323064
+        },
+        {
+          "label": "P16",
+          "stages": [
+            "(spot)p6-b300.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.7692,
+          "batch_size": 5194,
+          "num_blocks": 323064
+        },
+        {
+          "label": "P17",
+          "stages": [
+            "(spot)p6-b300.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.7692,
+          "batch_size": 5194,
+          "num_blocks": 323064
+        },
+        {
+          "label": "P18",
+          "stages": [
+            "(spot)p6-b300.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.7692,
+          "batch_size": 5194,
+          "num_blocks": 323064
+        },
+        {
+          "label": "P19",
+          "stages": [
+            "(spot)p6-b300.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.7692,
+          "batch_size": 5194,
+          "num_blocks": 323064
+        },
+        {
+          "label": "P20",
+          "stages": [
+            "(spot)p5en.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 31.5664,
+          "batch_size": 2504,
+          "num_blocks": 155779
+        },
+        {
+          "label": "P21",
+          "stages": [
+            "(spot)p5en.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 31.5664,
+          "batch_size": 2504,
+          "num_blocks": 155779
+        },
+        {
+          "label": "P22",
+          "stages": [
+            "(spot)p5en.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 31.5664,
+          "batch_size": 2504,
+          "num_blocks": 155779
+        },
+        {
+          "label": "P23",
+          "stages": [
+            "(spot)p5en.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 31.5664,
+          "batch_size": 2504,
+          "num_blocks": 155779
+        },
+        {
+          "label": "P24",
+          "stages": [
+            "(spot)p5en.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 31.5664,
+          "batch_size": 2504,
+          "num_blocks": 155779
+        },
+        {
+          "label": "P25",
+          "stages": [
+            "(spot)p5en.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 31.5664,
+          "batch_size": 2504,
+          "num_blocks": 155779
+        },
+        {
+          "label": "P26",
+          "stages": [
+            "(spot)p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P27",
+          "stages": [
+            "(spot)p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P28",
+          "stages": [
+            "(spot)p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P29",
+          "stages": [
+            "(spot)p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P30",
+          "stages": [
+            "(spot)p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P31",
+          "stages": [
+            "(spot)p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P32",
+          "stages": [
+            "(spot)g5g.xlarge",
+            "(spot)g5g.xlarge",
+            "(spot)g5g.xlarge",
+            "(spot)g5g.xlarge",
+            "(spot)p4de.24xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            8
+          ],
+          "layer_partition": [
+            1,
+            2,
+            2,
+            2,
+            73
+          ],
+          "throughput_rps": 12.9987,
+          "batch_size": 1132,
+          "num_blocks": 70458
+        },
+        {
+          "label": "P33",
+          "stages": [
+            "(spot)g5g.xlarge",
+            "(spot)g5g.xlarge",
+            "(spot)g5g.2xlarge",
+            "(spot)g5g.2xlarge",
+            "(spot)p4de.24xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            8
+          ],
+          "layer_partition": [
+            1,
+            2,
+            2,
+            2,
+            73
+          ],
+          "throughput_rps": 12.9987,
+          "batch_size": 1132,
+          "num_blocks": 70458
+        },
+        {
+          "label": "P34",
+          "stages": [
+            "(spot)g5g.2xlarge",
+            "(spot)g5g.2xlarge",
+            "(spot)g5g.2xlarge",
+            "(spot)g5g.2xlarge",
+            "(spot)p4de.24xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            8
+          ],
+          "layer_partition": [
+            1,
+            2,
+            2,
+            2,
+            73
+          ],
+          "throughput_rps": 12.9987,
+          "batch_size": 1132,
+          "num_blocks": 70458
+        },
+        {
+          "label": "P35",
+          "stages": [
+            "(spot)g4dn.xlarge",
+            "(spot)g4dn.xlarge",
+            "(spot)p4de.24xlarge",
+            "(spot)g5g.metal"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            8,
+            2
+          ],
+          "layer_partition": [
+            2,
+            2,
+            73,
+            3
+          ],
+          "throughput_rps": 13.0035,
+          "batch_size": 874,
+          "num_blocks": 54414
+        },
+        {
+          "label": "P36",
+          "stages": [
+            "(spot)g4dn.xlarge",
+            "(spot)g4dn.xlarge",
+            "(spot)p4de.24xlarge",
+            "(spot)g5g.metal"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            8,
+            2
+          ],
+          "layer_partition": [
+            2,
+            2,
+            73,
+            3
+          ],
+          "throughput_rps": 13.0035,
+          "batch_size": 874,
+          "num_blocks": 54414
+        },
+        {
+          "label": "P37",
+          "stages": [
+            "(spot)g4dn.xlarge",
+            "(spot)g4dn.xlarge",
+            "(spot)p4de.24xlarge",
+            "(spot)g5g.metal"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            8,
+            2
+          ],
+          "layer_partition": [
+            2,
+            2,
+            73,
+            3
+          ],
+          "throughput_rps": 13.0035,
+          "batch_size": 874,
+          "num_blocks": 54414
+        },
+        {
+          "label": "P38",
+          "stages": [
+            "(spot)g5g.metal",
+            "(spot)g5g.metal",
+            "(spot)g5g.metal",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g4dn.2xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.2xlarge",
+            "(spot)g6e.2xlarge"
+          ],
+          "tp_strategy": [
+            2,
+            2,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            5,
+            5,
+            5,
+            8,
+            8,
+            8,
+            2,
+            8,
+            8,
+            8,
+            8,
+            7
+          ],
+          "throughput_rps": 5.6913,
+          "batch_size": 723,
+          "num_blocks": 45023
+        },
+        {
+          "label": "P39",
+          "stages": [
+            "(spot)g4dn.2xlarge",
+            "(spot)g6e.2xlarge",
+            "(spot)g6e.2xlarge",
+            "(spot)g4dn.2xlarge",
+            "(spot)g6e.2xlarge",
+            "(spot)g6e.2xlarge",
+            "(spot)g6e.8xlarge",
+            "(spot)g6e.8xlarge",
+            "(spot)g6e.8xlarge",
+            "(spot)g6e.8xlarge",
+            "(spot)g6e.8xlarge",
+            "(spot)g6e.8xlarge",
+            "(spot)g6e.4xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            2,
+            7,
+            7,
+            2,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            7,
+            6
+          ],
+          "throughput_rps": 7.76,
+          "batch_size": 874,
+          "num_blocks": 54414
+        },
+        {
+          "label": "P40",
+          "stages": [
+            "(spot)g4dn.12xlarge",
+            "(spot)g4dn.12xlarge",
+            "(spot)g4dn.12xlarge",
+            "(spot)g4dn.12xlarge",
+            "(spot)g4dn.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            17,
+            17,
+            17,
+            17,
+            12
+          ],
+          "throughput_rps": 2.8504,
+          "batch_size": 320,
+          "num_blocks": 19962
+        },
+        {
+          "label": "P41",
+          "stages": [
+            "(spot)g4dn.2xlarge",
+            "(spot)g4dn.2xlarge",
+            "(spot)g4dn.2xlarge",
+            "(spot)g5g.4xlarge",
+            "(spot)g5g.4xlarge",
+            "(spot)g5g.4xlarge",
+            "(spot)g5g.4xlarge",
+            "(spot)g5g.4xlarge",
+            "(spot)g5g.4xlarge",
+            "(spot)g5g.16xlarge",
+            "(spot)g5.2xlarge",
+            "(spot)g5g.16xlarge",
+            "(spot)g5g.16xlarge",
+            "(spot)g5.2xlarge",
+            "(spot)g5g.16xlarge",
+            "(spot)g5.2xlarge",
+            "(spot)g5g.16xlarge",
+            "(spot)g5g.16xlarge",
+            "(spot)g5.2xlarge",
+            "(spot)g5.2xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            1,
+            2,
+            2,
+            1,
+            2,
+            1,
+            2,
+            2,
+            1,
+            1
+          ],
+          "layer_partition": [
+            2,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            5,
+            4,
+            6,
+            6,
+            4,
+            6,
+            4,
+            6,
+            6,
+            4,
+            3
+          ],
+          "throughput_rps": 3.8204,
+          "batch_size": 614,
+          "num_blocks": 38245
+        },
+        {
+          "label": "P42",
+          "stages": [
+            "(spot)g4dn.4xlarge",
+            "(spot)g4dn.4xlarge",
+            "(spot)g4dn.4xlarge",
+            "(spot)g4dn.4xlarge",
+            "(spot)g4dn.4xlarge",
+            "(spot)g4dn.4xlarge",
+            "(spot)g5g.8xlarge",
+            "(spot)g5g.8xlarge",
+            "(spot)g5g.8xlarge",
+            "(spot)g5.2xlarge",
+            "(spot)g5g.8xlarge",
+            "(spot)g5.xlarge",
+            "(spot)g5.xlarge",
+            "(spot)g5.xlarge",
+            "(spot)g5.xlarge",
+            "(spot)g5.xlarge",
+            "(spot)g5.xlarge",
+            "(spot)g5.4xlarge",
+            "(spot)g5.4xlarge",
+            "(spot)g5.4xlarge",
+            "(spot)g5.4xlarge",
+            "(spot)g5.4xlarge",
+            "(spot)g5.4xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            2,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            3
+          ],
+          "throughput_rps": 3.7949,
+          "batch_size": 614,
+          "num_blocks": 38245
+        },
+        {
+          "label": "P43",
+          "stages": [
+            "(spot)g5g.8xlarge",
+            "(spot)g6e.4xlarge",
+            "(spot)g6e.4xlarge",
+            "(spot)g6e.4xlarge",
+            "(spot)g6e.4xlarge",
+            "(spot)g6e.4xlarge",
+            "(spot)g5g.8xlarge",
+            "(spot)g6e.16xlarge",
+            "(spot)g6e.16xlarge",
+            "(spot)g6e.16xlarge",
+            "(spot)g4dn.12xlarge",
+            "(spot)g6e.16xlarge",
+            "(spot)g6e.16xlarge",
+            "(spot)g4dn.8xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            4,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            2,
+            7,
+            7,
+            7,
+            7,
+            7,
+            2,
+            7,
+            7,
+            7,
+            4,
+            7,
+            7,
+            2
+          ],
+          "throughput_rps": 7.4487,
+          "batch_size": 874,
+          "num_blocks": 54414
+        },
+        {
+          "label": "P44",
+          "stages": [
+            "(spot)g6.xlarge",
+            "(spot)g6.xlarge",
+            "(spot)g6.xlarge",
+            "(spot)g6.xlarge",
+            "(spot)g6.xlarge",
+            "(spot)g6.xlarge",
+            "(spot)gr6.4xlarge",
+            "(spot)gr6.4xlarge",
+            "(spot)gr6.4xlarge",
+            "(spot)gr6.4xlarge",
+            "(spot)gr6.4xlarge",
+            "(spot)gr6.4xlarge",
+            "(spot)g6.2xlarge",
+            "(spot)g6.2xlarge",
+            "(spot)g6.2xlarge",
+            "(spot)g6.2xlarge",
+            "(spot)g6.2xlarge",
+            "(spot)g6.2xlarge",
+            "(spot)g6.4xlarge",
+            "(spot)g6.4xlarge",
+            "(spot)g6.4xlarge",
+            "(spot)g6.4xlarge",
+            "(spot)g6.4xlarge",
+            "(spot)g6.4xlarge",
+            "(spot)gr6.8xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)gr6.8xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            2,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            4,
+            2
+          ],
+          "throughput_rps": 4.3279,
+          "batch_size": 1066,
+          "num_blocks": 66354
+        },
+        {
+          "label": "P45",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            21,
+            21,
+            21,
+            17
+          ],
+          "throughput_rps": 1.7829,
+          "batch_size": 437,
+          "num_blocks": 27238
+        },
+        {
+          "label": "P46",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g4dn.metal",
+            "(spot)g4dn.metal",
+            "(spot)gr6.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            17,
+            30,
+            30,
+            3
+          ],
+          "throughput_rps": 2.2258,
+          "batch_size": 461,
+          "num_blocks": 28730
+        },
+        {
+          "label": "P47",
+          "stages": [
+            "(spot)g4dn.metal",
+            "(spot)g4dn.metal",
+            "(spot)g4dn.metal",
+            "(spot)g4dn.metal",
+            "(spot)gr6.8xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            8,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            19,
+            19,
+            20,
+            20,
+            2
+          ],
+          "throughput_rps": 3.582,
+          "batch_size": 902,
+          "num_blocks": 56155
+        },
+        {
+          "label": "P48",
+          "stages": [
+            "(spot)g6e.12xlarge",
+            "(spot)g6e.12xlarge",
+            "(spot)g6e.12xlarge",
+            "(spot)gr6.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            26,
+            26,
+            26,
+            2
+          ],
+          "throughput_rps": 2.2489,
+          "batch_size": 993,
+          "num_blocks": 61814
+        },
+        {
+          "label": "P49",
+          "stages": [
+            "(spot)g6e.12xlarge",
+            "(spot)g6e.12xlarge",
+            "(spot)g6e.12xlarge",
+            "(spot)gr6.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            26,
+            26,
+            26,
+            2
+          ],
+          "throughput_rps": 2.2489,
+          "batch_size": 993,
+          "num_blocks": 61814
+        },
+        {
+          "label": "P50",
+          "stages": [
+            "(spot)g6.24xlarge",
+            "(spot)g6.24xlarge",
+            "(spot)g6.24xlarge",
+            "(spot)g6.24xlarge",
+            "(spot)g5.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            19,
+            19,
+            19,
+            19,
+            4
+          ],
+          "throughput_rps": 2.0046,
+          "batch_size": 528,
+          "num_blocks": 32835
+        },
+        {
+          "label": "P51",
+          "stages": [
+            "(spot)g6.24xlarge",
+            "(spot)g6.24xlarge",
+            "(spot)g6e.24xlarge",
+            "(spot)g6.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            22,
+            22,
+            32,
+            4
+          ],
+          "throughput_rps": 1.6323,
+          "batch_size": 398,
+          "num_blocks": 24812
+        },
+        {
+          "label": "P52",
+          "stages": [
+            "(spot)g6e.24xlarge",
+            "(spot)g6e.24xlarge",
+            "(spot)g6e.24xlarge",
+            "(spot)g6.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            26,
+            26,
+            26,
+            2
+          ],
+          "throughput_rps": 2.2489,
+          "batch_size": 993,
+          "num_blocks": 61814
+        },
+        {
+          "label": "P53",
+          "stages": [
+            "(spot)g6e.24xlarge",
+            "(spot)g6e.24xlarge",
+            "(spot)g6.8xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            38,
+            38,
+            4
+          ],
+          "throughput_rps": 1.5169,
+          "batch_size": 547,
+          "num_blocks": 34078
+        },
+        {
+          "label": "P54",
+          "stages": [
+            "(spot)g4dn.8xlarge",
+            "(spot)g4dn.8xlarge",
+            "(spot)g6e.16xlarge",
+            "(spot)g4dn.8xlarge",
+            "(spot)g4dn.8xlarge",
+            "(spot)g4dn.8xlarge",
+            "(spot)g5.8xlarge",
+            "(spot)g5.8xlarge",
+            "(spot)g5.8xlarge",
+            "(spot)g5.8xlarge",
+            "(spot)g5.8xlarge",
+            "(spot)g5.16xlarge",
+            "(spot)g5.16xlarge",
+            "(spot)g5.16xlarge",
+            "(spot)g6.8xlarge",
+            "(spot)g6.8xlarge",
+            "(spot)g6.8xlarge",
+            "(spot)g5.16xlarge",
+            "(spot)g5.16xlarge",
+            "(spot)g5.16xlarge",
+            "(spot)g4dn.16xlarge",
+            "(spot)g4dn.16xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            2,
+            3,
+            9,
+            3,
+            3,
+            3,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            3,
+            3,
+            2,
+            4,
+            4,
+            4,
+            3,
+            2
+          ],
+          "throughput_rps": 3.1745,
+          "batch_size": 596,
+          "num_blocks": 37125
+        },
+        {
+          "label": "P55",
+          "stages": [
+            "(spot)g6.48xlarge",
+            "(spot)g6.48xlarge",
+            "(spot)g6.48xlarge",
+            "(spot)g6.48xlarge",
+            "(spot)g6.48xlarge",
+            "(spot)g4dn.16xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            15,
+            16,
+            16,
+            16,
+            16,
+            1
+          ],
+          "throughput_rps": 2.9372,
+          "batch_size": 1910,
+          "num_blocks": 118840
+        },
+        {
+          "label": "P56",
+          "stages": [
+            "(spot)g6.48xlarge",
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            4
+          ],
+          "layer_partition": [
+            58,
+            22
+          ],
+          "throughput_rps": 0.7666,
+          "batch_size": 213,
+          "num_blocks": 13308
+        },
+        {
+          "label": "P57",
+          "stages": [
+            "(spot)g6e.48xlarge",
+            "(spot)g6e.48xlarge",
+            "(spot)g6e.48xlarge",
+            "(spot)g6.16xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            26,
+            26,
+            26,
+            2
+          ],
+          "throughput_rps": 2.1419,
+          "batch_size": 1552,
+          "num_blocks": 96515
+        },
+        {
+          "label": "P58",
+          "stages": [
+            "(spot)g6e.48xlarge",
+            "(spot)g6e.48xlarge",
+            "(spot)g6e.48xlarge",
+            "(spot)g6.16xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            26,
+            26,
+            26,
+            2
+          ],
+          "throughput_rps": 2.1419,
+          "batch_size": 1552,
+          "num_blocks": 96515
+        },
+        {
+          "label": "P59",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g5.24xlarge",
+            "(spot)g6.16xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            13,
+            13,
+            13,
+            13,
+            13,
+            13,
+            2
+          ],
+          "throughput_rps": 1.748,
+          "batch_size": 965,
+          "num_blocks": 60073
+        },
+        {
+          "label": "P60",
+          "stages": [
+            "(spot)g5.24xlarge",
+            "(spot)g5.24xlarge",
+            "(spot)g5.24xlarge",
+            "(spot)g5.24xlarge",
+            "(spot)g6.16xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            19,
+            19,
+            19,
+            19,
+            4
+          ],
+          "throughput_rps": 1.1742,
+          "batch_size": 528,
+          "num_blocks": 32835
+        },
+        {
+          "label": "P61",
+          "stages": [
+            "(spot)g5.24xlarge",
+            "(spot)g5.48xlarge",
+            "(spot)g5.48xlarge",
+            "(spot)g6.16xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            26,
+            25,
+            25,
+            4
+          ],
+          "throughput_rps": 0.804,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P62",
+          "stages": [
+            "(spot)g5.48xlarge",
+            "(spot)g5.48xlarge",
+            "(spot)g5.48xlarge",
+            "(spot)g6.16xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            8,
+            8,
+            1
+          ],
+          "layer_partition": [
+            26,
+            26,
+            26,
+            2
+          ],
+          "throughput_rps": 0.8507,
+          "batch_size": 993,
+          "num_blocks": 61814
+        },
+        {
+          "label": "P63",
+          "stages": [
+            "(spot)g4dn.16xlarge",
+            "(spot)g4dn.16xlarge",
+            "(spot)g5.48xlarge",
+            "(spot)g4dn.16xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            8,
+            1
+          ],
+          "layer_partition": [
+            4,
+            5,
+            68,
+            3
+          ],
+          "throughput_rps": 0.2666,
+          "batch_size": 128,
+          "num_blocks": 7960
+        }
+      ]
+    }
+  ]
+}
