@@ -80,7 +80,10 @@ OBSERVER_REMOTE = f"{PROJECT_PATH}/ArtifactEvaluation/MemoryOverhead/mem_observe
 # ── Per-model configs (both run on 2x g6.12xlarge, TP=4 + PP=2) ───────────────────
 _COMMON = {
     "model_source": "s3",
-    "dtype": "bfloat16",
+    # No --dtype: the tensor store has no such arg (weight dtype comes from the TRAW
+    # upload) and vLLM auto-detects bfloat16 for Llama-3.1. Mirrors production configs,
+    # which carry no "dtype" field. cache_dtype="auto" is a separate, accepted arg.
+    "dtype": None,
     "cache_dtype": "auto",
     "block_size": 16,
     "swap_space": 4.0,
@@ -306,17 +309,39 @@ def launch_engine(cfg, layout, nrm, node_ips, head_ip, api_port, ray_port, user,
 
     health = f"http://{n0_ip}:{api_port}/health"
     wait_until(lambda: http_ok(health)[0] == 200, f"engine {tag} /health", timeout=1800)
-    print(f"  engine {tag} healthy on {n0_ip}:{api_port}")
-
-    # Warmup forward: forces lazy cuBLAS/cuDNN workspace + NCCL communicator allocation
-    # (TP all-reduce intra-node, PP send/recv inter-node) so the snapshot captures them.
-    status, body = http_ok(
-        f"http://{n0_ip}:{api_port}/v1/completions", timeout=120, method="POST",
-        payload={"model": cfg["model_name"], "prompt": "Hello", "max_tokens": 4, "temperature": 0.0},
-    )
-    print(f"  engine {tag} warmup: status={status}")
     time.sleep(5)  # settle
+    print(f"  engine {tag} healthy on {n0_ip}:{api_port}")
+    # NOTE: at /health the CUDA context AND the NCCL communicators are already
+    # allocated — vLLM's PyNcclCommunicator.__init__ calls ncclCommInitRank + an eager
+    # warmup all_reduce at distributed setup (submodules/vLLM/.../pynccl.py:99-105).
+    # Only the cuBLAS/cuDNN GEMM workspace is still lazy (needs a real forward), which
+    # is what warmup_engine() below realizes. So the health snapshot already captures
+    # context + NCCL — the dominant, overlap-relevant part of the overhead.
     return proc, n0_ip, api_port
+
+
+def warmup_engine(n0_ip, api_port, model_name):
+    """One real forward → allocates the lazy cuBLAS/cuDNN GEMM workspace (and the
+    served-path scratch). The eager all_reduce at init is not a GEMM, so this is the
+    only step that realizes the cuBLAS/cuDNN component of the overhead."""
+    status, _ = http_ok(
+        f"http://{n0_ip}:{api_port}/v1/completions", timeout=120, method="POST",
+        payload={"model": model_name, "prompt": "Hello", "max_tokens": 4, "temperature": 0.0},
+    )
+    print(f"  warmup {n0_ip}:{api_port}: status={status}")
+    time.sleep(5)  # settle
+
+
+def cleanup_nodes(node_ips, user, stop_ray):
+    """Clean slate before a run so re-runs are idempotent (frees the observer port,
+    kills any store/engine left from a failed run). Safe at startup; NEVER call this
+    mid-measurement (it would kill the shared store)."""
+    for ip in node_ips:
+        ssh_run(ip, user,
+                "pkill -f mem_observer.py; pkill -f raw_s3_tensor_store_server.py; "
+                "pkill -f InferenceServer/api_server.py; true", timeout=30)
+        if stop_ray:
+            ssh_run(ip, user, f"{RAY} stop --force", timeout=60)
 
 
 def ray_setup(node_ips, head_ip, ray_port, user):
@@ -339,45 +364,81 @@ def ray_setup(node_ips, head_ip, ray_port, user):
 
 
 def report(snaps, node_ips):
-    s0, s1, s2 = snaps["S0"], snaps["S1"], snaps["S2"]
+    """Decompose the 2nd-engine overhead using 5 snapshots.
+
+      S0  = store only
+      S1h = store + engine1 (just /health: CUDA context + NCCL, both eager)
+      S1w = store + engine1 warmed (adds engine1's cuBLAS/cuDNN GEMM workspace)
+      S2h = store + engine1(warmed) + engine2 (/health)
+      S2w = store + engine1(warmed) + engine2 warmed
+
+    Second-engine overhead components (per GPU):
+      ctx+NCCL (eager)        = S2h - S1w   <- this is the OVERLAP-window cost: engine2
+                                              only reaches /health before switchover, so
+                                              its cuBLAS workspace isn't allocated yet
+      + cuBLAS/cuDNN (lazy)   = S2w - S2h   <- realized once it starts serving
+      full marginal           = S2w - S1w
+    """
+    s0, s1h, s1w = snaps["S0"], snaps["S1h"], snaps["S1w"]
+    s2h, s2w = snaps["S2h"], snaps["S2w"]
     keys = sorted(s0.keys())
-    rows, sum_e1, sum_e2 = [], 0, 0
+    rows = {m: 0 for m in ("e1_ctx_nccl", "e1_cublas", "e2_ctx_nccl", "e2_cublas", "e2_full")}
+    per_gpu = []
     for k in keys:
-        e1 = s1[k] - s0[k]
-        e2 = s2[k] - s1[k]
-        sum_e1 += e1
-        sum_e2 += e2
-        rows.append({
+        e1_ctx = s1h[k] - s0[k]
+        e1_blas = s1w[k] - s1h[k]
+        e2_ctx = s2h[k] - s1w[k]
+        e2_blas = s2w[k] - s2h[k]
+        e2_full = s2w[k] - s1w[k]
+        rows["e1_ctx_nccl"] += e1_ctx
+        rows["e1_cublas"] += e1_blas
+        rows["e2_ctx_nccl"] += e2_ctx
+        rows["e2_cublas"] += e2_blas
+        rows["e2_full"] += e2_full
+        per_gpu.append({
             "node": k[0], "gpu": k[1],
-            "S0_GiB": round(s0[k] / GiB, 3),
-            "S1_GiB": round(s1[k] / GiB, 3),
-            "S2_GiB": round(s2[k] / GiB, 3),
-            "engine1_GiB": round(e1 / GiB, 3),
-            "dE2_engine2_GiB": round(e2 / GiB, 3),
+            "S0_GiB": round(s0[k] / GiB, 3), "S1h_GiB": round(s1h[k] / GiB, 3),
+            "S1w_GiB": round(s1w[k] / GiB, 3), "S2h_GiB": round(s2h[k] / GiB, 3),
+            "S2w_GiB": round(s2w[k] / GiB, 3),
+            "e2_ctx_nccl_GiB": round(e2_ctx / GiB, 3),
+            "e2_cublas_GiB": round(e2_blas / GiB, 3),
+            "e2_full_GiB": round(e2_full / GiB, 3),
         })
     n = len(keys)
-    print("\n" + "=" * 78)
-    print("Per-GPU memory (GiB)   [dE2 = 2nd-engine overhead = context+cuBLAS/cuDNN+NCCL]")
-    print("=" * 78)
-    print(f"{'node':>15} {'gpu':>3} {'S0':>8} {'S1':>8} {'S2':>8} {'engine1':>9} {'dE2':>8}")
-    for r in rows:
-        print(f"{r['node']:>15} {r['gpu']:>3} {r['S0_GiB']:>8.3f} {r['S1_GiB']:>8.3f} "
-              f"{r['S2_GiB']:>8.3f} {r['engine1_GiB']:>9.3f} {r['dE2_engine2_GiB']:>8.3f}")
-    print("-" * 78)
-    print(f"  2nd-engine overhead  dE2 : total {sum_e2 / GiB:.3f} GiB over {n} GPUs, "
-          f"mean {sum_e2 / GiB / n:.3f} GiB/GPU")
-    print(f"  1st-engine cost           : total {sum_e1 / GiB:.3f} GiB over {n} GPUs, "
-          f"mean {sum_e1 / GiB / n:.3f} GiB/GPU")
-    if sum_e1:
-        print(f"  dE2 / engine1             : {100.0 * sum_e2 / sum_e1:.1f}%  "
-              f"(lower = second engine is nearly free)")
-    print("=" * 78)
+
+    def g(b):
+        return b / GiB
+
+    print("\n" + "=" * 86)
+    print("Per-GPU 2nd-engine overhead (GiB)   [ctx+NCCL eager @health | +cuBLAS/cuDNN @warmup]")
+    print("=" * 86)
+    print(f"{'node':>15} {'gpu':>3} {'S1w':>8} {'S2h':>8} {'S2w':>8} "
+          f"{'ctx+NCCL':>9} {'+cuBLAS':>8} {'full':>7}")
+    for r in per_gpu:
+        print(f"{r['node']:>15} {r['gpu']:>3} {r['S1w_GiB']:>8.3f} {r['S2h_GiB']:>8.3f} "
+              f"{r['S2w_GiB']:>8.3f} {r['e2_ctx_nccl_GiB']:>9.3f} {r['e2_cublas_GiB']:>8.3f} "
+              f"{r['e2_full_GiB']:>7.3f}")
+    print("-" * 86)
+    print(f"  2nd-engine, ctx+NCCL (overlap-window cost): "
+          f"mean {g(rows['e2_ctx_nccl']) / n:.3f} GiB/GPU  (total {g(rows['e2_ctx_nccl']):.3f})")
+    print(f"  2nd-engine, + cuBLAS/cuDNN (when serving) : "
+          f"mean {g(rows['e2_cublas']) / n:.3f} GiB/GPU  (total {g(rows['e2_cublas']):.3f})")
+    print(f"  2nd-engine, FULL marginal                 : "
+          f"mean {g(rows['e2_full']) / n:.3f} GiB/GPU  (total {g(rows['e2_full']):.3f})")
+    e1_full = rows["e1_ctx_nccl"] + rows["e1_cublas"]
+    print(f"  1st-engine, full (context):                 "
+          f"mean {g(e1_full) / n:.3f} GiB/GPU  (total {g(e1_full):.3f})")
+    if e1_full:
+        print(f"  2nd full / 1st full                       : {100.0 * rows['e2_full'] / e1_full:.1f}%"
+              f"  (lower = second engine is nearly free)")
+    print("=" * 86)
     return {
-        "per_gpu": rows,
-        "dE2_engine2_total_GiB": round(sum_e2 / GiB, 4),
-        "dE2_engine2_mean_GiB_per_gpu": round(sum_e2 / GiB / n, 4),
-        "engine1_total_GiB": round(sum_e1 / GiB, 4),
-        "engine1_mean_GiB_per_gpu": round(sum_e1 / GiB / n, 4),
+        "per_gpu": per_gpu, "n_gpus": n,
+        "e2_ctx_nccl_mean_GiB_per_gpu": round(g(rows["e2_ctx_nccl"]) / n, 4),
+        "e2_cublas_mean_GiB_per_gpu": round(g(rows["e2_cublas"]) / n, 4),
+        "e2_full_mean_GiB_per_gpu": round(g(rows["e2_full"]) / n, 4),
+        "e2_full_total_GiB": round(g(rows["e2_full"]), 4),
+        "e1_full_mean_GiB_per_gpu": round(g(e1_full) / n, 4),
     }
 
 
@@ -414,9 +475,11 @@ def main():
     node_ips = list(args.nodes)
     head_ip = args.head_ip or node_ips[0]
     user = args.ssh_user
-    logdir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          "logs", f"{args.model}_{int(time.time())}")
+    here = os.path.dirname(os.path.abspath(__file__))
+    logdir = os.path.join(here, "logs", args.model)
+    resultsdir = os.path.join(here, "results")
     os.makedirs(logdir, exist_ok=True)
+    os.makedirs(resultsdir, exist_ok=True)
     layout, nrm = node_layout(cfg, node_ips)
 
     print(f"Model: {cfg['model_name']}  | nodes: {node_ips}  | TP/PP: {cfg['parallel_strategy']} / "
@@ -425,16 +488,18 @@ def main():
     print(f"logs: {logdir}\n")
 
     snaps, engines = {}, []
-    obs_procs = store_procs = None
     try:
-        # Clean any stale Ray, then bring up observers.
-        if not args.skip_ray_setup:
-            for ip in node_ips:
-                ssh_run(ip, user, f"{RAY} stop --force", timeout=60)
-        print("[1/5] observers"); obs_procs = launch_observers(node_ips, user, logdir)
+        # Clean slate: free the observer port + kill any store/engine from a failed run
+        # (and stop Ray unless the operator manages it). Makes re-runs idempotent.
+        print("[0/5] cleanup stale procs")
+        cleanup_nodes(node_ips, user, stop_ray=not args.skip_ray_setup)
+        print("[1/5] observers")
+        launch_observers(node_ips, user, logdir)
 
-        print("[2/5] shared tensor store"); store_procs = launch_store(cfg, layout, user, logdir)
-        snaps["S0"] = snapshot(node_ips); print("  -> S0 captured (store only)")
+        print("[2/5] shared tensor store")
+        launch_store(cfg, layout, user, logdir)
+        snaps["S0"] = snapshot(node_ips)
+        print("  -> S0 captured (store only)")
 
         print("[3/5] engine 1 (Ray 6379, API 8001)")
         if not args.skip_ray_setup:
@@ -442,7 +507,11 @@ def main():
         _, n0, p1 = launch_engine(cfg, layout, nrm, node_ips, head_ip, API_PORT_1, RAY_PORT_1,
                                   user, logdir, "1")
         engines.append((n0, p1))
-        snaps["S1"] = snapshot(node_ips); print("  -> S1 captured (store + engine1)")
+        snaps["S1h"] = snapshot(node_ips)
+        print("  -> S1h (store + engine1 @health: ctx+NCCL)")
+        warmup_engine(n0, p1, cfg["model_name"])
+        snaps["S1w"] = snapshot(node_ips)
+        print("  -> S1w (engine1 warmed: +cuBLAS/cuDNN)")
 
         print("[4/5] engine 2 (Ray 6380, API 8002) — SAME GPUs, SAME store, NO new store")
         if not args.skip_ray_setup:
@@ -450,7 +519,11 @@ def main():
         _, n0b, p2 = launch_engine(cfg, layout, nrm, node_ips, head_ip, API_PORT_2, RAY_PORT_2,
                                    user, logdir, "2")
         engines.append((n0b, p2))
-        snaps["S2"] = snapshot(node_ips); print("  -> S2 captured (store + engine1 + engine2)")
+        snaps["S2h"] = snapshot(node_ips)
+        print("  -> S2h (+ engine2 @health: overlap-window state)")
+        warmup_engine(n0b, p2, cfg["model_name"])
+        snaps["S2w"] = snapshot(node_ips)
+        print("  -> S2w (engine2 warmed: +cuBLAS/cuDNN)")
 
         print("[5/5] report")
         summary = report(snaps, node_ips)
@@ -465,7 +538,7 @@ def main():
             "snapshots_bytes": {k: {f"{ip}:{g}": v for (ip, g), v in s.items()} for k, s in snaps.items()},
             "summary": summary,
         }
-        out = args.out or os.path.join(logdir, f"overhead_{args.model}.json")
+        out = args.out or os.path.join(resultsdir, f"overhead_{args.model}.json")
         with open(out, "w") as f:
             json.dump(result, f, indent=2)
         print(f"\nSaved: {out}")

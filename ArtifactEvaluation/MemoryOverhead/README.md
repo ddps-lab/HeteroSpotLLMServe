@@ -1,27 +1,55 @@
 # Memory-Overhead Measurement (Rebuttal R2#4)
 
 Measures the GPU memory overhead of running a **second vLLM engine that shares one
-tensor store** with the first — the exact situation during ShuntServe's *concurrent
-initialization* overlap window. Because the shared tensor store holds the model
-weights and KV cache **once**, the marginal footprint of the second engine is only
-its **duplicate CUDA context + cuBLAS/cuDNN workspaces + NCCL communicators**. This is
-what reviewer R2#4 asks about.
+tensor store** with the first — the situation during ShuntServe's *concurrent
+initialization* overlap window. Because the shared tensor store holds the model weights
+and KV cache **once**, the marginal footprint of the second engine is only its
+**duplicate CUDA context + cuBLAS/cuDNN workspaces + NCCL communicators**. This is what
+reviewer R2#4 asks about.
+
+## This is the real production scenario (not a constructed worst case)
+
+In `switch_node` ([../../GlobalServer/VNode.py:728](../../GlobalServer/VNode.py#L728)) only the
+interrupted node is replaced (`self.vnodes[target_index] = new_vnode`), but the **new
+Ray cluster (6380) is joined by *all* current vnodes — including the unchanged ones**
+([VNode.py:779](../../GlobalServer/VNode.py#L779)), a fresh tensor store is started **only on
+the new node** ([VNode.py:802](../../GlobalServer/VNode.py#L802)), and the new API server is
+brought up and waited on **before** the old one is stopped
+([VNode.py:830-847](../../GlobalServer/VNode.py#L830)). So during the overlap, every **unchanged
+stage node** runs the old pipeline's workers *and* the new pipeline's workers on the
+**same GPUs, sharing the same tensor store**. That is exactly `1 store + 2 engines` —
+what this harness measures. (Only the single swapped node never doubles up.)
 
 ## What it does
 
-On **2× g6.12xlarge (8× L4)** in a **TP=4 (intra-node) + PP=2 (inter-node)** topology
-— mirroring SS-P1's `parallel_strategy=[4,4,...]` g6.12xlarge stages — the orchestrator
-brings the system up step by step and snapshots GPU memory after each step:
+On **2× g6.12xlarge (8× L4)**, **TP=4 (intra-node) + PP=2 (inter-node)** — mirroring
+SS-P1's `parallel_strategy=[4,4,...]` g6.12xlarge stages — the orchestrator brings the
+system up and snapshots GPU memory at five points:
 
 ```
-resident observers (memory meters, contexts cancel out in the diff)
-  → 1 shared tensor store (8 procs, weights + KV loaded once)   ⇒ S0
-  → engine 1  (Ray cluster :6379, API :8001)                    ⇒ S1
-  → engine 2  (Ray cluster :6380, API :8002, SAME GPUs/store)   ⇒ S2   (no 2nd store)
+resident observers (memory meters; their context cancels out in the diffs)
+  → 1 shared tensor store (8 procs, weights + KV loaded once)        ⇒ S0
+  → engine 1 (Ray :6379, API :8001)  @health                        ⇒ S1h   ctx + NCCL
+                                      warmed (1 request)             ⇒ S1w   + cuBLAS/cuDNN
+  → engine 2 (Ray :6380, API :8002, SAME GPUs/store, no 2nd store)
+                                      @health                        ⇒ S2h
+                                      warmed (1 request)             ⇒ S2w
 ```
 
-**Headline metric:** `ΔE2 = used(S2) − used(S1)` per GPU = the second engine's overhead.
-Also reports `used(S1) − used(S0)` (first-engine cost) and `ΔE2 / engine1` (%).
+**Why health *and* warmup?** vLLM allocates the NCCL communicators **eagerly** at
+distributed init — `PyNcclCommunicator.__init__` calls `ncclCommInitRank` + an eager
+warmup all-reduce ([../../submodules/vLLM/vllm/distributed/device_communicators/pynccl.py:99-105](../../submodules/vLLM/vllm/distributed/device_communicators/pynccl.py#L99))
+— so the **CUDA context + NCCL buffers are already present at `/health`**. Only the
+**cuBLAS/cuDNN GEMM workspace is lazy** (needs a real forward), which the warmup request
+realizes. This splits the second engine's overhead into its two natural parts.
+
+**Reported metrics (per GPU, mean over 8):**
+
+| metric | formula | meaning |
+|---|---|---|
+| `ctx+NCCL` | `S2h − S1w` | second engine's **overlap-window** cost (it only reaches `/health` before switchover, so no cuBLAS yet) |
+| `+cuBLAS/cuDNN` | `S2w − S2h` | extra workspace once it actually serves |
+| `full` | `S2w − S1w` | full per-engine marginal |
 
 Memory is read with **`torch.cuda.mem_get_info`** — the same driver-level call the
 tensor store uses to size the KV cache ([../../TensorStore/raw_s3_tensor_store_server.py:505](../../TensorStore/raw_s3_tensor_store_server.py#L505)).
@@ -48,10 +76,12 @@ workspaces and NCCL buffers, which live **outside** the torch caching allocator.
 cd /home/ubuntu/ShuntServe/ArtifactEvaluation/MemoryOverhead
 
 # 8B
-python measure_engine_overhead.py --nodes <N0_IP> <N1_IP> --model 8b  --out overhead_8b.json
+python measure_engine_overhead.py --nodes <N0_IP> <N1_IP> --model 8b
 # 70B  (also confirms the overhead is model-independent)
-python measure_engine_overhead.py --nodes <N0_IP> <N1_IP> --model 70b --out overhead_70b.json
+python measure_engine_overhead.py --nodes <N0_IP> <N1_IP> --model 70b
 ```
+
+Results are written to `results/overhead_<model>.json`; per-run logs to `logs/<model>/`.
 
 The script starts/stops the two Ray heads (`:6379`, `:6380`) with the exact commands
 from the top-level `README.md` (`ray start --head --port=...`, no temp-dir — both heads
@@ -64,22 +94,24 @@ Useful flags: `--ssh-user`, `--head-ip`, `--keep-up` (leave everything running t
 
 ## Reading the result
 
-- The reviewer's three components are reported as **one aggregate** `ΔE2` (their sum).
-  Expect a small per-GPU value (CUDA context + cuBLAS/cuDNN + NCCL), a few % of the
-  24 GB L4 — well within vLLM's `gpu_memory_utilization` margin, so the overlap does
-  **not** reduce the serving engine's KV-cache batch capacity.
+- The **overlap-window** number is `ctx+NCCL` (`S2h − S1w`): what the second engine adds
+  while it initializes, before it takes over. `full` (`S2w − S1w`) bounds it including
+  the cuBLAS/cuDNN workspace it will use once serving. Both should be a small per-GPU
+  value — a few % of the 24 GB L4, within vLLM's `gpu_memory_utilization` margin — so the
+  overlap does **not** reduce the serving engine's KV-cache batch capacity.
 - **Alignment is correct by construction:** both engines use the *same*
   `node_rank_mapping`, and vLLM places rank *i* deterministically on `cuda:i`, which
-  connects to tensor-store port `50001+i` — so engine 2 attaches to engine 1's GPUs
-  and store. A misplacement (engine 2 loading its own weights) would show up
-  immediately as `ΔE2` jumping to ~a full engine (weights + KV included); a small
-  `ΔE2` is itself the confirmation.
-- Compare 8B vs 70B `ΔE2`: they should differ by < ~10% (per-engine overhead is
-  governed by per-process context + topology-dependent NCCL buffers, not model size).
+  connects to tensor-store port `50001+i` — so engine 2 attaches to engine 1's GPUs and
+  store. A misplacement (engine 2 loading its own weights) would show up immediately as
+  `full` jumping to ~a whole engine (weights + KV included); a small `full` is itself the
+  confirmation.
+- Compare 8B vs 70B: the per-engine overhead should differ by < ~10% (governed by
+  per-process context + topology-dependent NCCL buffers, not model size).
 
 ## Paper sentence (fill in measured X, Y)
 
-> A concurrently initialized second engine that shares the tensor store adds only
-> **X.X GB/GPU** (duplicate CUDA context + cuBLAS/cuDNN + NCCL communicators), **< Y %**
-> of L4 capacity and within vLLM's `gpu_memory_utilization` margin, so it does not
-> reduce the serving engine's KV-cache batch capacity during the overlap window.
+> During concurrent initialization a second engine shares the tensor store on the
+> unchanged stage GPUs and adds only **X.X GB/GPU** (duplicate CUDA context + NCCL
+> communicators, with cuBLAS/cuDNN workspace a further negligible amount), **< Y %** of
+> L4 capacity and within vLLM's `gpu_memory_utilization` margin, so it does not reduce
+> the serving engine's KV-cache batch capacity during the overlap window.
