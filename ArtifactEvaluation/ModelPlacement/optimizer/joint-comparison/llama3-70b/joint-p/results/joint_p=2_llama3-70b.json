@@ -1,0 +1,3551 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_short": "llama3-70b",
+  "p": 2,
+  "cluster": [
+    2,
+    3,
+    4
+  ],
+  "prices": {
+    "(spot)g5.12xlarge": 2.2915,
+    "(spot)g6.12xlarge": 1.9445,
+    "(spot)g6e.xlarge": 0.704
+  },
+  "optimizer": {
+    "top_k": 3,
+    "max_stages": 13
+  },
+  "num_partitions": 29,
+  "memo_wall_clock_s": 385.61530900001526,
+  "rankings": {
+    "soft_slo": [
+      {
+        "partition": [
+          [
+            0,
+            2,
+            4
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ],
+        "total_throughput": 2.8305132690479464,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              0
+            ],
+            "throughput": 0.835318697976453,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 1
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            3
+          ],
+          [
+            2,
+            0,
+            1
+          ]
+        ],
+        "total_throughput": 2.759712580320269,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              3
+            ],
+            "throughput": 2.1608126977399937,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              1
+            ],
+            "throughput": 0.5988998825802754,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 2
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            2
+          ],
+          [
+            2,
+            0,
+            2
+          ]
+        ],
+        "total_throughput": 2.6118177017399478,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              2
+            ],
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              2
+            ],
+            "throughput": 0.7748117863897848,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 3
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            1
+          ],
+          [
+            2,
+            0,
+            3
+          ]
+        ],
+        "total_throughput": 2.5348273033697493,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              1
+            ],
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              3
+            ],
+            "throughput": 0.9978912001195509,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 4
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            3
+          ],
+          [
+            2,
+            1,
+            1
+          ]
+        ],
+        "total_throughput": 2.40997544045055,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              3
+            ],
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              1
+            ],
+            "throughput": 0.9047500300382072,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 5
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            4
+          ],
+          [
+            2,
+            0,
+            0
+          ]
+        ],
+        "total_throughput": 2.3355982931866635,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              1,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              0
+            ],
+            "throughput": 0.3404037221151698,
+            "feasible": true,
+            "tp": [
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 6
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            2,
+            4
+          ]
+        ],
+        "total_throughput": 2.307453417102448,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              0
+            ],
+            "throughput": 0.31225884603095433,
+            "feasible": true,
+            "tp": [
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 7
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            4
+          ],
+          [
+            2,
+            2,
+            0
+          ]
+        ],
+        "total_throughput": 2.301430347489693,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              4
+            ],
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              0
+            ],
+            "throughput": 0.953407493304617,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 8
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            1,
+            2,
+            0
+          ]
+        ],
+        "total_throughput": 2.301430347489693,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              4
+            ],
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              0
+            ],
+            "throughput": 0.953407493304617,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 9
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            0
+          ],
+          [
+            2,
+            0,
+            4
+          ]
+        ],
+        "total_throughput": 2.2468569511795127,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              0
+            ],
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              4
+            ],
+            "throughput": 0.9969912772844722,
+            "feasible": true,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 10
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            4
+          ],
+          [
+            1,
+            3,
+            0
+          ]
+        ],
+        "total_throughput": 2.2468569511795127,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              4
+            ],
+            "throughput": 0.9969912772844722,
+            "feasible": true,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              0
+            ],
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 11
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            2,
+            3,
+            3
+          ]
+        ],
+        "total_throughput": 2.1608126977399937,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              1
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              3
+            ],
+            "throughput": 2.1608126977399937,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 12
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            1
+          ],
+          [
+            1,
+            3,
+            3
+          ]
+        ],
+        "total_throughput": 2.1608126977399937,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              1
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              3
+            ],
+            "throughput": 2.1608126977399937,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 13
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            2
+          ],
+          [
+            2,
+            1,
+            2
+          ]
+        ],
+        "total_throughput": 2.1067248254735778,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              2
+            ],
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              2
+            ],
+            "throughput": 0.8631771459710357,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 14
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            2,
+            2
+          ]
+        ],
+        "total_throughput": 2.1067248254735778,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              2
+            ],
+            "throughput": 0.8631771459710357,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              2
+            ],
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 15
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            2,
+            3
+          ]
+        ],
+        "total_throughput": 2.1053273164273882,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              1
+            ],
+            "throughput": 0.6001019060150452,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              3
+            ],
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 16
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            2
+          ],
+          [
+            1,
+            3,
+            2
+          ]
+        ],
+        "total_throughput": 2.0951520740144036,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              2
+            ],
+            "throughput": 0.2581461586642406,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              2
+            ],
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 17
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            3
+          ],
+          [
+            1,
+            3,
+            1
+          ]
+        ],
+        "total_throughput": 2.0938093693745747,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              3
+            ],
+            "throughput": 0.5568732661243764,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              1
+            ],
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 18
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            2,
+            2,
+            4
+          ]
+        ],
+        "total_throughput": 1.9951945710714936,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              0
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              1,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 19
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            4
+          ]
+        ],
+        "total_throughput": 1.9951945710714936,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              0
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              1,
+              0
+            ]
+          }
+        ],
+        "rank": 20
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            2
+          ],
+          [
+            2,
+            3,
+            2
+          ]
+        ],
+        "total_throughput": 1.837005915350163,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              2
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              2
+            ],
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 21
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            0
+          ],
+          [
+            2,
+            1,
+            4
+          ]
+        ],
+        "total_throughput": 1.7850296082538377,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              0
+            ],
+            "throughput": 0.43700675406876155,
+            "feasible": true,
+            "tp": [
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              4
+            ],
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 22
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            3
+          ],
+          [
+            2,
+            2,
+            1
+          ]
+        ],
+        "total_throughput": 1.6834409079732324,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              3
+            ],
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              1
+            ],
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 23
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            1
+          ],
+          [
+            2,
+            1,
+            3
+          ]
+        ],
+        "total_throughput": 1.6834409079732324,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              1
+            ],
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              3
+            ],
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 24
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            2,
+            1
+          ]
+        ],
+        "total_throughput": 1.6834409079732324,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              3
+            ],
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              1
+            ],
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 25
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            3
+          ],
+          [
+            2,
+            3,
+            1
+          ]
+        ],
+        "total_throughput": 1.5369361032501982,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              3
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              0,
+              3
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              1
+            ],
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 26
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            2,
+            3,
+            0
+          ]
+        ],
+        "total_throughput": 1.534069145763611,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              4
+            ],
+            "throughput": 0.28420347186857076,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              0
+            ],
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 27
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            2,
+            2,
+            2
+          ]
+        ],
+        "total_throughput": 1.5090081483359992,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              2
+            ],
+            "throughput": 0.265460468833457,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              2
+            ],
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 28
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            1
+          ],
+          [
+            2,
+            2,
+            3
+          ]
+        ],
+        "total_throughput": 1.505225410412343,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              1
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              3
+            ],
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 29
+      }
+    ],
+    "only_throughput": [
+      {
+        "partition": [
+          [
+            0,
+            2,
+            4
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ],
+        "total_throughput": 2.8305132690479464,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              0
+            ],
+            "throughput": 0.835318697976453,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 1
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            4
+          ],
+          [
+            2,
+            0,
+            0
+          ]
+        ],
+        "total_throughput": 2.79782709476465,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              4
+            ],
+            "throughput": 2.4574233726494805,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              0
+            ],
+            "throughput": 0.3404037221151698,
+            "feasible": true,
+            "tp": [
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 2
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            3
+          ],
+          [
+            2,
+            0,
+            1
+          ]
+        ],
+        "total_throughput": 2.74159747796145,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              3
+            ],
+            "throughput": 2.1426975953811747,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              1
+            ],
+            "throughput": 0.5988998825802754,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 3
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            4
+          ]
+        ],
+        "total_throughput": 2.6529237621476742,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              0
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              4
+            ],
+            "throughput": 2.6529237621476742,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 4
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            4
+          ],
+          [
+            1,
+            2,
+            0
+          ]
+        ],
+        "total_throughput": 2.6339420333711203,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              4
+            ],
+            "throughput": 1.6805345400665035,
+            "feasible": true,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              0
+            ],
+            "throughput": 0.953407493304617,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 5
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            0
+          ],
+          [
+            2,
+            0,
+            4
+          ]
+        ],
+        "total_throughput": 2.617962338057085,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              0
+            ],
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              4
+            ],
+            "throughput": 1.3680966641620445,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 6
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            2
+          ],
+          [
+            2,
+            0,
+            2
+          ]
+        ],
+        "total_throughput": 2.6118177017399478,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              2
+            ],
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              2
+            ],
+            "throughput": 0.7748117863897848,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 7
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            4
+          ],
+          [
+            2,
+            2,
+            0
+          ]
+        ],
+        "total_throughput": 2.5980924407945656,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              4
+            ],
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              0
+            ],
+            "throughput": 1.2500695866094893,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 8
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            2,
+            3,
+            3
+          ]
+        ],
+        "total_throughput": 2.5792198644546165,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              1
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              3
+            ],
+            "throughput": 2.5792198644546165,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 9
+      },
+      {
+        "partition": [
+          [
+            0,
+            3,
+            1
+          ],
+          [
+            2,
+            0,
+            3
+          ]
+        ],
+        "total_throughput": 2.5348273033697493,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              3,
+              1
+            ],
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              3
+            ],
+            "throughput": 0.9978912001195509,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 10
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            2,
+            4
+          ]
+        ],
+        "total_throughput": 2.525929724619056,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              0
+            ],
+            "throughput": 0.31225884603095433,
+            "feasible": true,
+            "tp": [
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              4
+            ],
+            "throughput": 2.213670878588102,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 11
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            3
+          ],
+          [
+            2,
+            1,
+            1
+          ]
+        ],
+        "total_throughput": 2.51843368483064,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              3
+            ],
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              1
+            ],
+            "throughput": 1.0132082744182973,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 12
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            4
+          ],
+          [
+            1,
+            3,
+            0
+          ]
+        ],
+        "total_throughput": 2.5135185948757037,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              4
+            ],
+            "throughput": 0.9969912772844722,
+            "feasible": true,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              0
+            ],
+            "throughput": 1.5165273175912315,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 13
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            3
+          ],
+          [
+            1,
+            2,
+            1
+          ]
+        ],
+        "total_throughput": 2.441297459709077,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              3
+            ],
+            "throughput": 1.167284787250751,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              1
+            ],
+            "throughput": 1.274012672458326,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 14
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            2
+          ],
+          [
+            2,
+            1,
+            2
+          ]
+        ],
+        "total_throughput": 2.436506933888777,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              2
+            ],
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              2
+            ],
+            "throughput": 1.1929592543862348,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 15
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            2,
+            2,
+            4
+          ]
+        ],
+        "total_throughput": 2.428332259537417,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              0
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              1,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              4
+            ],
+            "throughput": 2.428332259537417,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              4,
+              1,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 16
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            3
+          ],
+          [
+            1,
+            3,
+            1
+          ]
+        ],
+        "total_throughput": 2.4014177638377503,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              3
+            ],
+            "throughput": 0.5568732661243764,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              1
+            ],
+            "throughput": 1.844544497713374,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 17
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            2
+          ],
+          [
+            1,
+            2,
+            2
+          ]
+        ],
+        "total_throughput": 2.387066481764731,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              2
+            ],
+            "throughput": 0.8631771459710357,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              2
+            ],
+            "throughput": 1.5238893357936956,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 18
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            1
+          ],
+          [
+            2,
+            1,
+            3
+          ]
+        ],
+        "total_throughput": 2.3686115385947826,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              1
+            ],
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              3
+            ],
+            "throughput": 1.4564501838461326,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 19
+      },
+      {
+        "partition": [
+          [
+            1,
+            1,
+            1
+          ],
+          [
+            1,
+            2,
+            3
+          ]
+        ],
+        "total_throughput": 2.349084112376601,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              1,
+              1
+            ],
+            "throughput": 0.6001019060150452,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              3
+            ],
+            "throughput": 1.7489822063615557,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 20
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            1
+          ],
+          [
+            1,
+            3,
+            3
+          ]
+        ],
+        "total_throughput": 2.340650989063699,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              1
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              1,
+              0,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              3
+            ],
+            "throughput": 2.340650989063699,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 21
+      },
+      {
+        "partition": [
+          [
+            1,
+            0,
+            2
+          ],
+          [
+            1,
+            3,
+            2
+          ]
+        ],
+        "total_throughput": 2.3326554101737926,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              1,
+              0,
+              2
+            ],
+            "throughput": 0.2581461586642406,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              2
+            ],
+            "throughput": 2.0745092515095522,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 22
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            3
+          ],
+          [
+            2,
+            2,
+            1
+          ]
+        ],
+        "total_throughput": 2.3178967190042155,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              3
+            ],
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              1
+            ],
+            "throughput": 1.546617165779633,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 23
+      },
+      {
+        "partition": [
+          [
+            0,
+            2,
+            0
+          ],
+          [
+            2,
+            1,
+            4
+          ]
+        ],
+        "total_throughput": 2.270129231988883,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              2,
+              0
+            ],
+            "throughput": 0.43700675406876155,
+            "feasible": true,
+            "tp": [
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              4
+            ],
+            "throughput": 1.8331224779201216,
+            "feasible": true,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 24
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            2
+          ],
+          [
+            2,
+            3,
+            2
+          ]
+        ],
+        "total_throughput": 2.2596657349502247,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              2
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              0,
+              2
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              2
+            ],
+            "throughput": 2.2596657349502247,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 25
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            2,
+            3,
+            0
+          ]
+        ],
+        "total_throughput": 2.0512954828369714,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              4
+            ],
+            "throughput": 0.28420347186857076,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              0
+            ],
+            "throughput": 1.7670920109684005,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 26
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            1
+          ],
+          [
+            2,
+            2,
+            3
+          ]
+        ],
+        "total_throughput": 2.029895891647421,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              1
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              3
+            ],
+            "throughput": 2.029895891647421,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 27
+      },
+      {
+        "partition": [
+          [
+            0,
+            0,
+            3
+          ],
+          [
+            2,
+            3,
+            1
+          ]
+        ],
+        "total_throughput": 2.0293857466339875,
+        "n_feasible_parts": 1,
+        "all_feasible": false,
+        "parts": [
+          {
+            "group": [
+              0,
+              0,
+              3
+            ],
+            "throughput": 0.0,
+            "feasible": false,
+            "tp": [],
+            "nodes_idle": [
+              0,
+              0,
+              3
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              1
+            ],
+            "throughput": 2.0293857466339875,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 28
+      },
+      {
+        "partition": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            2,
+            2,
+            2
+          ]
+        ],
+        "total_throughput": 2.018351629956462,
+        "n_feasible_parts": 2,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              0,
+              1,
+              2
+            ],
+            "throughput": 0.265460468833457,
+            "feasible": true,
+            "tp": [
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              2
+            ],
+            "throughput": 1.752891161123005,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              4,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 29
+      }
+    ]
+  },
+  "algorithm_time": {
+    "soft_slo": {
+      "num_partitions": 29,
+      "num_unique_groups_used": 58,
+      "memoized_optimizer_time_s": 1148.0623412132263,
+      "naive_optimizer_time_s": 1148.0623412132263,
+      "max_single_group_time_s": 69.67324805259705,
+      "num_optimizer_invocations_memoized": 58,
+      "num_optimizer_invocations_naive": 58
+    },
+    "only_throughput": {
+      "num_partitions": 29,
+      "num_unique_groups_used": 58,
+      "memoized_optimizer_time_s": 1129.9840488433838,
+      "naive_optimizer_time_s": 1129.9840488433838,
+      "max_single_group_time_s": 67.33828997612,
+      "num_optimizer_invocations_memoized": 58,
+      "num_optimizer_invocations_naive": 58
+    }
+  },
+  "greedy": {
+    "K": 2,
+    "paper_total": 2.8305132690479464,
+    "memo_total": 2.8305132690479464,
+    "parts": [
+      {
+        "group": [
+          0,
+          2,
+          4
+        ],
+        "memo_thr": 1.9951945710714936,
+        "ref_thr": 1.9951945710714936,
+        "tp": [
+          4,
+          4,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "group": [
+          2,
+          1,
+          0
+        ],
+        "memo_thr": 0.835318697976453,
+        "ref_thr": 0.835318697976453,
+        "tp": [
+          4,
+          4,
+          4
+        ]
+      }
+    ],
+    "rank_in_joint": 1,
+    "rank_total": 2.8305132690479464
+  }
+}
