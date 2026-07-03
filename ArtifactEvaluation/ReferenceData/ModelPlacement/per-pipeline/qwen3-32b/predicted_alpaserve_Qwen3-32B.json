@@ -1,0 +1,160 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "pipelines": [
+    {
+      "label": "AP-P1",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g6.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.7198405644307841,
+      "predicted_total_latency_ms": 52789.467387196506,
+      "optimal_stage_latency_ms": 16438.490769828237,
+      "max_batch_size": 38.0,
+      "num_blocks": 2363
+    },
+    {
+      "label": "AP-P2",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g6.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.7198405644307841,
+      "predicted_total_latency_ms": 52789.467387196506,
+      "optimal_stage_latency_ms": 16438.490769828237,
+      "max_batch_size": 38.0,
+      "num_blocks": 2363
+    },
+    {
+      "label": "AP-P3",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g6.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.7198405644307841,
+      "predicted_total_latency_ms": 52789.467387196506,
+      "optimal_stage_latency_ms": 16438.490769828237,
+      "max_batch_size": 38.0,
+      "num_blocks": 2363
+    },
+    {
+      "label": "AP-P4",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g5.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.8966892163752066,
+      "predicted_total_latency_ms": 42378.11641541973,
+      "optimal_stage_latency_ms": 8891.297409155659,
+      "max_batch_size": 38.0,
+      "num_blocks": 2363
+    },
+    {
+      "label": "AP-P5",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g5.12xlarge",
+          64
+        ]
+      ],
+      "parallel_strategy": [
+        4
+      ],
+      "pp_layer_partition": "64",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 0.8966892163752066,
+      "predicted_total_latency_ms": 42378.11641541973,
+      "optimal_stage_latency_ms": 8891.297409155659,
+      "max_batch_size": 38.0,
+      "num_blocks": 2363
+    },
+    {
+      "label": "AP-P6",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          33
+        ],
+        [
+          "(spot)g6e.xlarge",
+          31
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1
+      ],
+      "pp_layer_partition": "33,31",
+      "gpu_memory_utilization": 0.9,
+      "predicted_throughput_rps": 1.3419559420074236,
+      "predicted_total_latency_ms": 32042.78073069714,
+      "optimal_stage_latency_ms": 11392.489323373715,
+      "max_batch_size": 43.0,
+      "num_blocks": 2674
+    },
+    {
+      "label": "AP-P7",
+      "system": "AlpaServe",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          33
+        ],
+        [
+          "(spot)g6e.xlarge",
+          31
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1
+      ],
+      "pp_layer_partition": "33,31",
+      "gpu_memory_utilization": 0.9,
+      "predicted_throughput_rps": 1.3419559420074236,
+      "predicted_total_latency_ms": 32042.78073069714,
+      "optimal_stage_latency_ms": 11392.489323373715,
+      "max_batch_size": 43.0,
+      "num_blocks": 2674
+    }
+  ],
+  "total_throughput_rps": 6.6368120100576125
+}

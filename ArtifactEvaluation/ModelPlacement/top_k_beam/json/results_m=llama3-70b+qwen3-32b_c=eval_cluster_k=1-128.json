@@ -1,0 +1,3313 @@
+{
+  "benchmark": "shuntserve_topk_sweep",
+  "timestamp": "2026-04-06 16:29:53 KST",
+  "total_wall_time_sec": 142.48,
+  "max_workers": 31,
+  "k_values": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    24,
+    32,
+    48,
+    64,
+    96,
+    128
+  ],
+  "models": {
+    "llama3-70b": "meta-llama/Llama-3.1-70B-Instruct",
+    "qwen3-32b": "Qwen/Qwen3-32B"
+  },
+  "clusters": {
+    "eval_cluster": {
+      "description": "Evaluation cluster (3type, 9 nodes, 24 GPUs)",
+      "nodes": {
+        "(spot)g5.12xlarge": 2,
+        "(spot)g6.12xlarge": 3,
+        "(spot)g6e.xlarge": 4
+      },
+      "prices": {
+        "(spot)g5.12xlarge": 2.2915,
+        "(spot)g6.12xlarge": 1.9445,
+        "(spot)g6e.xlarge": 0.704
+      }
+    }
+  },
+  "workload": {
+    "expected_input_len": 763,
+    "expected_output_len": 232,
+    "max_model_len": 8192,
+    "gpu_mem_utilization": 0.85
+  },
+  "results": [
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 1,
+      "wall_time_sec": 15.9012,
+      "optimizer_time_sec": 15.8633,
+      "total_throughput_rps": 2.3819,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1,
+            4
+          ],
+          "layer_partition": [
+            15,
+            16,
+            16,
+            16,
+            17
+          ],
+          "throughput_rps": 1.2479,
+          "batch_size": 151,
+          "num_blocks": 9452
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            28,
+            28,
+            15,
+            9
+          ],
+          "throughput_rps": 1.134,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 2,
+      "wall_time_sec": 33.4921,
+      "optimizer_time_sec": 33.4105,
+      "total_throughput_rps": 2.5853,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            15,
+            16,
+            16,
+            19,
+            14
+          ],
+          "throughput_rps": 1.348,
+          "batch_size": 151,
+          "num_blocks": 9452
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            15,
+            27,
+            15,
+            23
+          ],
+          "throughput_rps": 1.2373,
+          "batch_size": 265,
+          "num_blocks": 16541
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 3,
+      "wall_time_sec": 38.2474,
+      "optimizer_time_sec": 38.1515,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 4,
+      "wall_time_sec": 50.6094,
+      "optimizer_time_sec": 50.4879,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 5,
+      "wall_time_sec": 62.1509,
+      "optimizer_time_sec": 61.9903,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 6,
+      "wall_time_sec": 69.9209,
+      "optimizer_time_sec": 69.7429,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 7,
+      "wall_time_sec": 77.3933,
+      "optimizer_time_sec": 77.1931,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 8,
+      "wall_time_sec": 84.9777,
+      "optimizer_time_sec": 84.7693,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 9,
+      "wall_time_sec": 89.1735,
+      "optimizer_time_sec": 88.9612,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 10,
+      "wall_time_sec": 91.9085,
+      "optimizer_time_sec": 91.6887,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 11,
+      "wall_time_sec": 94.5732,
+      "optimizer_time_sec": 94.3589,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 12,
+      "wall_time_sec": 94.4236,
+      "optimizer_time_sec": 94.1903,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 13,
+      "wall_time_sec": 94.8537,
+      "optimizer_time_sec": 94.626,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 14,
+      "wall_time_sec": 94.2358,
+      "optimizer_time_sec": 94.0151,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 15,
+      "wall_time_sec": 94.5839,
+      "optimizer_time_sec": 94.3626,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 16,
+      "wall_time_sec": 94.4049,
+      "optimizer_time_sec": 94.1817,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 24,
+      "wall_time_sec": 94.4863,
+      "optimizer_time_sec": 94.2703,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 32,
+      "wall_time_sec": 94.7691,
+      "optimizer_time_sec": 94.5468,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 48,
+      "wall_time_sec": 93.6457,
+      "optimizer_time_sec": 93.429,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 64,
+      "wall_time_sec": 94.0529,
+      "optimizer_time_sec": 93.8279,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 96,
+      "wall_time_sec": 94.1198,
+      "optimizer_time_sec": 93.9021,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "eval_cluster",
+      "top_k": 128,
+      "wall_time_sec": 94.1223,
+      "optimizer_time_sec": 93.9021,
+      "total_throughput_rps": 2.8305,
+      "num_pipelines": 2,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            14,
+            13,
+            13,
+            13,
+            13
+          ],
+          "throughput_rps": 1.9952,
+          "batch_size": 243,
+          "num_blocks": 15173
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g5.12xlarge",
+            "(spot)g5.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            26,
+            26,
+            28
+          ],
+          "throughput_rps": 0.8353,
+          "batch_size": 222,
+          "num_blocks": 13867
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 1,
+      "wall_time_sec": 11.4854,
+      "optimizer_time_sec": 11.4579,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 2,
+      "wall_time_sec": 23.7917,
+      "optimizer_time_sec": 23.7345,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 3,
+      "wall_time_sec": 33.4261,
+      "optimizer_time_sec": 33.2924,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 4,
+      "wall_time_sec": 42.1133,
+      "optimizer_time_sec": 42.0166,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 5,
+      "wall_time_sec": 50.2827,
+      "optimizer_time_sec": 50.168,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 6,
+      "wall_time_sec": 56.7478,
+      "optimizer_time_sec": 56.6236,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 7,
+      "wall_time_sec": 63.0195,
+      "optimizer_time_sec": 62.8746,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 8,
+      "wall_time_sec": 68.2622,
+      "optimizer_time_sec": 68.1074,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 9,
+      "wall_time_sec": 71.4868,
+      "optimizer_time_sec": 71.3377,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 10,
+      "wall_time_sec": 73.9511,
+      "optimizer_time_sec": 73.7899,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 11,
+      "wall_time_sec": 76.1534,
+      "optimizer_time_sec": 75.9945,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 12,
+      "wall_time_sec": 75.7775,
+      "optimizer_time_sec": 75.6196,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 13,
+      "wall_time_sec": 75.5268,
+      "optimizer_time_sec": 75.3659,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 14,
+      "wall_time_sec": 75.8422,
+      "optimizer_time_sec": 75.6882,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 15,
+      "wall_time_sec": 75.4331,
+      "optimizer_time_sec": 75.2777,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 16,
+      "wall_time_sec": 75.6761,
+      "optimizer_time_sec": 75.509,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 24,
+      "wall_time_sec": 75.0437,
+      "optimizer_time_sec": 74.8806,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 32,
+      "wall_time_sec": 74.2233,
+      "optimizer_time_sec": 74.0612,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 48,
+      "wall_time_sec": 73.6881,
+      "optimizer_time_sec": 73.5344,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 64,
+      "wall_time_sec": 74.2713,
+      "optimizer_time_sec": 74.1035,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 96,
+      "wall_time_sec": 73.691,
+      "optimizer_time_sec": 73.5248,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "eval_cluster",
+      "top_k": 128,
+      "wall_time_sec": 73.8333,
+      "optimizer_time_sec": 73.6614,
+      "total_throughput_rps": 9.4241,
+      "num_pipelines": 4,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge",
+            "(spot)g6e.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "layer_partition": [
+            16,
+            16,
+            16,
+            16
+          ],
+          "throughput_rps": 5.8652,
+          "batch_size": 309,
+          "num_blocks": 19278
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge",
+            "(spot)g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4
+          ],
+          "layer_partition": [
+            24,
+            24,
+            16
+          ],
+          "throughput_rps": 2.6278,
+          "batch_size": 517,
+          "num_blocks": 32213
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "(spot)g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4656,
+          "batch_size": 37,
+          "num_blocks": 2363
+        }
+      ]
+    }
+  ]
+}

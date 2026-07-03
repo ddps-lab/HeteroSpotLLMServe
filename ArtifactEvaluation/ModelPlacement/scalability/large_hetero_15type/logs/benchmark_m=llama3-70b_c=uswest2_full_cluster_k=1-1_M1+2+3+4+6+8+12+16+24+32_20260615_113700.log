@@ -1,0 +1,45 @@
+2026-06-15 02:37:00 │ ════════════════════════════════════════════════════════
+2026-06-15 02:37:00 │ ShuntServe Cluster-SIZE Sensitivity Sweep
+2026-06-15 02:37:00 │ ════════════════════════════════════════════════════════
+2026-06-15 02:37:00 │ Models    : ['llama3-70b']
+2026-06-15 02:37:00 │ Clusters  : ['uswest2_full_cluster']
+2026-06-15 02:37:00 │ K values  : [1]
+2026-06-15 02:37:00 │ Node mult : [1, 2, 3, 4, 6, 8, 12, 16, 24, 32]  (nodes: M1=15, M2=30, M3=45, M4=60, M6=90, M8=120, M12=180, M16=240, M24=360, M32=480)
+2026-06-15 02:37:00 │ Total runs: 10  (models × clusters × k × M)
+2026-06-15 02:37:00 │ Workers   : 7
+2026-06-15 02:37:00 │ Debug     : False
+2026-06-15 02:37:00 │ Mem limit : 29.7 GB per worker process
+2026-06-15 02:37:00 │ Log file  : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b_c=uswest2_full_cluster_k=1-1_M1+2+3+4+6+8+12+16+24+32_20260615_113700.log
+2026-06-15 02:37:00 │ Worker logs: /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/workers_20260615_113700/  (tail -f for per-round/per-layer progress)
+2026-06-15 02:37:00 │ ────────────────────────────────────────────────────────
+2026-06-15 02:42:44 │ [  1/10] llama3-70b   | M= 1 (N= 15) | k=  1 | wall=  343.05s | throughput= 112.308 req/s | pipelines=8
+2026-06-15 03:10:00 │ [  2/10] llama3-70b   | M= 2 (N= 30) | k=  1 | wall= 1979.40s | throughput= 225.299 req/s | pipelines=15
+2026-06-15 04:06:19 │ [  3/10] llama3-70b   | M= 3 (N= 45) | k=  1 | wall= 5357.80s | throughput= 337.944 req/s | pipelines=20
+2026-06-15 05:14:33 │ [  4/10] llama3-70b   | M= 4 (N= 60) | k=  1 | wall= 9451.96s | throughput= 451.759 req/s | pipelines=27
+2026-06-15 08:10:58 │ [  5/10] llama3-70b   | M= 6 (N= 90) | k=  1 | wall=20037.35s | throughput= 678.446 req/s | pipelines=39
+2026-06-15 10:56:20 │ [  6/10] llama3-70b   | M= 8 (N=120) | k=  1 | wall=29958.74s | throughput= 905.861 req/s | pipelines=51
+2026-06-15 16:17:08 │ [  7/10] llama3-70b   | M=12 (N=180) | k=  1 | wall=49207.17s | throughput=1360.343 req/s | pipelines=72
+2026-06-15 21:49:04 │ [  8/10] llama3-70b   | M=16 (N=240) | k=  1 | wall=68780.31s | throughput=1813.774 req/s | pipelines=95
+2026-06-16 09:20:58 │ [  9/10] llama3-70b   | M=24 (N=360) | k=  1 | wall=108657.27s | throughput=2722.519 req/s | pipelines=141
+2026-06-16 21:06:58 │ [ 10/10] llama3-70b   | M=32 (N=480) | k=  1 | wall=147638.96s | throughput=3630.573 req/s | pipelines=188
+2026-06-16 21:06:58 │ 
+2026-06-16 21:06:58 │ ════════════════════════════════════════════════════════
+2026-06-16 21:06:58 │ RESULTS SUMMARY  (total elapsed: 152997.8s)
+2026-06-16 21:06:58 │ ════════════════════════════════════════════════════════
+2026-06-16 21:06:58 │ 
+2026-06-16 21:06:58 │   [llama3-70b] [us-west-2 full NVIDIA cluster (7 GPU types, 15 instance types, 15*M nodes, 76 GPUs)]
+2026-06-16 21:06:58 │     M │    N │   k │  wall_time │   opt_time │     throughput │ pipelines
+2026-06-16 21:06:58 │   ────┼──────┼─────┼────────────┼────────────┼────────────────┼──────────
+2026-06-16 21:06:58 │     1 │   15 │   1 │    343.05s │    341.29s │     112.308    │         8
+2026-06-16 21:06:58 │     2 │   30 │   1 │   1979.40s │   1973.74s │     225.299    │        15
+2026-06-16 21:06:58 │     3 │   45 │   1 │   5357.80s │   5345.09s │     337.944    │        20
+2026-06-16 21:06:58 │     4 │   60 │   1 │   9451.96s │   9432.25s │     451.759    │        27
+2026-06-16 21:06:58 │     6 │   90 │   1 │  20037.35s │  19998.49s │     678.446    │        39
+2026-06-16 21:06:58 │     8 │  120 │   1 │  29958.74s │  29902.56s │     905.861    │        51
+2026-06-16 21:06:58 │    12 │  180 │   1 │  49207.17s │  49115.54s │    1360.343    │        72
+2026-06-16 21:06:58 │    16 │  240 │   1 │  68780.31s │  68655.24s │    1813.774    │        95
+2026-06-16 21:06:58 │    24 │  360 │   1 │ 108657.27s │ 108463.18s │    2722.519    │       141
+2026-06-16 21:06:58 │    32 │  480 │   1 │ 147638.96s │ 147377.49s │    3630.573    │       188
+2026-06-16 21:06:58 │ 
+2026-06-16 21:06:58 │ JSON results : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/json/results_m=llama3-70b_c=uswest2_full_cluster_k=1-1_M1+2+3+4+6+8+12+16+24+32.json
+2026-06-16 21:06:58 │ Log file     : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b_c=uswest2_full_cluster_k=1-1_M1+2+3+4+6+8+12+16+24+32_20260615_113700.log

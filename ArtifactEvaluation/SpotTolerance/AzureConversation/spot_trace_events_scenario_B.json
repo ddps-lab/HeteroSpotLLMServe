@@ -1,0 +1,27 @@
+{
+    "events": [
+        {
+            "time_min": 10,
+            "type": "restore",
+            "instances": [
+                "spot_g6e_xlarge_node_ip_3",
+                "spot_g6e_xlarge_node_ip_4"
+            ]
+        },
+        {
+            "time_min": 10,
+            "type": "restore",
+            "instances": [
+                "spot_g6_12xlarge_node_ip_3"
+            ]
+        },
+        {
+            "time_min": 20,
+            "type": "restore",
+            "instances": [
+                "spot_g6_12xlarge_node_ip_1",
+                "spot_g6_12xlarge_node_ip_2"
+            ]
+        }
+    ]
+}

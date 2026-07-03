@@ -1,0 +1,780 @@
+Warning: Permanently added '192.168.0.88' (ED25519) to the list of known hosts.
+2026-06-20 02:19:25,352 - [INFO] [S3Server] - Raw S3 Tensor Store Server Started at 1781921965.3524778
+2026-06-20 02:19:25,675 - [INFO] [S3Server] - Set CUDA device to cuda:0 for this process
+2026-06-20 02:19:25,675 - [INFO] [S3Server] - args: Namespace(model_name='meta-llama/Llama-3.1-8B-Instruct', s3_path='s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-8B-Instruct', tensor_parallel_size=4, tensor_parallel_rank=0, local_rank=0, start_layer_id=16, end_layer_id=32, status_host='0.0.0.0', status_port=10001, aws_profile=None, block_size=16, gpu_num_blocks=4096, gpu_memory_utilization=0.85, swap_space=4.0, cache_dtype='auto', pipeline_parallel_size=2, pipeline_parallel_rank=1, max_model_len=8192, num_workers=16)
+2026-06-20 02:19:25,675 - [INFO] [S3Server] - S3 bucket: hetero-spot-llm-serve-models
+2026-06-20 02:19:25,675 - [INFO] [S3Server] - S3 base path: 'meta-llama/Llama-3.1-8B-Instruct'
+2026-06-20 02:19:25,682 - [INFO] [S3Server] - Status server is listening on 0.0.0.0:10001
+2026-06-20 02:19:25,694 - [INFO] [S3Server] - Found credentials from IAM Role: shuntserve-long-context-shunt-s3-role
+2026-06-20 02:19:25,815 - [INFO] [S3Server] - Successfully connected to S3 bucket: hetero-spot-llm-serve-models
+2026-06-20 02:19:25,815 - [INFO] [S3Server] - Set multiprocessing start method to 'spawn'.
+2026-06-20 02:19:25,815 - [INFO] [S3Server] - Step 2: Loading config.json from S3...
+2026-06-20 02:19:25,815 - [INFO] [S3Server] - Loading config from S3 key: raw/meta-llama/Llama-3.1-8B-Instruct/config.json
+2026-06-20 02:19:25,839 - [INFO] [S3Server] - Loaded model config from S3
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - ================================================================================
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - [Global Variables Initialization Summary]
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - ================================================================================
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - [Model Configuration]
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Model Name: meta-llama/Llama-3.1-8B-Instruct
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Total Layers: 32
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Max Model Length: 8192
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - [Layer Assignment]
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Start Layer ID: 16
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - End Layer ID: 32
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Assigned Layers: 16 layers [16, 32)
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - [Parallelism Configuration]
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Tensor Parallel Size: 4
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Tensor Parallel Rank: 0
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Pipeline Parallel Size: 2
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Pipeline Parallel Rank: 1
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - [Device Configuration]
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Local Rank: 0
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - CUDA Device: cuda:0
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - [KV Cache Configuration]
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Block Size: 16
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - GPU Memory Utilization: 85.0%
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Swap Space: 4.00 GiB (4,294,967,296 bytes)
+2026-06-20 02:19:25,840 - [INFO] [S3Server] -   - Cache Dtype: auto
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - ================================================================================
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - Loading strategy: Direct S3 -> CPU -> GPU transfer (pre-partitioned tensors)
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - Loading pre-partitioned tensors for TP4/shard0
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - Step 1: Listing pre-partitioned tensor files from S3...
+2026-06-20 02:19:25,840 - [INFO] [S3Server] - Listing tensors from S3 with prefix: raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - Found 291 tensor files in S3 for TP4/shard0
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - Step 3: Filtering to required tensors...
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - Filtered to 146 required tensors out of 291 total
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - ================================================================================
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - [Required Tensors Summary] Total: 146 tensors
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - ================================================================================
+2026-06-20 02:19:25,903 - [INFO] [S3Server] - [Layer Tensors] (144 tensors across 16 layers)
+2026-06-20 02:19:25,903 - [INFO] [S3Server] -   Layer 16: 9 tensors
+2026-06-20 02:19:25,903 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,903 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,903 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,903 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,903 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 17: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 18: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 19: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 20: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 21: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 22: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -   Layer 23: 9 tensors
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,904 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 24: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 25: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 26: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 27: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 28: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 29: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -   Layer 30: 9 tensors
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,905 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -   Layer 31: 9 tensors
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - input_layernorm
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - down_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - gate_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - up_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - post_attention_layernorm
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - k_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - o_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - q_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -     - v_proj
+2026-06-20 02:19:25,906 - [INFO] [S3Server] - [Normalization Tensors] (1 tensors)
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -   - model.norm.weight
+2026-06-20 02:19:25,906 - [INFO] [S3Server] - [LM Head Tensors] (1 tensors)
+2026-06-20 02:19:25,906 - [INFO] [S3Server] -   - lm_head.weight
+2026-06-20 02:19:25,906 - [INFO] [S3Server] - ================================================================================
+2026-06-20 02:19:25,906 - [INFO] [S3Server] - Step 4: Loading pre-partitioned tensors from S3...
+2026-06-20 02:19:25,906 - [INFO] [S3Server] - Loading 146 pre-partitioned tensors directly from S3
+2026-06-20 02:19:25,906 - [INFO] [S3Server] - Using 16 workers for tensor loading
+2026-06-20 02:19:26,329 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.409s, Download: 0.000s]
+/home/ubuntu/ShuntServe/TensorStore/raw_s3_tensor_store_server.py:352: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:1561.)
+  tensor_flat = torch.frombuffer(tensor_data, dtype=torch.uint8).clone()  # clone for writability
+2026-06-20 02:19:26,330 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.input_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:26,330 - [INFO] [S3Server] - Set global DTYPE to torch.bfloat16 from tensor
+2026-06-20 02:19:26,349 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.435s, Download: 0.000s]
+2026-06-20 02:19:26,349 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.000s]
+2026-06-20 02:19:26,354 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.430s, Download: 0.009s]
+2026-06-20 02:19:26,375 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.021s]
+2026-06-20 02:19:26,381 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.472s, Download: 0.000s]
+2026-06-20 02:19:26,382 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:26,398 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.474s, Download: 0.000s]
+2026-06-20 02:19:26,399 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:26,435 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.453s, Download: 0.056s]
+2026-06-20 02:19:26,442 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.007s]
+2026-06-20 02:19:26,459 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.476s, Download: 0.065s]
+2026-06-20 02:19:26,462 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.003s]
+2026-06-20 02:19:26,477 - [INFO] [S3Server] - Loaded model.layers.16.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,479 - [INFO] [S3Server] - Loaded model.layers.17.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,481 - [INFO] [S3Server] - Loaded model.layers.16.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,481 - [INFO] [S3Server] - Loaded model.layers.16.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,483 - [INFO] [S3Server] - Loaded model.layers.16.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,484 - [INFO] [S3Server] - Loaded model.layers.17.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,486 - [INFO] [S3Server] - Loaded model.layers.17.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,523 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.040s, Download: 0.000s]
+2026-06-20 02:19:26,525 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:26,527 - [INFO] [S3Server] - Loaded model.layers.18.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,588 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.060s, Download: 0.001s]
+2026-06-20 02:19:26,589 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:26,589 - [INFO] [S3Server] - Loaded model.layers.18.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,590 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.050s, Download: 0.058s]
+2026-06-20 02:19:26,593 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.003s]
+2026-06-20 02:19:26,594 - [INFO] [S3Server] - Loaded model.layers.17.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,635 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.480s, Download: 0.237s]
+2026-06-20 02:19:26,640 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.004s]
+2026-06-20 02:19:26,641 - [INFO] [S3Server] - Loaded model.layers.16.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,661 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.471s, Download: 0.275s]
+2026-06-20 02:19:26,667 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.005s]
+2026-06-20 02:19:26,668 - [INFO] [S3Server] - Loaded model.layers.16.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,773 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.095s, Download: 0.088s]
+2026-06-20 02:19:26,777 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.004s]
+2026-06-20 02:19:26,778 - [INFO] [S3Server] - Loaded model.layers.18.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,820 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.040s, Download: 0.001s]
+2026-06-20 02:19:26,821 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:26,821 - [INFO] [S3Server] - Loaded model.layers.19.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,842 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.085s, Download: 0.086s]
+2026-06-20 02:19:26,843 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:26,844 - [INFO] [S3Server] - Loaded model.layers.18.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,912 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.097s, Download: 0.337s]
+2026-06-20 02:19:26,917 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.004s]
+2026-06-20 02:19:26,918 - [INFO] [S3Server] - Loaded model.layers.17.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,941 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.105s, Download: 0.357s]
+2026-06-20 02:19:26,947 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.006s]
+2026-06-20 02:19:26,955 - [INFO] [S3Server] - Loaded model.layers.17.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:26,998 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.041s, Download: 0.002s]
+2026-06-20 02:19:27,000 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:27,000 - [INFO] [S3Server] - Loaded model.layers.19.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,041 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.094s, Download: 0.353s]
+2026-06-20 02:19:27,044 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:27,046 - [INFO] [S3Server] - Loaded model.layers.18.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,124 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.114s, Download: 0.367s]
+2026-06-20 02:19:27,131 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.008s]
+2026-06-20 02:19:27,133 - [INFO] [S3Server] - Loaded model.layers.18.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,207 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.117s, Download: 0.089s]
+2026-06-20 02:19:27,208 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:27,209 - [INFO] [S3Server] - Loaded model.layers.19.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,368 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.442s, Download: 1.017s]
+2026-06-20 02:19:27,392 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.024s]
+2026-06-20 02:19:27,397 - [INFO] [S3Server] - Loaded model.layers.16.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,412 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.084s, Download: 0.282s]
+2026-06-20 02:19:27,415 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:27,416 - [INFO] [S3Server] - Loaded model.layers.19.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,421 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.093s, Download: 0.119s]
+2026-06-20 02:19:27,423 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:27,423 - [INFO] [S3Server] - Loaded model.layers.19.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,440 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.040s, Download: 0.000s]
+2026-06-20 02:19:27,441 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:27,441 - [INFO] [S3Server] - Loaded model.layers.20.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,541 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.469s, Download: 1.162s]
+2026-06-20 02:19:27,561 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.472s, Download: 1.166s]
+2026-06-20 02:19:27,565 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.024s]
+2026-06-20 02:19:27,568 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.113s, Download: 0.321s]
+2026-06-20 02:19:27,570 - [INFO] [S3Server] - Loaded model.layers.16.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,570 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.009s]
+2026-06-20 02:19:27,572 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.005s]
+2026-06-20 02:19:27,573 - [INFO] [S3Server] - Loaded model.layers.17.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,577 - [INFO] [S3Server] - Loaded model.layers.19.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,600 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.467s, Download: 1.222s]
+2026-06-20 02:19:27,604 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.030s, Download: 0.000s]
+2026-06-20 02:19:27,606 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:27,607 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.16.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:27,607 - [INFO] [S3Server] - Loaded model.layers.20.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,610 - [INFO] [S3Server] - Loaded model.layers.16.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,662 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.496s, Download: 1.245s]
+2026-06-20 02:19:27,672 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.010s]
+2026-06-20 02:19:27,675 - [INFO] [S3Server] - Loaded model.layers.17.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,746 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.488s, Download: 1.335s]
+2026-06-20 02:19:27,749 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.068s, Download: 0.003s]
+2026-06-20 02:19:27,751 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:27,751 - [INFO] [S3Server] - Loaded model.layers.21.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,755 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.17.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.008s]
+2026-06-20 02:19:27,758 - [INFO] [S3Server] - Loaded model.layers.17.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,769 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.086s, Download: 0.105s]
+2026-06-20 02:19:27,771 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:27,772 - [INFO] [S3Server] - Loaded model.layers.20.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,780 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.074s, Download: 0.092s]
+2026-06-20 02:19:27,784 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.003s]
+2026-06-20 02:19:27,785 - [INFO] [S3Server] - Loaded model.layers.20.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,831 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.040s, Download: 0.006s]
+2026-06-20 02:19:27,834 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.003s]
+2026-06-20 02:19:27,835 - [INFO] [S3Server] - Loaded model.layers.21.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,882 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.118s, Download: 1.278s]
+2026-06-20 02:19:27,887 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:27,891 - [INFO] [S3Server] - Loaded model.layers.18.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,966 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.138s, Download: 1.339s]
+2026-06-20 02:19:27,971 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:27,974 - [INFO] [S3Server] - Loaded model.layers.18.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:27,998 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.077s, Download: 1.434s]
+2026-06-20 02:19:28,005 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.18.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.007s]
+2026-06-20 02:19:28,009 - [INFO] [S3Server] - Loaded model.layers.18.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,066 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.111s, Download: 0.120s]
+2026-06-20 02:19:28,068 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:28,069 - [INFO] [S3Server] - Loaded model.layers.21.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,097 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.081s, Download: 0.409s]
+2026-06-20 02:19:28,099 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.030s, Download: 0.000s]
+2026-06-20 02:19:28,099 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.input_layernorm.weight.bin: 0.01 MB [parse: 0.000s]
+2026-06-20 02:19:28,100 - [INFO] [S3Server] - Loaded model.layers.22.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,104 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.007s]
+2026-06-20 02:19:28,105 - [INFO] [S3Server] - Loaded model.layers.20.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,115 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.108s, Download: 0.425s]
+2026-06-20 02:19:28,119 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:28,120 - [INFO] [S3Server] - Loaded model.layers.20.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,153 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.071s, Download: 0.068s]
+2026-06-20 02:19:28,154 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:28,155 - [INFO] [S3Server] - Loaded model.layers.21.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,226 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.069s, Download: 0.001s]
+2026-06-20 02:19:28,227 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.000s]
+2026-06-20 02:19:28,227 - [INFO] [S3Server] - Loaded model.layers.22.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,272 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.091s, Download: 1.358s]
+2026-06-20 02:19:28,279 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.007s]
+2026-06-20 02:19:28,282 - [INFO] [S3Server] - Loaded model.layers.19.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,305 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.109s, Download: 0.300s]
+2026-06-20 02:19:28,308 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:28,310 - [INFO] [S3Server] - Loaded model.layers.21.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,383 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.080s, Download: 1.458s]
+2026-06-20 02:19:28,395 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.013s]
+2026-06-20 02:19:28,400 - [INFO] [S3Server] - Loaded model.layers.19.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,414 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.099s, Download: 0.319s]
+2026-06-20 02:19:28,417 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:28,419 - [INFO] [S3Server] - Loaded model.layers.21.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,448 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.075s, Download: 1.453s]
+2026-06-20 02:19:28,454 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.034s, Download: 0.001s]
+2026-06-20 02:19:28,454 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.19.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:28,455 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.input_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:28,457 - [INFO] [S3Server] - Loaded model.layers.23.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,458 - [INFO] [S3Server] - Loaded model.layers.19.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,466 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.114s, Download: 0.124s]
+2026-06-20 02:19:28,467 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:28,467 - [INFO] [S3Server] - Loaded model.layers.22.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,569 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.092s, Download: 0.072s]
+2026-06-20 02:19:28,571 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:28,571 - [INFO] [S3Server] - Loaded model.layers.22.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,621 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.049s, Download: 0.000s]
+2026-06-20 02:19:28,624 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:28,624 - [INFO] [S3Server] - Loaded model.layers.23.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,677 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.111s, Download: 0.285s]
+2026-06-20 02:19:28,679 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:28,680 - [INFO] [S3Server] - Loaded model.layers.22.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,721 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.141s, Download: 0.269s]
+2026-06-20 02:19:28,724 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:28,725 - [INFO] [S3Server] - Loaded model.layers.22.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,734 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.049s, Download: 0.060s]
+2026-06-20 02:19:28,735 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:28,736 - [INFO] [S3Server] - Loaded model.layers.23.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,793 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.123s, Download: 1.229s]
+2026-06-20 02:19:28,805 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.012s]
+2026-06-20 02:19:28,821 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.128s, Download: 1.277s]
+2026-06-20 02:19:28,825 - [INFO] [S3Server] - Loaded model.layers.20.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,828 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:28,832 - [INFO] [S3Server] - Loaded model.layers.20.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,883 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.142s, Download: 1.319s]
+2026-06-20 02:19:28,918 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.087s, Download: 0.001s]
+2026-06-20 02:19:28,919 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.20.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.036s]
+2026-06-20 02:19:28,919 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:28,923 - [INFO] [S3Server] - Loaded model.layers.20.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,923 - [INFO] [S3Server] - Loaded model.layers.24.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:28,929 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.090s, Download: 0.102s]
+2026-06-20 02:19:28,930 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:28,931 - [INFO] [S3Server] - Loaded model.layers.23.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,038 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.105s, Download: 0.000s]
+2026-06-20 02:19:29,039 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:29,039 - [INFO] [S3Server] - Loaded model.layers.24.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,076 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.144s, Download: 0.250s]
+2026-06-20 02:19:29,078 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:29,079 - [INFO] [S3Server] - Loaded model.layers.23.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,091 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.119s, Download: 0.247s]
+2026-06-20 02:19:29,094 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:29,095 - [INFO] [S3Server] - Loaded model.layers.23.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,141 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.072s, Download: 1.307s]
+2026-06-20 02:19:29,146 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:29,149 - [INFO] [S3Server] - Loaded model.layers.21.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,213 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.078s, Download: 1.363s]
+2026-06-20 02:19:29,219 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:29,222 - [INFO] [S3Server] - Loaded model.layers.21.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,256 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.080s, Download: 1.424s]
+2026-06-20 02:19:29,262 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.21.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:29,265 - [INFO] [S3Server] - Loaded model.layers.21.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,267 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.110s, Download: 0.116s]
+2026-06-20 02:19:29,272 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.005s]
+2026-06-20 02:19:29,273 - [INFO] [S3Server] - Loaded model.layers.24.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,274 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.047s, Download: 0.000s]
+2026-06-20 02:19:29,276 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.input_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:29,277 - [INFO] [S3Server] - Loaded model.layers.25.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,329 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.107s, Download: 0.069s]
+2026-06-20 02:19:29,331 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:29,331 - [INFO] [S3Server] - Loaded model.layers.24.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,417 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.084s, Download: 0.000s]
+2026-06-20 02:19:29,419 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:29,419 - [INFO] [S3Server] - Loaded model.layers.25.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,452 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.094s, Download: 0.279s]
+2026-06-20 02:19:29,456 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.004s]
+2026-06-20 02:19:29,457 - [INFO] [S3Server] - Loaded model.layers.24.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,467 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.079s, Download: 0.293s]
+2026-06-20 02:19:29,469 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:29,471 - [INFO] [S3Server] - Loaded model.layers.24.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,521 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.055s, Download: 0.047s]
+2026-06-20 02:19:29,523 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:29,523 - [INFO] [S3Server] - Loaded model.layers.25.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,545 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.111s, Download: 1.328s]
+2026-06-20 02:19:29,550 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:29,555 - [INFO] [S3Server] - Loaded model.layers.22.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,589 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.177s, Download: 1.311s]
+2026-06-20 02:19:29,593 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.033s, Download: 0.000s]
+2026-06-20 02:19:29,593 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:29,594 - [INFO] [S3Server] - Loaded model.layers.26.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,596 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.008s]
+2026-06-20 02:19:29,600 - [INFO] [S3Server] - Loaded model.layers.22.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,657 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.156s, Download: 1.381s]
+2026-06-20 02:19:29,662 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.22.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.004s]
+2026-06-20 02:19:29,665 - [INFO] [S3Server] - Loaded model.layers.22.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,687 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.083s, Download: 1.142s]
+2026-06-20 02:19:29,692 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:29,695 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.065s, Download: 0.107s]
+2026-06-20 02:19:29,711 - [INFO] [S3Server] - Loaded model.layers.23.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,711 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.106s, Download: 1.146s]
+2026-06-20 02:19:29,711 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.016s]
+2026-06-20 02:19:29,717 - [INFO] [S3Server] - Loaded model.layers.25.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,720 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.008s]
+2026-06-20 02:19:29,724 - [INFO] [S3Server] - Loaded model.layers.23.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,752 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.034s, Download: 0.001s]
+2026-06-20 02:19:29,753 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:29,754 - [INFO] [S3Server] - Loaded model.layers.26.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,785 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.137s, Download: 1.181s]
+2026-06-20 02:19:29,790 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.23.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:29,794 - [INFO] [S3Server] - Loaded model.layers.23.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,904 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.076s, Download: 0.106s]
+2026-06-20 02:19:29,906 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:29,907 - [INFO] [S3Server] - Loaded model.layers.26.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,936 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.027s, Download: 0.000s]
+2026-06-20 02:19:29,937 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:29,937 - [INFO] [S3Server] - Loaded model.layers.27.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,958 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.091s, Download: 0.066s]
+2026-06-20 02:19:29,959 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:29,960 - [INFO] [S3Server] - Loaded model.layers.26.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:29,990 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.108s, Download: 0.424s]
+2026-06-20 02:19:29,993 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:29,994 - [INFO] [S3Server] - Loaded model.layers.25.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,001 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.129s, Download: 0.400s]
+2026-06-20 02:19:30,003 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:30,005 - [INFO] [S3Server] - Loaded model.layers.25.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,037 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.091s, Download: 1.110s]
+2026-06-20 02:19:30,045 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.007s]
+2026-06-20 02:19:30,048 - [INFO] [S3Server] - Loaded model.layers.24.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,054 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.049s, Download: 0.000s]
+2026-06-20 02:19:30,055 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:30,056 - [INFO] [S3Server] - Loaded model.layers.27.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,120 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.069s, Download: 0.321s]
+2026-06-20 02:19:30,123 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:30,124 - [INFO] [S3Server] - Loaded model.layers.26.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,135 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.107s, Download: 0.274s]
+2026-06-20 02:19:30,138 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:30,139 - [INFO] [S3Server] - Loaded model.layers.26.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,157 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.069s, Download: 1.157s]
+2026-06-20 02:19:30,181 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.024s]
+2026-06-20 02:19:30,184 - [INFO] [S3Server] - Loaded model.layers.24.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,210 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.024s, Download: 0.001s]
+2026-06-20 02:19:30,212 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.input_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:30,213 - [INFO] [S3Server] - Loaded model.layers.28.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,253 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.075s, Download: 0.126s]
+2026-06-20 02:19:30,255 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:30,255 - [INFO] [S3Server] - Loaded model.layers.27.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,305 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.083s, Download: 0.082s]
+2026-06-20 02:19:30,306 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:30,307 - [INFO] [S3Server] - Loaded model.layers.27.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,343 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.109s, Download: 1.311s]
+2026-06-20 02:19:30,356 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.24.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.013s]
+2026-06-20 02:19:30,359 - [INFO] [S3Server] - Loaded model.layers.24.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,392 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.029s, Download: 0.000s]
+2026-06-20 02:19:30,393 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:30,393 - [INFO] [S3Server] - Loaded model.layers.28.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,473 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.102s, Download: 0.315s]
+2026-06-20 02:19:30,476 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:30,478 - [INFO] [S3Server] - Loaded model.layers.27.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,496 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.103s, Download: 0.269s]
+2026-06-20 02:19:30,498 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:30,500 - [INFO] [S3Server] - Loaded model.layers.27.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,537 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.087s, Download: 0.057s]
+2026-06-20 02:19:30,539 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:30,540 - [INFO] [S3Server] - Loaded model.layers.28.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,637 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.108s, Download: 1.252s]
+2026-06-20 02:19:30,642 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:30,647 - [INFO] [S3Server] - Loaded model.layers.25.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,669 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.097s, Download: 1.303s]
+2026-06-20 02:19:30,675 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:30,679 - [INFO] [S3Server] - Loaded model.layers.25.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,703 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.036s, Download: 0.001s]
+2026-06-20 02:19:30,705 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.input_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:30,706 - [INFO] [S3Server] - Loaded model.layers.29.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,720 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.107s, Download: 1.339s]
+2026-06-20 02:19:30,754 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.25.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.033s]
+2026-06-20 02:19:30,757 - [INFO] [S3Server] - Loaded model.layers.25.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,788 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.100s, Download: 0.147s]
+2026-06-20 02:19:30,791 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.003s]
+2026-06-20 02:19:30,791 - [INFO] [S3Server] - Loaded model.layers.28.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,820 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.027s, Download: 0.001s]
+2026-06-20 02:19:30,821 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:30,822 - [INFO] [S3Server] - Loaded model.layers.29.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,946 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.076s, Download: 0.392s]
+2026-06-20 02:19:30,949 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:30,950 - [INFO] [S3Server] - Loaded model.layers.28.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,964 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.072s, Download: 0.070s]
+2026-06-20 02:19:30,965 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:30,966 - [INFO] [S3Server] - Loaded model.layers.29.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:30,981 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.097s, Download: 0.384s]
+2026-06-20 02:19:30,985 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:30,986 - [INFO] [S3Server] - Loaded model.layers.28.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,050 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.115s, Download: 1.330s]
+2026-06-20 02:19:31,055 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:31,058 - [INFO] [S3Server] - Loaded model.layers.26.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,083 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.096s, Download: 1.393s]
+2026-06-20 02:19:31,088 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:31,093 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.029s, Download: 0.001s]
+2026-06-20 02:19:31,095 - [INFO] [S3Server] - Loaded model.layers.26.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,095 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.input_layernorm.weight.bin: 0.01 MB [parse: 0.002s]
+2026-06-20 02:19:31,096 - [INFO] [S3Server] - Loaded model.layers.30.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,150 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.094s, Download: 1.386s]
+2026-06-20 02:19:31,155 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.26.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:31,158 - [INFO] [S3Server] - Loaded model.layers.26.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,168 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.076s, Download: 0.106s]
+2026-06-20 02:19:31,171 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.003s]
+2026-06-20 02:19:31,172 - [INFO] [S3Server] - Loaded model.layers.29.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,206 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.031s, Download: 0.001s]
+2026-06-20 02:19:31,206 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:31,206 - [INFO] [S3Server] - Loaded model.layers.30.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,332 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.087s, Download: 0.278s]
+2026-06-20 02:19:31,334 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:31,336 - [INFO] [S3Server] - Loaded model.layers.29.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,360 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.095s, Download: 0.059s]
+2026-06-20 02:19:31,361 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:31,363 - [INFO] [S3Server] - Loaded model.layers.30.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,367 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.099s, Download: 0.318s]
+2026-06-20 02:19:31,369 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:31,371 - [INFO] [S3Server] - Loaded model.layers.29.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,418 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.137s, Download: 1.320s]
+2026-06-20 02:19:31,423 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:31,427 - [INFO] [S3Server] - Loaded model.layers.27.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,448 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.101s, Download: 1.352s]
+2026-06-20 02:19:31,455 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:31,458 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.input_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.029s, Download: 0.001s]
+2026-06-20 02:19:31,459 - [INFO] [S3Server] - Loaded model.layers.27.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,459 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.input_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:31,461 - [INFO] [S3Server] - Loaded model.layers.31.input_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,538 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.100s, Download: 1.182s]
+2026-06-20 02:19:31,545 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.007s]
+2026-06-20 02:19:31,548 - [INFO] [S3Server] - Loaded model.layers.28.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,572 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.112s, Download: 1.153s]
+2026-06-20 02:19:31,579 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.007s]
+2026-06-20 02:19:31,581 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.090s, Download: 0.120s]
+2026-06-20 02:19:31,583 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.002s]
+2026-06-20 02:19:31,584 - [INFO] [S3Server] - Loaded model.layers.30.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,585 - [INFO] [S3Server] - Loaded model.layers.28.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,606 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.196s, Download: 1.472s]
+2026-06-20 02:19:31,610 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.27.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:31,614 - [INFO] [S3Server] - Loaded model.layers.27.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,623 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.087s, Download: 1.322s]
+2026-06-20 02:19:31,634 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.post_attention_layernorm.weight.bin from S3 (8,224 bytes) [API: 0.050s, Download: 0.000s]
+2026-06-20 02:19:31,635 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.post_attention_layernorm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:31,635 - [INFO] [S3Server] - Loaded model.layers.31.post_attention_layernorm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,638 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.28.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.014s]
+2026-06-20 02:19:31,643 - [INFO] [S3Server] - Loaded model.layers.28.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,729 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.k_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.077s, Download: 0.066s]
+2026-06-20 02:19:31,732 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.k_proj.weight.bin: 2.00 MB [parse: 0.003s]
+2026-06-20 02:19:31,733 - [INFO] [S3Server] - Loaded model.layers.31.self_attn.k_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,766 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.norm.weight.bin from S3 (8,224 bytes) [API: 0.033s, Download: 0.000s]
+2026-06-20 02:19:31,767 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.norm.weight.bin: 0.01 MB [parse: 0.001s]
+2026-06-20 02:19:31,767 - [INFO] [S3Server] - Loaded model.norm.weight to GPU / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,791 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.095s, Download: 0.360s]
+2026-06-20 02:19:31,793 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.120s, Download: 0.311s]
+2026-06-20 02:19:31,796 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:31,797 - [INFO] [S3Server] - Loaded model.layers.30.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,797 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.006s]
+2026-06-20 02:19:31,799 - [INFO] [S3Server] - Loaded model.layers.30.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,826 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.v_proj.weight.bin from S3 (2,097,192 bytes) [API: 0.120s, Download: 0.063s]
+2026-06-20 02:19:31,828 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.v_proj.weight.bin: 2.00 MB [parse: 0.001s]
+2026-06-20 02:19:31,829 - [INFO] [S3Server] - Loaded model.layers.31.self_attn.v_proj.weight to GPU / shape: torch.Size([256, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,897 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.q_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.074s, Download: 0.188s]
+2026-06-20 02:19:31,899 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.q_proj.weight.bin: 8.00 MB [parse: 0.002s]
+2026-06-20 02:19:31,901 - [INFO] [S3Server] - Loaded model.layers.31.self_attn.q_proj.weight to GPU / shape: torch.Size([1024, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,922 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.o_proj.weight.bin from S3 (8,388,648 bytes) [API: 0.095s, Download: 0.208s]
+2026-06-20 02:19:31,925 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.self_attn.o_proj.weight.bin: 8.00 MB [parse: 0.003s]
+2026-06-20 02:19:31,928 - [INFO] [S3Server] - Loaded model.layers.31.self_attn.o_proj.weight to GPU / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:31,967 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.089s, Download: 1.194s]
+2026-06-20 02:19:31,973 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:31,977 - [INFO] [S3Server] - Loaded model.layers.29.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,015 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.129s, Download: 1.127s]
+2026-06-20 02:19:32,038 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.108s, Download: 1.224s]
+2026-06-20 02:19:32,041 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.026s]
+2026-06-20 02:19:32,043 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.29.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:32,044 - [INFO] [S3Server] - Loaded model.layers.29.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,047 - [INFO] [S3Server] - Loaded model.layers.29.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,221 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.077s, Download: 1.047s]
+2026-06-20 02:19:32,225 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.004s]
+2026-06-20 02:19:32,240 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.135s, Download: 1.007s]
+2026-06-20 02:19:32,245 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.004s]
+2026-06-20 02:19:32,245 - [INFO] [S3Server] - Loaded model.layers.30.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,248 - [INFO] [S3Server] - Loaded model.layers.30.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,278 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.121s, Download: 0.993s]
+2026-06-20 02:19:32,282 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.30.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.004s]
+2026-06-20 02:19:32,285 - [INFO] [S3Server] - Loaded model.layers.30.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,390 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.mlp.gate_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.151s, Download: 0.774s]
+2026-06-20 02:19:32,395 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.mlp.gate_proj.weight.bin: 28.00 MB [parse: 0.006s]
+2026-06-20 02:19:32,399 - [INFO] [S3Server] - Loaded model.layers.31.mlp.gate_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,428 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.mlp.down_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.085s, Download: 0.882s]
+2026-06-20 02:19:32,431 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.mlp.down_proj.weight.bin: 28.00 MB [parse: 0.003s]
+2026-06-20 02:19:32,435 - [INFO] [S3Server] - Loaded model.layers.31.mlp.down_proj.weight to GPU / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,548 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.mlp.up_proj.weight.bin from S3 (29,360,168 bytes) [API: 0.106s, Download: 0.893s]
+2026-06-20 02:19:32,553 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/model.layers.31.mlp.up_proj.weight.bin: 28.00 MB [parse: 0.005s]
+2026-06-20 02:19:32,556 - [INFO] [S3Server] - Loaded model.layers.31.mlp.up_proj.weight to GPU / shape: torch.Size([3584, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:32,855 - [INFO] [S3Server] - Downloaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/lm_head.weight.bin from S3 (262,668,328 bytes) [API: 0.113s, Download: 6.836s]
+2026-06-20 02:19:33,020 - [INFO] [S3Server] - Loaded raw/meta-llama/Llama-3.1-8B-Instruct/TP4/shard0/lm_head.weight.bin: 250.50 MB [parse: 0.165s]
+2026-06-20 02:19:33,057 - [INFO] [S3Server] - Loaded lm_head.weight to GPU / shape: torch.Size([32064, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,082 - [INFO] [S3Server] - Loading and processing completed in 7.18 seconds
+2026-06-20 02:19:33,082 - [INFO] [S3Server] - Final DTYPE determined from tensors: torch.bfloat16
+2026-06-20 02:19:33,083 - [INFO] [S3Server] - [Tensor Fusion Phase] Starting fusion for layers 16 to 32
+2026-06-20 02:19:33,091 - [INFO] [S3Server] - [Tensor Fusion Complete] Fused tensors for layers 16 to 32
+2026-06-20 02:19:33,091 - [INFO] [S3Server] - [Memory Cleanup] Emptying CUDA cache after fusion...
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.16.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.17.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.16.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.17.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.18.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.18.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.16.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.19.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.17.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.19.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.18.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.16.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.19.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.20.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.20.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.17.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.21.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.21.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.18.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.22.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.20.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.22.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.19.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.21.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.23.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.23.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.22.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.20.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.24.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.24.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.23.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.21.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.25.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.25.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.24.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.26.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.22.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.23.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,118 - [INFO] [S3Server] - tensor_name: model.layers.26.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.27.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.25.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.24.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.27.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.26.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.28.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.28.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.27.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.25.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.29.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.29.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.28.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.26.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.30.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.30.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.29.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.31.input_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.27.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.31.post_attention_layernorm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.28.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.norm.weight / shape: torch.Size([4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.30.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.31.self_attn.o_proj.weight / shape: torch.Size([4096, 1024]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.29.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.30.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.31.mlp.down_proj.weight / shape: torch.Size([4096, 3584]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: lm_head.weight / shape: torch.Size([32064, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.16.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.16.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.17.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.17.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.18.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.18.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.19.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.19.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.20.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.20.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.21.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.21.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.22.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.22.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.23.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.23.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.24.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.24.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.25.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.25.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.26.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.26.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.27.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,119 - [INFO] [S3Server] - tensor_name: model.layers.27.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.28.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.28.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.29.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.29.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.30.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.30.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.31.self_attn.qkv_proj.weight / shape: torch.Size([1536, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - tensor_name: model.layers.31.mlp.gate_up_proj.weight / shape: torch.Size([7168, 4096]) / dtype: torch.bfloat16 / device: cuda:0
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [Model Loading Complete] Total loading time: 7.21 seconds
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [Model Loading Complete] Start time: 1781921965.3524778 and End time: 1781921973.1201508
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [Model Loading Complete] Loading time: 7.77 seconds
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - Successfully loaded 98 tensors
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [KV Cache Allocation Phase Started]
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [Cache Dtype] Set CACHE_DTYPE to torch.bfloat16 from model weights
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [GPU Blocks Override] Overriding calculated num_gpu_blocks with provided value: 4096
+2026-06-20 02:19:33,120 - [INFO] [S3Server] - [GPU Blocks Override] Using 4096 GPU blocks as specified
+2026-06-20 02:19:33,130 - [INFO] [S3Server] - [KV Cache Allocation Complete]
+2026-06-20 02:19:33,130 - [INFO] [S3Server] -   - Total GPU cache size: 0.50 GiB
+2026-06-20 02:19:33,130 - [INFO] [S3Server] - TensorManager server starting 127.0.0.1:50001...
+2026-06-20 02:19:33,130 - [INFO] [S3Server] - Manager server running. Waiting for client connections...
+2026-06-20 02:19:33,130 - [INFO] [S3Server] - Press Ctrl+C to stop.
+2026-06-20 02:19:33,130 - [INFO] [S3Server] - [All Initialization Complete] Model weights loaded and KV cache allocated. Status server returning 'READY'.
+2026-06-20 02:20:54,847 - [INFO] [S3Server] - Received shutdown command via status server
+2026-06-20 02:20:54,847 - [INFO] [S3Server] - Shutdown signal received, stopping manager server...
+2026-06-20 02:20:54,847 - [INFO] [S3Server] - Server shutting down.
+2026-06-20 02:20:54,848 - [INFO] [S3Server] - Status server shutting down
+[W620 02:20:55.862812805 CudaIPCTypes.cpp:16] Producer process has been terminated before all shared CUDA tensors released. See Note [Sharing CUDA tensors]

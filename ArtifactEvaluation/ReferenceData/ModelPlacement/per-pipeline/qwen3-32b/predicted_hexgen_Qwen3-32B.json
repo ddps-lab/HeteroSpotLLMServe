@@ -1,0 +1,325 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "workload": {
+    "input_len": 763,
+    "output_len": 232
+  },
+  "pipelines": [
+    {
+      "label": "HX-P1",
+      "system": "HexGen",
+      "stages": [
+        [
+          "(spot)g6.12xlarge(half)",
+          26
+        ],
+        [
+          "(spot)g5.xlarge",
+          13
+        ],
+        [
+          "(spot)g5.xlarge",
+          13
+        ],
+        [
+          "(spot)g6.xlarge",
+          12
+        ]
+      ],
+      "parallel_strategy": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "26,13,13,12",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.9415465113794514,
+      "predicted_total_latency_ms": 39666.11958880504,
+      "max_batch_size": 185,
+      "num_blocks": 11566,
+      "hexgen_original_stages": [
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 15
+        },
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 2,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 17
+        }
+      ]
+    },
+    {
+      "label": "HX-P2",
+      "system": "HexGen",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          29
+        ],
+        [
+          "(spot)g6.xlarge",
+          11
+        ],
+        [
+          "(spot)g6.xlarge",
+          12
+        ],
+        [
+          "(spot)g6.xlarge",
+          12
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "29,11,12,12",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.7481733293014505,
+      "predicted_total_latency_ms": 46108.27465456041,
+      "max_batch_size": 129,
+      "num_blocks": 8084,
+      "hexgen_original_stages": [
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 17
+        },
+        {
+          "instance_type": "g6e.xlarge",
+          "tp_degree": 1,
+          "layer_count": 15
+        }
+      ]
+    },
+    {
+      "label": "HX-P3",
+      "system": "HexGen",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          32
+        ],
+        [
+          "(spot)g6e.xlarge",
+          32
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1
+      ],
+      "pp_layer_partition": "32,32",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 2.5168846242660217,
+      "predicted_total_latency_ms": 22847.43326127543,
+      "max_batch_size": 83,
+      "num_blocks": 5223,
+      "hexgen_original_stages": [
+        {
+          "instance_type": "g6e.xlarge",
+          "tp_degree": 1,
+          "layer_count": 33
+        },
+        {
+          "instance_type": "g6e.xlarge",
+          "tp_degree": 1,
+          "layer_count": 31
+        }
+      ]
+    },
+    {
+      "label": "HX-P4",
+      "system": "HexGen",
+      "stages": [
+        [
+          "(spot)g5.xlarge",
+          13
+        ],
+        [
+          "(spot)g5.xlarge",
+          14
+        ],
+        [
+          "(spot)g6.xlarge",
+          13
+        ],
+        [
+          "(spot)g6.xlarge",
+          13
+        ],
+        [
+          "(spot)g6.xlarge",
+          11
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "13,14,13,13,11",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.6298421058543748,
+      "predicted_total_latency_ms": 52012.70019332654,
+      "max_batch_size": 149,
+      "num_blocks": 9328,
+      "hexgen_original_stages": [
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 12
+        },
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 13
+        },
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 13
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 14
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 12
+        }
+      ]
+    },
+    {
+      "label": "HX-P5",
+      "system": "HexGen",
+      "stages": [
+        [
+          "(spot)g6e.xlarge",
+          33
+        ],
+        [
+          "(spot)g5.xlarge",
+          16
+        ],
+        [
+          "(spot)g5.xlarge",
+          15
+        ]
+      ],
+      "parallel_strategy": [
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "33,16,15",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.507527029658341,
+      "predicted_total_latency_ms": 28395.016419898515,
+      "max_batch_size": 70,
+      "num_blocks": 4415,
+      "hexgen_original_stages": [
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 21
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 22
+        },
+        {
+          "instance_type": "g6e.xlarge",
+          "tp_degree": 1,
+          "layer_count": 21
+        }
+      ]
+    },
+    {
+      "label": "HX-P6",
+      "system": "HexGen",
+      "stages": [
+        [
+          "(spot)g6.12xlarge(half)",
+          26
+        ],
+        [
+          "(spot)g5.xlarge",
+          13
+        ],
+        [
+          "(spot)g5.xlarge",
+          13
+        ],
+        [
+          "(spot)g6.xlarge",
+          12
+        ]
+      ],
+      "parallel_strategy": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "pp_layer_partition": "26,13,13,12",
+      "gpu_memory_utilization": 0.85,
+      "predicted_throughput_rps": 1.9415465113794514,
+      "predicted_total_latency_ms": 39666.11958880504,
+      "max_batch_size": 185,
+      "num_blocks": 11566,
+      "hexgen_original_stages": [
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g6.12xlarge",
+          "tp_degree": 2,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 16
+        },
+        {
+          "instance_type": "g5.12xlarge",
+          "tp_degree": 1,
+          "layer_count": 16
+        }
+      ]
+    }
+  ]
+}

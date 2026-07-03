@@ -1,0 +1,5273 @@
+{
+  "benchmark": "shuntserve_topk_sweep",
+  "timestamp": "2026-03-27 17:39:46 KST",
+  "total_wall_time_sec": 9362.45,
+  "max_workers": 31,
+  "k_values": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    10,
+    12,
+    14,
+    16,
+    20,
+    24,
+    28,
+    32
+  ],
+  "models": {
+    "llama3-70b": "meta-llama/Llama-3.1-70B-Instruct",
+    "qwen3-32b": "Qwen/Qwen3-32B"
+  },
+  "clusters": {
+    "large_hetero_cluster": {
+      "description": "Large heterogeneous cluster (7 types, 15 nodes, 76 GPUs)",
+      "nodes": {
+        "g4dn.xlarge": 1,
+        "g4dn.12xlarge": 1,
+        "g4dn.metal": 1,
+        "g5.xlarge": 1,
+        "g5.12xlarge": 1,
+        "g5.48xlarge": 1,
+        "g6.xlarge": 1,
+        "g6.12xlarge": 1,
+        "g6.48xlarge": 1,
+        "g6e.xlarge": 1,
+        "g6e.12xlarge": 1,
+        "g6e.48xlarge": 1,
+        "p4d.24xlarge": 1,
+        "p5.48xlarge": 1,
+        "p6-b200.48xlarge": 1
+      }
+    }
+  },
+  "workload": {
+    "expected_input_len": 763,
+    "expected_output_len": 232,
+    "max_model_len": 8192,
+    "gpu_mem_utilization": 0.85
+  },
+  "results": [
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 1,
+      "wall_time_sec": 332.5699,
+      "optimizer_time_sec": 331.8215,
+      "total_throughput_rps": 112.5984,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g6e.xlarge",
+            "g5.xlarge",
+            "g4dn.12xlarge",
+            "g4dn.metal",
+            "g4dn.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            14,
+            7,
+            21,
+            34,
+            4
+          ],
+          "throughput_rps": 1.5711,
+          "batch_size": 196,
+          "num_blocks": 12250
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g5.12xlarge",
+            "g6e.12xlarge",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            21,
+            24,
+            30,
+            5
+          ],
+          "throughput_rps": 1.6877,
+          "batch_size": 352,
+          "num_blocks": 21890
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 2,
+      "wall_time_sec": 663.5852,
+      "optimizer_time_sec": 662.2844,
+      "total_throughput_rps": 112.574,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g4dn.metal",
+            "g4dn.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            8,
+            1,
+            1
+          ],
+          "layer_partition": [
+            14,
+            21,
+            34,
+            5,
+            6
+          ],
+          "throughput_rps": 1.5711,
+          "batch_size": 196,
+          "num_blocks": 12250
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g5.12xlarge",
+            "g6e.12xlarge",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            22,
+            24,
+            30,
+            4
+          ],
+          "throughput_rps": 1.6633,
+          "batch_size": 352,
+          "num_blocks": 21890
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 3,
+      "wall_time_sec": 952.4852,
+      "optimizer_time_sec": 950.6859,
+      "total_throughput_rps": 112.5837,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.xlarge",
+            "g6e.xlarge",
+            "g4dn.xlarge",
+            "g4dn.12xlarge",
+            "g4dn.metal",
+            "g5.12xlarge",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            1,
+            4,
+            8,
+            4,
+            1
+          ],
+          "layer_partition": [
+            5,
+            12,
+            4,
+            17,
+            24,
+            15,
+            3
+          ],
+          "throughput_rps": 2.268,
+          "batch_size": 341,
+          "num_blocks": 21268
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4
+          ],
+          "layer_partition": [
+            49,
+            31
+          ],
+          "throughput_rps": 0.976,
+          "batch_size": 160,
+          "num_blocks": 10012
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 4,
+      "wall_time_sec": 1305.9843,
+      "optimizer_time_sec": 1303.4516,
+      "total_throughput_rps": 112.6192,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.metal",
+            "g5.12xlarge",
+            "g4dn.12xlarge",
+            "g6e.xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            31,
+            20,
+            17,
+            12
+          ],
+          "throughput_rps": 2.0643,
+          "batch_size": 320,
+          "num_blocks": 19962
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6.12xlarge",
+            "g4dn.xlarge",
+            "g6e.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            5,
+            24,
+            4,
+            42,
+            5
+          ],
+          "throughput_rps": 1.2152,
+          "batch_size": 352,
+          "num_blocks": 21890
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 5,
+      "wall_time_sec": 1622.3909,
+      "optimizer_time_sec": 1619.3037,
+      "total_throughput_rps": 112.6192,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g6e.xlarge",
+            "g4dn.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1,
+            4
+          ],
+          "layer_partition": [
+            20,
+            31,
+            12,
+            17
+          ],
+          "throughput_rps": 2.0643,
+          "batch_size": 320,
+          "num_blocks": 19962
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6.12xlarge",
+            "g4dn.xlarge",
+            "g6e.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            5,
+            24,
+            4,
+            42,
+            5
+          ],
+          "throughput_rps": 1.2152,
+          "batch_size": 352,
+          "num_blocks": 21890
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 6,
+      "wall_time_sec": 1913.4983,
+      "optimizer_time_sec": 1909.6761,
+      "total_throughput_rps": 112.5906,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g6e.xlarge",
+            "g6.xlarge",
+            "g4dn.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1,
+            1,
+            4
+          ],
+          "layer_partition": [
+            19,
+            30,
+            11,
+            5,
+            15
+          ],
+          "throughput_rps": 2.1531,
+          "batch_size": 411,
+          "num_blocks": 25621
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g5.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 7,
+      "wall_time_sec": 2211.1934,
+      "optimizer_time_sec": 2207.0566,
+      "total_throughput_rps": 112.5906,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g6e.xlarge",
+            "g6.xlarge",
+            "g4dn.12xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1,
+            1,
+            4
+          ],
+          "layer_partition": [
+            19,
+            30,
+            11,
+            5,
+            15
+          ],
+          "throughput_rps": 2.1531,
+          "batch_size": 411,
+          "num_blocks": 25621
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g5.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 8,
+      "wall_time_sec": 2528.9853,
+      "optimizer_time_sec": 2524.1408,
+      "total_throughput_rps": 112.6417,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g6e.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            18,
+            28,
+            17,
+            12,
+            5
+          ],
+          "throughput_rps": 2.2043,
+          "batch_size": 341,
+          "num_blocks": 21268
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 10,
+      "wall_time_sec": 3129.5946,
+      "optimizer_time_sec": 3123.5769,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g6e.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            12,
+            6
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 12,
+      "wall_time_sec": 3683.6346,
+      "optimizer_time_sec": 3676.6385,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g6e.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            12,
+            6
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 14,
+      "wall_time_sec": 4281.0943,
+      "optimizer_time_sec": 4273.1227,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g6e.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            12,
+            6
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 16,
+      "wall_time_sec": 4811.9802,
+      "optimizer_time_sec": 4802.8844,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g6e.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            12,
+            6
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 20,
+      "wall_time_sec": 5988.0139,
+      "optimizer_time_sec": 5977.1612,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g5.xlarge",
+            "g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            6,
+            12
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 24,
+      "wall_time_sec": 7096.3718,
+      "optimizer_time_sec": 7082.2635,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g6e.xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            12,
+            6
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 28,
+      "wall_time_sec": 8234.7854,
+      "optimizer_time_sec": 8219.68,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g5.xlarge",
+            "g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            6,
+            12
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "llama3-70b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 32,
+      "wall_time_sec": 9361.6792,
+      "optimizer_time_sec": 9344.0895,
+      "total_throughput_rps": 112.6583,
+      "num_pipelines": 8,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 66.566,
+          "batch_size": 3317,
+          "num_blocks": 206338
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 30.7799,
+          "batch_size": 1224,
+          "num_blocks": 76179
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 10.6386,
+          "batch_size": 397,
+          "num_blocks": 24750
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g5.12xlarge",
+            "g4dn.metal",
+            "g4dn.12xlarge",
+            "g5.xlarge",
+            "g6e.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            4,
+            1,
+            1
+          ],
+          "layer_partition": [
+            17,
+            27,
+            18,
+            6,
+            12
+          ],
+          "throughput_rps": 2.2208,
+          "batch_size": 298,
+          "num_blocks": 18594
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.xlarge",
+            "g6e.12xlarge",
+            "g6.12xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            4
+          ],
+          "layer_partition": [
+            5,
+            49,
+            26
+          ],
+          "throughput_rps": 1.0978,
+          "batch_size": 272,
+          "num_blocks": 16977
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.4547,
+          "batch_size": 32,
+          "num_blocks": 2052
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.6531,
+          "batch_size": 501,
+          "num_blocks": 31218
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            80
+          ],
+          "throughput_rps": 0.2473,
+          "batch_size": 32,
+          "num_blocks": 2052
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 1,
+      "wall_time_sec": 234.1215,
+      "optimizer_time_sec": 233.5754,
+      "total_throughput_rps": 212.3592,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            22,
+            32,
+            10
+          ],
+          "throughput_rps": 2.3246,
+          "batch_size": 160,
+          "num_blocks": 9950
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            8,
+            1
+          ],
+          "layer_partition": [
+            55,
+            9
+          ],
+          "throughput_rps": 2.0043,
+          "batch_size": 215,
+          "num_blocks": 13432
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g6.12xlarge",
+            "g5.12xlarge",
+            "g4dn.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            4,
+            1
+          ],
+          "layer_partition": [
+            29,
+            31,
+            4
+          ],
+          "throughput_rps": 2.1562,
+          "batch_size": 358,
+          "num_blocks": 22325
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 2,
+      "wall_time_sec": 439.1429,
+      "optimizer_time_sec": 438.2167,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g6e.xlarge",
+            "g5.xlarge",
+            "g4dn.12xlarge",
+            "g4dn.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            20,
+            9,
+            29,
+            6
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 3,
+      "wall_time_sec": 661.5342,
+      "optimizer_time_sec": 660.2702,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 4,
+      "wall_time_sec": 870.9545,
+      "optimizer_time_sec": 869.3385,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 5,
+      "wall_time_sec": 1075.6031,
+      "optimizer_time_sec": 1073.6557,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 6,
+      "wall_time_sec": 1282.9907,
+      "optimizer_time_sec": 1280.6628,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 7,
+      "wall_time_sec": 1471.5129,
+      "optimizer_time_sec": 1468.8064,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 8,
+      "wall_time_sec": 1690.3159,
+      "optimizer_time_sec": 1687.3453,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 10,
+      "wall_time_sec": 2091.2995,
+      "optimizer_time_sec": 2087.3771,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 12,
+      "wall_time_sec": 2488.296,
+      "optimizer_time_sec": 2483.8024,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 14,
+      "wall_time_sec": 2875.0363,
+      "optimizer_time_sec": 2870.0408,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 16,
+      "wall_time_sec": 3234.4551,
+      "optimizer_time_sec": 3228.7546,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 20,
+      "wall_time_sec": 4014.9269,
+      "optimizer_time_sec": 4007.6826,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 24,
+      "wall_time_sec": 4780.8466,
+      "optimizer_time_sec": 4772.4398,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 28,
+      "wall_time_sec": 5501.132,
+      "optimizer_time_sec": 5491.3079,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    },
+    {
+      "model": "qwen3-32b",
+      "cluster": "large_hetero_cluster",
+      "top_k": 32,
+      "wall_time_sec": 6280.6264,
+      "optimizer_time_sec": 6269.0387,
+      "total_throughput_rps": 212.2922,
+      "num_pipelines": 10,
+      "pipelines": [
+        {
+          "label": "P1",
+          "stages": [
+            "p6-b200.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 124.0287,
+          "batch_size": 4437,
+          "num_blocks": 275988
+        },
+        {
+          "label": "P2",
+          "stages": [
+            "p5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 57.4724,
+          "batch_size": 1820,
+          "num_blocks": 113243
+        },
+        {
+          "label": "P3",
+          "stages": [
+            "p4d.24xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 20.4542,
+          "batch_size": 787,
+          "num_blocks": 49003
+        },
+        {
+          "label": "P4",
+          "stages": [
+            "g4dn.xlarge",
+            "g6e.xlarge",
+            "g4dn.12xlarge",
+            "g5.xlarge"
+          ],
+          "tp_strategy": [
+            1,
+            1,
+            4,
+            1
+          ],
+          "layer_partition": [
+            6,
+            20,
+            29,
+            9
+          ],
+          "throughput_rps": 2.5362,
+          "batch_size": 212,
+          "num_blocks": 13245
+        },
+        {
+          "label": "P5",
+          "stages": [
+            "g6.12xlarge",
+            "g4dn.metal",
+            "g6.xlarge"
+          ],
+          "tp_strategy": [
+            4,
+            8,
+            1
+          ],
+          "layer_partition": [
+            21,
+            37,
+            6
+          ],
+          "throughput_rps": 2.9853,
+          "batch_size": 443,
+          "num_blocks": 27611
+        },
+        {
+          "label": "P6",
+          "stages": [
+            "g5.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.8967,
+          "batch_size": 37,
+          "num_blocks": 2363
+        },
+        {
+          "label": "P7",
+          "stages": [
+            "g6e.12xlarge"
+          ],
+          "tp_strategy": [
+            4
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.2616,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P8",
+          "stages": [
+            "g6.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.0197,
+          "batch_size": 330,
+          "num_blocks": 20584
+        },
+        {
+          "label": "P9",
+          "stages": [
+            "g6e.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 1.1701,
+          "batch_size": 917,
+          "num_blocks": 57088
+        },
+        {
+          "label": "P10",
+          "stages": [
+            "g5.48xlarge"
+          ],
+          "tp_strategy": [
+            8
+          ],
+          "layer_partition": [
+            64
+          ],
+          "throughput_rps": 0.4674,
+          "batch_size": 330,
+          "num_blocks": 20584
+        }
+      ]
+    }
+  ]
+}

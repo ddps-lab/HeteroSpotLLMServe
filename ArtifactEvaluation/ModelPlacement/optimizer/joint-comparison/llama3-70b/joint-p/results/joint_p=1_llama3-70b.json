@@ -1,0 +1,161 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_short": "llama3-70b",
+  "p": 1,
+  "cluster": [
+    2,
+    3,
+    4
+  ],
+  "prices": {
+    "(spot)g5.12xlarge": 2.2915,
+    "(spot)g6.12xlarge": 1.9445,
+    "(spot)g6e.xlarge": 0.704
+  },
+  "optimizer": {
+    "top_k": 3,
+    "max_stages": 13
+  },
+  "num_partitions": 1,
+  "memo_wall_clock_s": 0.7559199333190918,
+  "rankings": {
+    "soft_slo": [
+      {
+        "partition": [
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "total_throughput": 1.9951945710714936,
+        "n_feasible_parts": 1,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              2,
+              3,
+              4
+            ],
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              1,
+              0
+            ]
+          }
+        ],
+        "rank": 1
+      }
+    ],
+    "only_throughput": [
+      {
+        "partition": [
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "total_throughput": 2.6529237621476742,
+        "n_feasible_parts": 1,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              2,
+              3,
+              4
+            ],
+            "throughput": 2.6529237621476742,
+            "feasible": true,
+            "tp": [
+              4,
+              4,
+              4,
+              1,
+              1,
+              1,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 1
+      }
+    ]
+  },
+  "algorithm_time": {
+    "soft_slo": {
+      "num_partitions": 1,
+      "num_unique_groups_used": 1,
+      "memoized_optimizer_time_s": 71.84209418296814,
+      "naive_optimizer_time_s": 71.84209418296814,
+      "max_single_group_time_s": 71.84209418296814,
+      "num_optimizer_invocations_memoized": 1,
+      "num_optimizer_invocations_naive": 1
+    },
+    "only_throughput": {
+      "num_partitions": 1,
+      "num_unique_groups_used": 1,
+      "memoized_optimizer_time_s": 72.99072003364563,
+      "naive_optimizer_time_s": 72.99072003364563,
+      "max_single_group_time_s": 72.99072003364563,
+      "num_optimizer_invocations_memoized": 1,
+      "num_optimizer_invocations_naive": 1
+    }
+  },
+  "greedy": {
+    "K": 2,
+    "paper_total": 2.8305132690479464,
+    "memo_total": 2.8305132690479464,
+    "parts": [
+      {
+        "group": [
+          0,
+          2,
+          4
+        ],
+        "memo_thr": 1.9951945710714936,
+        "ref_thr": 1.9951945710714936,
+        "tp": [
+          4,
+          4,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "group": [
+          2,
+          1,
+          0
+        ],
+        "memo_thr": 0.835318697976453,
+        "ref_thr": 0.835318697976453,
+        "tp": [
+          4,
+          4,
+          4
+        ]
+      }
+    ]
+  }
+}

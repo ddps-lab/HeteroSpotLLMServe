@@ -1,4 +1,5 @@
 import copy
+import os
 from typing import Any, Dict, List, Tuple, Optional
 from transformers import AutoConfig
 import logging
@@ -102,6 +103,15 @@ cache_miss_count = 0
 
 latency_cache_hit_count = 0
 latency_cache_miss_count = 0
+
+
+def get_rss_gb() -> float:
+    """Current resident set size of this process in GB (Linux)."""
+    try:
+        with open("/proc/self/statm") as f:
+            return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 1024**3
+    except (OSError, ValueError, IndexError):
+        return float("nan")
 
 class BeamSearchDPOptimizer:
     """Dynamic Programming based optimizer with aggressive pruning"""
@@ -230,6 +240,28 @@ class BeamSearchDPOptimizer:
             return False
         return True
 
+    def _log_dp_layer(self, pivot_layer: int):
+        """Dumps the DP table entries for the given pivot layer (DEBUG only)."""
+        if not logger.isEnabledFor(logging.DEBUG):
+            return
+
+        total_entries = sum(len(self.dp[pivot_layer][s]) for s in range(self.num_layers + 1))
+        logger.debug(f"┌─ DP table @ layer {pivot_layer}/{self.num_layers} ({total_entries} entries)")
+        for num_stage in range(self.num_layers + 1):
+            entries = self.dp[pivot_layer][num_stage]
+            if not entries:
+                continue
+            ranked = sorted(entries.items(), key=lambda x: self._evaluate_pipeline(x[1]), reverse=True)
+            logger.debug(f"├─ stages={num_stage}: {len(entries)} entries")
+            for sig, pl in ranked:
+                stage_info = ", ".join(f"{inst}:{l}L" for inst, l in zip(pl.stages, pl.layer_per_stage))
+                logger.debug(
+                    f"│    score={self._evaluate_pipeline(pl):>10.4f} │ "
+                    f"thr={pl.throughput:>8.3f} req/s │ cost=${pl.cost:>8.4f}/h │ "
+                    f"lat={pl.single_request_latency:>10.0f}ms │ [{stage_info}]"
+                )
+        logger.debug("└─")
+
     def _evaluate_pipeline(self, pipeline: Pipeline):
         """
         Pipeline evaluation with multi-objective optimization.
@@ -294,11 +326,11 @@ class BeamSearchDPOptimizer:
         latency_cache_miss_count = 0
 
         # Perform DP
+        dp_start_time = time.time()
         for pivot_layer in range(1, self.num_layers + 1):
-            if pivot_layer % 10 == 0 or pivot_layer == self.num_layers:
-                logger.info(f"Processing layer {pivot_layer}/{self.num_layers}...")
-            else:
-                logger.debug(f"Processing layer {pivot_layer}/{self.num_layers}...")
+            layer_start_time = time.time()
+            layer_count_add_new_stage = count_add_new_stage
+            layer_count_recalculate = count_recalculate_pipeline_throughput
 
             for prev_num_layer in range(0, pivot_layer):  # Limit lookback range
                 new_num_layer = pivot_layer - prev_num_layer
@@ -384,6 +416,19 @@ class BeamSearchDPOptimizer:
                                     if new_pipeline_score > min_score:
                                         del self.dp[pivot_layer][current_num_stage][min_sig]
                                         self.dp[pivot_layer][current_num_stage][new_pipeline_signature] = new_pipeline
+
+            # Per-layer progress: elapsed time and candidate counts for this layer
+            layer_elapsed = time.time() - layer_start_time
+            total_elapsed = time.time() - dp_start_time
+            logger.info(
+                f"Layer {pivot_layer:>3d}/{self.num_layers} done │ "
+                f"layer_time={layer_elapsed:>7.3f}s │ total={total_elapsed:>8.2f}s │ "
+                f"candidates={count_add_new_stage - layer_count_add_new_stage:>6d} │ "
+                f"evaluated={count_recalculate_pipeline_throughput - layer_count_recalculate:>6d} │ "
+                f"rss={get_rss_gb():>6.2f}GB │ "
+                f"lat_cache={len(self._latency_cache)} │ thr_cache={len(self._throughput_cache)}"
+            )
+            self._log_dp_layer(pivot_layer)
 
         logger.debug(f"✓ DP Table populated.")
         logger.debug(f"  - check_cluster_availability_time: {check_cluster_availability_time:.3f} seconds")

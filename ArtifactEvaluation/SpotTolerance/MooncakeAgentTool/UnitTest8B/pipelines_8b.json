@@ -1,0 +1,29 @@
+{
+  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "total_num_layers": 32,
+  "total_throughput_rps": 0.632,
+  "pipelines": [
+    {
+      "label": "UT-P1",
+      "predicted_throughput_rps": 0.632,
+      "node_layer_mapping": [
+        ["spot_g6_xlarge_node_ip_1", 16],
+        ["spot_g6_xlarge_node_ip_2", 16]
+      ],
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-8B-Instruct",
+        "total_num_layers": 32,
+        "pp_layer_partition": "16,16",
+        "parallel_strategy": [1, 1],
+        "max_model_len": 18022,
+        "max_num_batched_tokens": 18022,
+        "max_num_seqs": 512,
+        "num_gpu_blocks": 9585,
+        "max_batch_size": 26,
+        "gpu_memory_utilization": 0.85,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-8B-Instruct"
+      }
+    }
+  ]
+}

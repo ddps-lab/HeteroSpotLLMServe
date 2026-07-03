@@ -1,0 +1,993 @@
+Warning: Permanently added '192.168.0.232' (ED25519) to the list of known hosts.
+INFO 06-20 02:29:16 [__init__.py:256] Automatically detected platform cuda.
+INFO 06-20 02:29:17 [api_server.py:940] run_server start time: 1781922557.4103281
+INFO 06-20 02:29:17 [api_server.py:941] vLLM API server version 0.8.1.dev30+g6ae43b8a8
+INFO 06-20 02:29:17 [api_server.py:942] args: Namespace(host='0.0.0.0', port=8001, uvicorn_log_level='info', allow_credentials=False, allowed_origins=['*'], allowed_methods=['*'], allowed_headers=['*'], api_key=None, lora_modules=None, prompt_adapters=None, chat_template=None, chat_template_content_format='auto', response_role='assistant', ssl_keyfile=None, ssl_certfile=None, ssl_ca_certs=None, enable_ssl_refresh=False, ssl_cert_reqs=0, root_path=None, middleware=[], return_tokens_as_token_ids=False, disable_frontend_multiprocessing=False, enable_request_id_headers=False, enable_auto_tool_choice=False, tool_call_parser=None, tool_parser_plugin='', model='meta-llama/Llama-3.1-70B-Instruct', task='auto', tokenizer=None, hf_config_path=None, skip_tokenizer_init=False, revision=None, code_revision=None, tokenizer_revision=None, tokenizer_mode='auto', trust_remote_code=False, allowed_local_media_path=None, download_dir=None, load_format='auto', config_format=<ConfigFormat.AUTO: 'auto'>, dtype='auto', kv_cache_dtype='auto', max_model_len=8192, guided_decoding_backend='xgrammar', logits_processor_pattern=None, model_impl='auto', distributed_executor_backend='ray', parallel_strategy=[4, 4], pipeline_parallel_size=1, tensor_parallel_size=1, enable_expert_parallel=False, max_parallel_loading_workers=None, ray_workers_use_nsight=False, block_size=None, enable_prefix_caching=None, disable_sliding_window=False, use_v2_block_manager=True, num_lookahead_slots=0, seed=None, swap_space=4, cpu_offload_gb=0, gpu_memory_utilization=0.85, num_gpu_blocks_override=512, max_num_batched_tokens=8192, max_num_partial_prefills=1, max_long_partial_prefills=1, long_prefill_token_threshold=0, max_num_seqs=256, max_logprobs=20, disable_log_stats=False, quantization=None, rope_scaling=None, rope_theta=None, hf_overrides=None, enforce_eager=True, max_seq_len_to_capture=8192, disable_custom_all_reduce=False, tokenizer_pool_size=0, tokenizer_pool_type='ray', tokenizer_pool_extra_config=None, limit_mm_per_prompt=None, mm_processor_kwargs=None, disable_mm_preprocessor_cache=False, enable_lora=False, enable_lora_bias=False, max_loras=1, max_lora_rank=16, lora_extra_vocab_size=256, lora_dtype='auto', long_lora_scaling_factors=None, max_cpu_loras=None, fully_sharded_loras=False, enable_prompt_adapter=False, max_prompt_adapters=1, max_prompt_adapter_token=0, device='auto', num_scheduler_steps=1, use_tqdm_on_load=True, multi_step_stream_outputs=True, scheduler_delay_factor=0.0, enable_chunked_prefill=None, speculative_model=None, speculative_model_quantization=None, num_speculative_tokens=None, speculative_disable_mqa_scorer=False, speculative_draft_tensor_parallel_size=None, speculative_max_model_len=None, speculative_disable_by_batch_size=None, ngram_prompt_lookup_max=None, ngram_prompt_lookup_min=None, spec_decoding_acceptance_method='rejection_sampler', typical_acceptance_sampler_posterior_threshold=None, typical_acceptance_sampler_posterior_alpha=None, disable_logprobs_during_spec_decoding=None, model_loader_extra_config=None, ignore_patterns=[], preemption_mode=None, served_model_name=None, qlora_adapter_name_or_path=None, show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, disable_async_output_proc=False, scheduling_policy='fcfs', scheduler_cls='vllm.core.scheduler.Scheduler', override_neuron_config=None, override_pooler_config=None, compilation_config=None, kv_transfer_config=None, worker_cls='auto', worker_extension_cls='', generation_config='auto', override_generation_config=None, enable_sleep_mode=False, calculate_kv_scales=False, additional_config=None, enable_reasoning=False, reasoning_parser=None, disable_log_requests=False, max_log_len=None, disable_fastapi_docs=False, enable_prompt_tokens_details=False, enable_server_load_tracking=False, node_rank_mapping='{"192.168.0.232": [0, 1, 2, 3], "192.168.0.88": [4, 5, 6, 7]}', node_rank_mapping_path=None, pp_layer_partition='40,40', ray_address='192.168.0.232:6379')
+INFO 06-20 02:29:17 [api_server.py:153] Node rank mapping from command line: {'192.168.0.232': [0, 1, 2, 3], '192.168.0.88': [4, 5, 6, 7]}
+INFO 06-20 02:29:17 [api_server.py:174] VLLM_PP_LAYER_PARTITION is set to 40,40
+INFO 06-20 02:29:23 [config.py:584] This model supports multiple tasks: {'score', 'classify', 'embed', 'reward', 'generate'}. Defaulting to 'generate'.
+2026-06-20 02:29:23,922	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 192.168.0.232:6379...
+2026-06-20 02:29:23,984	INFO worker.py:2012 -- Connected to Ray cluster.
+/home/ubuntu/.local/lib/python3.12/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+VLLM_RAY_BUNDLE_INDICES is setted to 0,1,2,3,4,5,6,7
+bundle specs : [{'node:192.168.0.232': 0.001, 'GPU': 1.0}, {'node:192.168.0.232': 0.001, 'GPU': 1.0}, {'node:192.168.0.232': 0.001, 'GPU': 1.0}, {'node:192.168.0.232': 0.001, 'GPU': 1.0}, {'GPU': 1.0, 'node:192.168.0.88': 0.001}, {'GPU': 1.0, 'node:192.168.0.88': 0.001}, {'node:192.168.0.88': 0.001, 'GPU': 1.0}, {'GPU': 1.0, 'node:192.168.0.88': 0.001}]
+INFO 06-20 02:29:24 [llm_engine.py:241] Initializing a V0 LLM engine (v0.8.1.dev30+g6ae43b8a8) with config: model='meta-llama/Llama-3.1-70B-Instruct', speculative_config=None, tokenizer='meta-llama/Llama-3.1-70B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, override_neuron_config=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=8192, download_dir=None, load_format=LoadFormat.AUTO, tensor_parallel_size=4, pipeline_parallel_size=2, disable_custom_all_reduce=False, quantization=None, enforce_eager=True, kv_cache_dtype=auto,  device_config=cuda, decoding_config=DecodingConfig(guided_decoding_backend='xgrammar', reasoning_backend=None), observability_config=ObservabilityConfig(show_hidden_metrics=False, otlp_traces_endpoint=None, collect_model_forward_time=False, collect_model_execute_time=False), seed=None, served_model_name=meta-llama/Llama-3.1-70B-Instruct, num_scheduler_steps=1, multi_step_stream_outputs=True, enable_prefix_caching=None, chunked_prefill_enabled=False, use_async_output_proc=False, disable_mm_preprocessor_cache=False, mm_processor_kwargs=None, pooler_config=None, compilation_config={"splitting_ops":[],"compile_sizes":[],"cudagraph_capture_sizes":[],"max_capture_size":0}, use_cached_outputs=False, 
+INFO 06-20 02:29:25 [ray_utils.py:302] Initializing Ray with address: 192.168.0.232:6379
+2026-06-20 02:29:25,272	INFO worker.py:1814 -- Connecting to existing Ray cluster at address: 192.168.0.232:6379...
+INFO 06-20 02:29:25 [ray_distributed_executor.py:176] use_ray_spmd_worker: False
+2026-06-20 02:29:25,272	INFO worker.py:1828 -- Calling ray.init() again after it has already been called.
+[36m(pid=71772)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=71771)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=71773)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=71777)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+[36m(pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:28 [__init__.py:256] Automatically detected platform cuda.
+INFO 06-20 02:29:29 [ray_distributed_executor.py:364] non_carry_over_env_vars from config: set()
+INFO 06-20 02:29:29 [ray_distributed_executor.py:366] Copying the following environment variables to workers: ['LD_LIBRARY_PATH', 'VLLM_PP_LAYER_PARTITION', 'VLLM_USE_V1', 'VLLM_RAY_BUNDLE_INDICES']
+INFO 06-20 02:29:29 [ray_distributed_executor.py:369] If certain env vars should NOT be copied to workers, add them to /home/ubuntu/.config/vllm/ray_non_carry_over_env_vars.json file
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+INFO 06-20 02:29:30 [cuda.py:285] Using Flash Attention backend.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 4: [world:0] [1781922571.572037] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 4: [world:0] [1781922571.572373] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 4: [world:0] [1781922571.572439] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 6: [world:0] [1781922571.698022] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 6: [world:0] [1781922571.698320] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 6: [world:0] [1781922571.698380] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 2: [world:0] [1781922571.711125] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 2: [world:0] [1781922571.711442] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 2: [world:0] [1781922571.711495] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 1: [world:0] [1781922571.706722] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 1: [world:0] [1781922571.707032] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 1: [world:0] [1781922571.707085] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+INFO 06-20 02:29:31 [parallel_state.py:183] rank 0: [world:0] [1781922571.759356] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 3: [world:0] [1781922571.705438] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 3: [world:0] [1781922571.705709] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 3: [world:0] [1781922571.705763] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+INFO 06-20 02:29:31 [parallel_state.py:187] rank 0: [world:0] [1781922571.759670] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+INFO 06-20 02:29:31 [parallel_state.py:191] rank 0: [world:0] [1781922571.759719] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+INFO 06-20 02:29:31 [parallel_state.py:194] rank 0: [world:0] [1781922571.764534] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.005s
+INFO 06-20 02:29:31 [parallel_state.py:204] rank 0: [world:0] [1781922571.764600] Completed for loop
+INFO 06-20 02:29:31 [parallel_state.py:218] rank 0: [world:0] Device mapping - global_rank: 0, local_rank: 0, device: cuda:0, rank_in_group: 0, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+INFO 06-20 02:29:31 [parallel_state.py:253] rank 0: [world:0] GroupCoordinator.__init__ completed
+INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+INFO 06-20 02:29:31 [parallel_state.py:183] rank 0: [tp:0] [1781922571.772783] BEFORE device new_group([0, 1, 2, 3])
+INFO 06-20 02:29:31 [parallel_state.py:187] rank 0: [tp:0] [1781922571.773058] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+INFO 06-20 02:29:31 [parallel_state.py:191] rank 0: [tp:0] [1781922571.773113] BEFORE cpu new_group([0, 1, 2, 3])
+INFO 06-20 02:29:31 [parallel_state.py:194] rank 0: [tp:0] [1781922571.775440] AFTER cpu new_group([0, 1, 2, 3]), took 0.002s
+INFO 06-20 02:29:31 [parallel_state.py:183] rank 0: [tp:0] [1781922571.775492] BEFORE device new_group([4, 5, 6, 7])
+INFO 06-20 02:29:31 [parallel_state.py:187] rank 0: [tp:0] [1781922571.775554] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+INFO 06-20 02:29:31 [parallel_state.py:191] rank 0: [tp:0] [1781922571.775594] BEFORE cpu new_group([4, 5, 6, 7])
+INFO 06-20 02:29:31 [parallel_state.py:194] rank 0: [tp:0] [1781922571.775642] AFTER cpu new_group([4, 5, 6, 7]), took 0.000s
+INFO 06-20 02:29:31 [parallel_state.py:204] rank 0: [tp:0] [1781922571.775678] Completed for loop
+INFO 06-20 02:29:31 [parallel_state.py:218] rank 0: [tp:0] Device mapping - global_rank: 0, local_rank: 0, device: cuda:0, rank_in_group: 0, ranks: [0, 1, 2, 3]
+INFO 06-20 02:29:31 [parallel_state.py:225] rank 0: [tp:0] [1781922571.775749] BEFORE device_communicator init
+INFO 06-20 02:29:31 [parallel_state.py:228] rank 0: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+INFO 06-20 02:29:31 [parallel_state.py:229] rank 0: [tp:0] device_comm_cls.__name__: CudaCommunicator
+WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 4: [world:0] [1781922571.767109] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.195s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 4: [world:0] [1781922571.767262] Completed for loop
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 4: [world:0] Device mapping - global_rank: 4, local_rank: 0, device: cuda:0, rank_in_group: 4, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 4: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 4: [tp:0] [1781922571.768799] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 4: [tp:0] [1781922571.768872] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 4: [tp:0] [1781922571.768909] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 4: [tp:0] [1781922571.768963] AFTER cpu new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 4: [tp:0] [1781922571.768996] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 4: [tp:0] [1781922571.769221] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 4: [tp:0] [1781922571.769274] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 4: [tp:0] [1781922571.773009] AFTER cpu new_group([4, 5, 6, 7]), took 0.004s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 4: [tp:0] [1781922571.773155] Completed for loop
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 4: [tp:0] Device mapping - global_rank: 4, local_rank: 0, device: cuda:0, rank_in_group: 0, ranks: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 4: [tp:0] [1781922571.773345] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 4: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 4: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 6: [world:0] [1781922571.767762] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.069s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 6: [world:0] [1781922571.767840] Completed for loop
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 6: [world:0] Device mapping - global_rank: 6, local_rank: 2, device: cuda:2, rank_in_group: 6, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 6: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 6: [tp:0] [1781922571.769328] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 6: [tp:0] [1781922571.769394] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 6: [tp:0] [1781922571.769430] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 6: [tp:0] [1781922571.769482] AFTER cpu new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 6: [tp:0] [1781922571.769514] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 6: [tp:0] [1781922571.769686] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 6: [tp:0] [1781922571.769732] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 6: [tp:0] [1781922571.773672] AFTER cpu new_group([4, 5, 6, 7]), took 0.004s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 6: [tp:0] [1781922571.773786] Completed for loop
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 6: [tp:0] Device mapping - global_rank: 6, local_rank: 2, device: cuda:2, rank_in_group: 2, ranks: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 6: [tp:0] [1781922571.773882] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 6: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 6: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 5: [world:0] [1781922571.734385] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 5: [world:0] [1781922571.734860] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 5: [world:0] [1781922571.734912] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 5: [world:0] [1781922571.767399] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.032s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 5: [world:0] [1781922571.767525] Completed for loop
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 5: [world:0] Device mapping - global_rank: 5, local_rank: 1, device: cuda:1, rank_in_group: 5, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 5: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 5: [tp:0] [1781922571.769115] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 5: [tp:0] [1781922571.769187] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 5: [tp:0] [1781922571.769255] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 5: [tp:0] [1781922571.769310] AFTER cpu new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 5: [tp:0] [1781922571.769342] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 5: [tp:0] [1781922571.769549] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 5: [tp:0] [1781922571.769595] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 5: [tp:0] [1781922571.773502] AFTER cpu new_group([4, 5, 6, 7]), took 0.004s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 5: [tp:0] [1781922571.773568] Completed for loop
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 5: [tp:0] Device mapping - global_rank: 5, local_rank: 1, device: cuda:1, rank_in_group: 1, ranks: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 5: [tp:0] [1781922571.773660] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 5: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 5: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 7: [world:0] [1781922571.749533] BEFORE device new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 7: [world:0] [1781922571.750159] AFTER device new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.001s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 7: [world:0] [1781922571.750302] BEFORE cpu new_group([0, 1, 2, 3, 4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 7: [world:0] [1781922571.767735] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.017s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 7: [world:0] [1781922571.767793] Completed for loop
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 7: [world:0] Device mapping - global_rank: 7, local_rank: 3, device: cuda:3, rank_in_group: 7, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 7: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 7: [tp:0] [1781922571.769114] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 7: [tp:0] [1781922571.769176] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 7: [tp:0] [1781922571.769238] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 7: [tp:0] [1781922571.769295] AFTER cpu new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 7: [tp:0] [1781922571.769329] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 7: [tp:0] [1781922571.769510] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 7: [tp:0] [1781922571.769554] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 7: [tp:0] [1781922571.773582] AFTER cpu new_group([4, 5, 6, 7]), took 0.004s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 7: [tp:0] [1781922571.773635] Completed for loop
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 7: [tp:0] Device mapping - global_rank: 7, local_rank: 3, device: cuda:3, rank_in_group: 3, ranks: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 7: [tp:0] [1781922571.773710] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 7: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 7: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 2: [world:0] [1781922571.764843] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.053s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 2: [world:0] [1781922571.764907] Completed for loop
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 2: [world:0] Device mapping - global_rank: 2, local_rank: 2, device: cuda:2, rank_in_group: 2, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 2: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 2: [tp:0] [1781922571.766297] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 2: [tp:0] [1781922571.766499] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 2: [tp:0] [1781922571.766547] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 2: [tp:0] [1781922571.776054] AFTER cpu new_group([0, 1, 2, 3]), took 0.010s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 2: [tp:0] [1781922571.776139] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 2: [tp:0] [1781922571.776213] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 2: [tp:0] [1781922571.776249] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 2: [tp:0] [1781922571.776298] AFTER cpu new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 2: [tp:0] [1781922571.776330] Completed for loop
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 2: [tp:0] Device mapping - global_rank: 2, local_rank: 2, device: cuda:2, rank_in_group: 2, ranks: [0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 2: [tp:0] [1781922571.776401] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 2: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 2: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=71772)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 1: [world:0] [1781922571.764574] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.057s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 1: [world:0] [1781922571.764708] Completed for loop
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 1: [world:0] Device mapping - global_rank: 1, local_rank: 1, device: cuda:1, rank_in_group: 1, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 1: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 1: [tp:0] [1781922571.766277] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 1: [tp:0] [1781922571.766509] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 1: [tp:0] [1781922571.766558] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 1: [tp:0] [1781922571.775805] AFTER cpu new_group([0, 1, 2, 3]), took 0.009s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 1: [tp:0] [1781922571.775884] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 1: [tp:0] [1781922571.775989] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 1: [tp:0] [1781922571.776034] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 1: [tp:0] [1781922571.776088] AFTER cpu new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 1: [tp:0] [1781922571.776122] Completed for loop
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 1: [tp:0] Device mapping - global_rank: 1, local_rank: 1, device: cuda:1, rank_in_group: 1, ranks: [0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 1: [tp:0] [1781922571.776203] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 1: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 1: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=71771)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 3: [world:0] [1781922571.764760] AFTER cpu new_group([0, 1, 2, 3, 4, 5, 6, 7]), took 0.059s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 3: [world:0] [1781922571.764879] Completed for loop
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 3: [world:0] Device mapping - global_rank: 3, local_rank: 3, device: cuda:3, rank_in_group: 3, ranks: [0, 1, 2, 3, 4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:253] rank 3: [world:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:1155] TP Group initialization start:[[0, 1, 2, 3], [4, 5, 6, 7]]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 3: [tp:0] [1781922571.766413] BEFORE device new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 3: [tp:0] [1781922571.766648] AFTER device new_group([0, 1, 2, 3]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 3: [tp:0] [1781922571.766696] BEFORE cpu new_group([0, 1, 2, 3])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 3: [tp:0] [1781922571.776060] AFTER cpu new_group([0, 1, 2, 3]), took 0.009s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:183] rank 3: [tp:0] [1781922571.776138] BEFORE device new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:187] rank 3: [tp:0] [1781922571.776209] AFTER device new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:191] rank 3: [tp:0] [1781922571.776244] BEFORE cpu new_group([4, 5, 6, 7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:194] rank 3: [tp:0] [1781922571.776292] AFTER cpu new_group([4, 5, 6, 7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:204] rank 3: [tp:0] [1781922571.776324] Completed for loop
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:218] rank 3: [tp:0] Device mapping - global_rank: 3, local_rank: 3, device: cuda:3, rank_in_group: 3, ranks: [0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:225] rank 3: [tp:0] [1781922571.776397] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:228] rank 3: [tp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [parallel_state.py:229] rank 3: [tp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=71777)[0m WARNING 06-20 02:29:31 [cuda_communicator.py:32] CustomAllreduce is enabled by default (_ENABLE_CUSTOM_ALL_REDUCE=True), but explicitly disabled for heterogeneous TP configurations to avoid CPU group all_gather conflicts and gloo backend deadlocks.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:31 [pynccl.py:69] vLLM is using nccl==2.21.5
+INFO 06-20 02:29:32 [parallel_state.py:237] rank 0: [tp:0] [1781922572.067080] AFTER device_communicator init, took 0.291s
+INFO 06-20 02:29:32 [parallel_state.py:244] rank 0: [tp:0] [1781922572.067210] BEFORE mq_broadcaster init
+INFO 06-20 02:29:32 [shm_broadcast.py:258] vLLM message queue communication handle: Handle(local_reader_ranks=[1, 2, 3], buffer_handle=(3, 4194304, 6, 'psm_e6b5ce97'), local_subscribe_addr='ipc:///tmp/bd5a3aa7-e3c1-400e-9639-0a60f0390b93', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 2: [tp:0] [1781922572.067072] AFTER device_communicator init, took 0.291s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 2: [tp:0] [1781922572.067210] BEFORE mq_broadcaster init
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 1: [tp:0] [1781922572.067074] AFTER device_communicator init, took 0.291s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 1: [tp:0] [1781922572.067210] BEFORE mq_broadcaster init
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 3: [tp:0] [1781922572.067072] AFTER device_communicator init, took 0.291s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 3: [tp:0] [1781922572.067210] BEFORE mq_broadcaster init
+INFO 06-20 02:29:32 [parallel_state.py:248] rank 0: [tp:0] [1781922572.073721] AFTER mq_broadcaster init, took 0.007s
+INFO 06-20 02:29:32 [parallel_state.py:253] rank 0: [tp:0] GroupCoordinator.__init__ completed
+INFO 06-20 02:29:32 [parallel_state.py:1168] rank 0: TP initialization complete. My TP group: [0, 1, 2, 3]
+INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.073893] BEFORE device new_group([0, 4])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.074168] AFTER device new_group([0, 4]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.074217] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 2: [tp:0] [1781922572.073791] AFTER mq_broadcaster init, took 0.007s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 2: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 2: TP initialization complete. My TP group: [0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.074056] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.074143] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.074192] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.074274] AFTER cpu new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.074322] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.074385] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.074426] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.074486] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.074525] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.074785] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.074843] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 1: [tp:0] [1781922572.073777] AFTER mq_broadcaster init, took 0.007s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 1: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 1: TP initialization complete. My TP group: [0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.073989] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.074087] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.074126] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.074188] AFTER cpu new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.074224] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.074458] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.074504] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 3: [tp:0] [1781922572.073799] AFTER mq_broadcaster init, took 0.007s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 3: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 3: TP initialization complete. My TP group: [0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.074018] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.074092] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.074127] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.074185] AFTER cpu new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.074221] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.074267] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.074297] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.074344] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.074375] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.074418] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.074447] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.074487] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.074515] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.074729] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.074777] BEFORE cpu new_group([3])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.077059] AFTER cpu new_group([0, 4]), took 0.003s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.077183] BEFORE device new_group([1])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.077263] AFTER device new_group([1]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.077300] BEFORE cpu new_group([1])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.077346] AFTER cpu new_group([1]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.077379] BEFORE device new_group([2])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.077424] AFTER device new_group([2]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.077454] BEFORE cpu new_group([2])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.077497] AFTER cpu new_group([2]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.077527] BEFORE device new_group([3])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.077568] AFTER device new_group([3]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.077597] BEFORE cpu new_group([3])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.077637] AFTER cpu new_group([3]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.077666] BEFORE device new_group([5])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.077705] AFTER device new_group([5]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.077733] BEFORE cpu new_group([5])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.077773] AFTER cpu new_group([5]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.077801] BEFORE device new_group([6])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.077839] AFTER device new_group([6]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.077867] BEFORE cpu new_group([6])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.077906] AFTER cpu new_group([6]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [pp:0] [1781922572.077934] BEFORE device new_group([7])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [pp:0] [1781922572.078005] AFTER device new_group([7]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [pp:0] [1781922572.078037] BEFORE cpu new_group([7])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [pp:0] [1781922572.078077] AFTER cpu new_group([7]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:204] rank 0: [pp:0] [1781922572.078106] Completed for loop
+INFO 06-20 02:29:32 [parallel_state.py:218] rank 0: [pp:0] Device mapping - global_rank: 0, local_rank: 0, device: cuda:0, rank_in_group: 0, ranks: [0, 4]
+INFO 06-20 02:29:32 [parallel_state.py:225] rank 0: [pp:0] [1781922572.078178] BEFORE device_communicator init
+INFO 06-20 02:29:32 [parallel_state.py:228] rank 0: [pp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+INFO 06-20 02:29:32 [parallel_state.py:229] rank 0: [pp:0] device_comm_cls.__name__: CudaCommunicator
+INFO 06-20 02:29:32 [utils.py:925] Found nccl from library libnccl.so.2
+INFO 06-20 02:29:32 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.076464] AFTER cpu new_group([2]), took 0.002s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.076520] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.076602] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.076647] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.076719] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.076760] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.076820] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.076862] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.076922] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.076989] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.077055] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.077094] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.077147] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [pp:0] [1781922572.077183] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [pp:0] [1781922572.077237] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [pp:0] [1781922572.077275] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [pp:0] [1781922572.077335] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 2: [pp:0] [1781922572.077372] Completed for loop
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 2: [pp:0] Device mapping - global_rank: 2, local_rank: 2, device: cuda:2, rank_in_group: 0, ranks: [2]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 2: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.077503] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.077568] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.077610] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.077665] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.077701] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.077756] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.077794] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.077851] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.077904] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.078143] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.078201] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.076137] AFTER cpu new_group([1]), took 0.002s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.076208] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.076293] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.076358] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.076430] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.076468] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.076515] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.076545] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.076589] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.076624] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.076685] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.076717] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.076759] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.076793] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.076847] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.076876] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.076919] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [pp:0] [1781922572.076969] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [pp:0] [1781922572.077039] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [pp:0] [1781922572.077076] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [pp:0] [1781922572.077128] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 1: [pp:0] [1781922572.077157] Completed for loop
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 1: [pp:0] Device mapping - global_rank: 1, local_rank: 1, device: cuda:1, rank_in_group: 0, ranks: [1]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 1: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.077275] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.077322] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.077350] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.077392] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.077419] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.077578] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.077621] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.079009] AFTER cpu new_group([1]), took 0.001s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.079080] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.079165] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.077105] AFTER cpu new_group([3]), took 0.002s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.077228] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.077322] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.077366] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.077424] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.077460] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.077514] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.077551] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.077594] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [pp:0] [1781922572.077623] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [pp:0] [1781922572.077666] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [pp:0] [1781922572.077694] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [pp:0] [1781922572.077735] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 3: [pp:0] [1781922572.077764] Completed for loop
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 3: [pp:0] Device mapping - global_rank: 3, local_rank: 3, device: cuda:3, rank_in_group: 0, ranks: [3]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 3: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.077886] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.077936] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.077991] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.078037] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.078065] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.078107] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.078135] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.078174] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.078211] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.078255] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.078283] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.078323] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.078351] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.078552] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.078603] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.079516] AFTER cpu new_group([2]), took 0.001s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.079575] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.079632] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.079667] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.079742] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.079787] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.079861] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.079914] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.080016] AFTER cpu new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.080067] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.080139] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.080176] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.080219] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.080246] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.080297] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.080342] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.080404] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 2: [dp:0] [1781922572.080440] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 2: [dp:0] [1781922572.080492] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 2: [dp:0] [1781922572.080528] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 2: [dp:0] [1781922572.080586] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 2: [dp:0] [1781922572.080623] Completed for loop
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 2: [dp:0] Device mapping - global_rank: 2, local_rank: 2, device: cuda:2, rank_in_group: 0, ranks: [2]
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 2: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 2 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 2
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:2, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[2], TP Group:[0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.079216] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.079269] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.079316] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.079390] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.079443] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.079517] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.079568] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.079619] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.079651] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.079720] AFTER cpu new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.079771] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.079823] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.079852] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.079892] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.079921] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.080016] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.080060] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.080110] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 1: [dp:0] [1781922572.080156] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 1: [dp:0] [1781922572.080223] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 1: [dp:0] [1781922572.080254] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 1: [dp:0] [1781922572.080304] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 1: [dp:0] [1781922572.080349] Completed for loop
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 1: [dp:0] Device mapping - global_rank: 1, local_rank: 1, device: cuda:1, rank_in_group: 0, ranks: [1]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 1: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 1 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 1
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:1, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[1], TP Group:[0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.080178] AFTER cpu new_group([3]), took 0.002s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.080253] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.080316] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.080351] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.080395] AFTER cpu new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.080426] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.080467] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.080495] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.080534] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.080562] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.080604] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.080631] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.080684] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 3: [dp:0] [1781922572.080716] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 3: [dp:0] [1781922572.080756] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 3: [dp:0] [1781922572.080783] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 3: [dp:0] [1781922572.080822] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 3: [dp:0] [1781922572.080849] Completed for loop
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 3: [dp:0] Device mapping - global_rank: 3, local_rank: 3, device: cuda:3, rank_in_group: 0, ranks: [3]
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 3: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 3 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 3
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:3, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[3], TP Group:[0, 1, 2, 3]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 4: [tp:0] [1781922572.063833] AFTER device_communicator init, took 0.290s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 4: [tp:0] [1781922572.063936] BEFORE mq_broadcaster init
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [shm_broadcast.py:258] vLLM message queue communication handle: Handle(local_reader_ranks=[1, 2, 3], buffer_handle=(3, 4194304, 6, 'psm_2aa8fc9d'), local_subscribe_addr='ipc:///tmp/0faaf8a3-4319-4023-9011-43497d7b3ce6', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 4: [tp:0] [1781922572.069440] AFTER mq_broadcaster init, took 0.006s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 4: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 4: TP initialization complete. My TP group: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.069646] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.069863] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.069911] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.077178] AFTER cpu new_group([0, 4]), took 0.007s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.077260] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.077321] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.077356] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.077404] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.077435] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.077479] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.077508] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.077553] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.077584] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.077627] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.077656] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.077697] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.077728] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.077770] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.077799] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.077839] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.077868] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.077908] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.077936] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.077976] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [pp:0] [1781922572.078004] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [pp:0] [1781922572.078046] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [pp:0] [1781922572.078073] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [pp:0] [1781922572.078113] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 4: [pp:0] [1781922572.078141] Completed for loop
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 4: [pp:0] Device mapping - global_rank: 4, local_rank: 0, device: cuda:0, rank_in_group: 1, ranks: [0, 4]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:225] rank 4: [pp:0] [1781922572.078234] BEFORE device_communicator init
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:228] rank 4: [pp:0] device_comm_cls: <class 'vllm.distributed.device_communicators.cuda_communicator.CudaCommunicator'>
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:229] rank 4: [pp:0] device_comm_cls.__name__: CudaCommunicator
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [utils.py:925] Found nccl from library libnccl.so.2
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [pynccl.py:69] vLLM is using nccl==2.21.5
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 6: [tp:0] [1781922572.063844] AFTER device_communicator init, took 0.290s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 6: [tp:0] [1781922572.063978] BEFORE mq_broadcaster init
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 6: [tp:0] [1781922572.069499] AFTER mq_broadcaster init, took 0.006s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 6: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 6: TP initialization complete. My TP group: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.069690] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.069757] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.069793] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.069852] AFTER cpu new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.069886] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.069934] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.069963] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.070007] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.070036] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.070078] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.070107] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.070149] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.070177] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.070242] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.070276] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.070319] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.070348] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.070387] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.070415] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.070457] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.070484] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.070661] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.070708] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.071934] AFTER cpu new_group([6]), took 0.001s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [pp:0] [1781922572.071987] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [pp:0] [1781922572.072043] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [pp:0] [1781922572.072078] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [pp:0] [1781922572.072123] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 6: [pp:0] [1781922572.072152] Completed for loop
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 6: [pp:0] Device mapping - global_rank: 6, local_rank: 2, device: cuda:2, rank_in_group: 0, ranks: [6]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 6: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.072291] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.072340] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.072369] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.072412] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.072439] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.072480] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.072507] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.072563] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.072600] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.072643] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.072671] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.072711] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.072737] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.072776] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.072802] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.072840] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.072873] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.072917] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.072945] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.072984] AFTER cpu new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.073011] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.073049] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.073074] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.073110] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.073135] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.073310] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.073356] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.075813] AFTER cpu new_group([6]), took 0.002s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 6: [dp:0] [1781922572.075868] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 6: [dp:0] [1781922572.075923] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 6: [dp:0] [1781922572.075954] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 6: [dp:0] [1781922572.075997] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 6: [dp:0] [1781922572.076025] Completed for loop
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 6: [dp:0] Device mapping - global_rank: 6, local_rank: 2, device: cuda:2, rank_in_group: 0, ranks: [6]
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 6: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 6 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 2
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:6, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[6], TP Group:[4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 5: [tp:0] [1781922572.063835] AFTER device_communicator init, took 0.290s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 5: [tp:0] [1781922572.063964] BEFORE mq_broadcaster init
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 5: [tp:0] [1781922572.069521] AFTER mq_broadcaster init, took 0.006s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 5: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 5: TP initialization complete. My TP group: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.069695] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.069763] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.069798] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.069856] AFTER cpu new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.069890] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.069934] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.069964] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.070007] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.070035] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.070078] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.070106] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.070148] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.070176] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.070247] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.070284] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.070329] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.070358] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.070574] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.070623] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.071990] AFTER cpu new_group([5]), took 0.001s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.072100] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.072181] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.072248] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.072306] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [pp:0] [1781922572.072338] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [pp:0] [1781922572.072382] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [pp:0] [1781922572.072411] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [pp:0] [1781922572.072453] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 5: [pp:0] [1781922572.072481] Completed for loop
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 5: [pp:0] Device mapping - global_rank: 5, local_rank: 1, device: cuda:1, rank_in_group: 0, ranks: [5]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 5: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.072625] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.072676] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.072706] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.072748] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.072776] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.072816] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.072843] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.072881] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.072914] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.072959] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.072987] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.073028] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.073055] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.073094] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.073121] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.073161] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.073196] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.073276] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.073305] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.073346] AFTER cpu new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.073374] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.073568] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.073618] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.075840] AFTER cpu new_group([5]), took 0.002s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.075893] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.075948] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.075980] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.076025] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 5: [dp:0] [1781922572.076055] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 5: [dp:0] [1781922572.076095] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 5: [dp:0] [1781922572.076122] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 5: [dp:0] [1781922572.076161] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 5: [dp:0] [1781922572.076188] Completed for loop
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 5: [dp:0] Device mapping - global_rank: 5, local_rank: 1, device: cuda:1, rank_in_group: 0, ranks: [5]
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 5: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 5 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 1
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:5, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[5], TP Group:[4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 7: [tp:0] [1781922572.063839] AFTER device_communicator init, took 0.290s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:244] rank 7: [tp:0] [1781922572.063966] BEFORE mq_broadcaster init
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:248] rank 7: [tp:0] [1781922572.069509] AFTER mq_broadcaster init, took 0.006s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 7: [tp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1168] rank 7: TP initialization complete. My TP group: [4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1185] PP Group initialization start:[[0, 4], [1], [2], [3], [5], [6], [7]]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.069688] BEFORE device new_group([0, 4])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.069762] AFTER device new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.069811] BEFORE cpu new_group([0, 4])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.069889] AFTER cpu new_group([0, 4]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.069925] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.069975] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.070005] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.070048] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.070078] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.070122] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.070150] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.070190] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.070244] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.070292] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.070320] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.070361] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.070390] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.070429] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.070458] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.070498] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.070525] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.070564] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.070590] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.070628] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [pp:0] [1781922572.070655] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [pp:0] [1781922572.070896] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [pp:0] [1781922572.070946] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [pp:0] [1781922572.072475] AFTER cpu new_group([7]), took 0.002s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 7: [pp:0] [1781922572.072609] Completed for loop
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 7: [pp:0] Device mapping - global_rank: 7, local_rank: 3, device: cuda:3, rank_in_group: 0, ranks: [7]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 7: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.072779] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.072850] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.072886] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.072933] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.072963] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.073007] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.073038] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.073081] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.073117] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.073162] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.073190] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.073277] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.073309] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.073350] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.073378] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.073417] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.073459] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.073505] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.073532] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.073571] AFTER cpu new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.073598] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.073645] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.073683] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.073726] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.073755] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.073793] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.073819] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.073858] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 7: [dp:0] [1781922572.073884] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 7: [dp:0] [1781922572.074076] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 7: [dp:0] [1781922572.074120] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 7: [dp:0] [1781922572.076464] AFTER cpu new_group([7]), took 0.002s
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 7: [dp:0] [1781922572.076522] Completed for loop
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 7: [dp:0] Device mapping - global_rank: 7, local_rank: 3, device: cuda:3, rank_in_group: 0, ranks: [7]
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 7: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 7 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 3
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:7, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[7], TP Group:[4, 5, 6, 7]
+INFO 06-20 02:29:32 [parallel_state.py:237] rank 0: [pp:0] [1781922572.157137] AFTER device_communicator init, took 0.079s
+INFO 06-20 02:29:32 [parallel_state.py:253] rank 0: [pp:0] GroupCoordinator.__init__ completed
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.157366] BEFORE device new_group([0])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.157714] AFTER device new_group([0]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.157761] BEFORE cpu new_group([0])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.160033] AFTER cpu new_group([0]), took 0.002s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.160096] BEFORE device new_group([1])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.160167] AFTER device new_group([1]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.160211] BEFORE cpu new_group([1])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.160270] AFTER cpu new_group([1]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.160309] BEFORE device new_group([2])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.160363] AFTER device new_group([2]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.160403] BEFORE cpu new_group([2])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.160460] AFTER cpu new_group([2]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.160498] BEFORE device new_group([3])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.160555] AFTER device new_group([3]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.160591] BEFORE cpu new_group([3])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.160634] AFTER cpu new_group([3]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.160678] BEFORE device new_group([4])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.160727] AFTER device new_group([4]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.160758] BEFORE cpu new_group([4])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.160803] AFTER cpu new_group([4]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.160833] BEFORE device new_group([5])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.160876] AFTER device new_group([5]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.160907] BEFORE cpu new_group([5])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.160969] AFTER cpu new_group([5]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.161005] BEFORE device new_group([6])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.161050] AFTER device new_group([6]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.161081] BEFORE cpu new_group([6])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.161123] AFTER cpu new_group([6]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:183] rank 0: [dp:0] [1781922572.161154] BEFORE device new_group([7])
+INFO 06-20 02:29:32 [parallel_state.py:187] rank 0: [dp:0] [1781922572.161198] AFTER device new_group([7]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:191] rank 0: [dp:0] [1781922572.161228] BEFORE cpu new_group([7])
+INFO 06-20 02:29:32 [parallel_state.py:194] rank 0: [dp:0] [1781922572.161271] AFTER cpu new_group([7]), took 0.000s
+INFO 06-20 02:29:32 [parallel_state.py:204] rank 0: [dp:0] [1781922572.161300] Completed for loop
+INFO 06-20 02:29:32 [parallel_state.py:218] rank 0: [dp:0] Device mapping - global_rank: 0, local_rank: 0, device: cuda:0, rank_in_group: 0, ranks: [0]
+INFO 06-20 02:29:32 [parallel_state.py:253] rank 0: [dp:0] GroupCoordinator.__init__ completed
+INFO 06-20 02:29:32 [parallel_state.py:1205] rank 0 in world size 8 is assigned as DP rank 0, PP rank 0, TP rank 0
+INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:0, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[0, 4], TP Group:[0, 1, 2, 3]
+INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:237] rank 4: [pp:0] [1781922572.157334] AFTER device_communicator init, took 0.079s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 4: [pp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.157562] BEFORE device new_group([0])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.157659] AFTER device new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.157698] BEFORE cpu new_group([0])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.157749] AFTER cpu new_group([0]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.157781] BEFORE device new_group([1])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.157827] AFTER device new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.157857] BEFORE cpu new_group([1])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.157901] AFTER cpu new_group([1]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.157931] BEFORE device new_group([2])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.157974] AFTER device new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.158011] BEFORE cpu new_group([2])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.158059] AFTER cpu new_group([2]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.158089] BEFORE device new_group([3])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.158132] AFTER device new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.158162] BEFORE cpu new_group([3])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.158228] AFTER cpu new_group([3]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.158266] BEFORE device new_group([4])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.158540] AFTER device new_group([4]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.158584] BEFORE cpu new_group([4])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.161436] AFTER cpu new_group([4]), took 0.003s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.161505] BEFORE device new_group([5])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.161572] AFTER device new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.161611] BEFORE cpu new_group([5])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.161667] AFTER cpu new_group([5]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.161703] BEFORE device new_group([6])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.161755] AFTER device new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.161788] BEFORE cpu new_group([6])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.161839] AFTER cpu new_group([6]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:183] rank 4: [dp:0] [1781922572.161875] BEFORE device new_group([7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:187] rank 4: [dp:0] [1781922572.161927] AFTER device new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:191] rank 4: [dp:0] [1781922572.161961] BEFORE cpu new_group([7])
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:194] rank 4: [dp:0] [1781922572.162011] AFTER cpu new_group([7]), took 0.000s
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:204] rank 4: [dp:0] [1781922572.162046] Completed for loop
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:218] rank 4: [dp:0] Device mapping - global_rank: 4, local_rank: 0, device: cuda:0, rank_in_group: 0, ranks: [4]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:253] rank 4: [dp:0] GroupCoordinator.__init__ completed
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1205] rank 4 in world size 8 is assigned as DP rank 0, PP rank 1, TP rank 0
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [parallel_state.py:1210] global rank:4, Global Group:[0, 1, 2, 3, 4, 5, 6, 7], PP Group:[0, 4], TP Group:[4, 5, 6, 7]
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1112] Starting to load model meta-llama/Llama-3.1-70B-Instruct...
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [llama.py:598] Connected to TensorManager server.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [llama.py:609] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [llama.py:612] Accessing Tensor Dict via Manager
+INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.427526 seconds
+INFO 06-20 02:29:32 [ray_distributed_executor.py:470] driver_global_ranks: [0, 4]
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [loader.py:432] Loading weights took 0.00 seconds
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.426257 seconds
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.422008 seconds
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.421687 seconds
+INFO 06-20 02:29:32 [llm_engine.py:433] num_gpu_blocks: 0, num_cpu_blocks: 6553
+INFO 06-20 02:29:32 [llm_engine.py:437] Overriding num_gpu_blocks=0 with num_gpu_blocks_override=512
+INFO 06-20 02:29:32 [executor_base.py:111] # cuda blocks: 512, # CPU blocks: 6553
+INFO 06-20 02:29:32 [executor_base.py:116] Maximum concurrency for 8192 tokens per request: 1.00x
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.427654 seconds
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.424930 seconds
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.420850 seconds
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [model_runner.py:1148] Model loading took 0.0313 GB and 0.422507 seconds
+INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:32 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17740, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71772)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71771)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=71777)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17739, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:101] Connected to TensorManager server for CacheEngine.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:112] TensorManager server connected successfully.
+[36m(RayWorkerWrapper pid=17741, ip=192.168.0.88)[0m INFO 06-20 02:29:34 [cache_engine.py:115] Accessing Tensor Dict via Manager for CacheEngine.
+INFO 06-20 02:29:36 [llm_engine.py:448] init engine (profile, create kv cache, warmup model) took 3.79 seconds
+INFO 06-20 02:29:36 [serving_chat.py:115] Using default chat sampling params from model: {'temperature': 0.6, 'top_p': 0.9}
+INFO 06-20 02:29:36 [serving_completion.py:61] Using default completion sampling params from model: {'temperature': 0.6, 'top_p': 0.9}
+INFO 06-20 02:29:36 [api_server.py:988] Starting vLLM API server on http://0.0.0.0:8001
+INFO 06-20 02:29:36 [api_server.py:993] run_server end time: 1781922576.8463912
+INFO 06-20 02:29:36 [api_server.py:994] run_server duration: 19.436063051223755
+INFO 06-20 02:29:36 [launcher.py:26] Available routes are:
+INFO 06-20 02:29:36 [launcher.py:34] Route: /openapi.json, Methods: GET, HEAD
+INFO 06-20 02:29:36 [launcher.py:34] Route: /docs, Methods: GET, HEAD
+INFO 06-20 02:29:36 [launcher.py:34] Route: /docs/oauth2-redirect, Methods: GET, HEAD
+INFO 06-20 02:29:36 [launcher.py:34] Route: /redoc, Methods: GET, HEAD
+INFO 06-20 02:29:36 [launcher.py:34] Route: /health, Methods: GET
+INFO 06-20 02:29:36 [launcher.py:34] Route: /shutdown, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /load, Methods: GET
+INFO 06-20 02:29:36 [launcher.py:34] Route: /ping, Methods: POST, GET
+INFO 06-20 02:29:36 [launcher.py:34] Route: /tokenize, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /detokenize, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/models, Methods: GET
+INFO 06-20 02:29:36 [launcher.py:34] Route: /version, Methods: GET
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/chat/completions, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/completions, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/embeddings, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /pooling, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /score, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/score, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/audio/transcriptions, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /rerank, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v1/rerank, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /v2/rerank, Methods: POST
+INFO 06-20 02:29:36 [launcher.py:34] Route: /invocations, Methods: POST
+INFO:     Started server process [71577]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     192.168.0.232:47652 - "GET /health HTTP/1.1" 200 OK
+INFO 06-20 02:29:44 [logger.py:39] Received request cmpl-5040b7f426d245a8a6abb7e870bc8abb-0: prompt: 'Hello', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.0, temperature=0.0, top_p=1.0, top_k=-1, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=4, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=None, extra_args=None), prompt_token_ids: [128000, 9906], lora_request: None, prompt_adapter_request: None.
+INFO 06-20 02:29:44 [async_llm_engine.py:211] Added request cmpl-5040b7f426d245a8a6abb7e870bc8abb-0.
+/home/ubuntu/ShuntServe/submodules/vLLM/vllm/distributed/parallel_state.py:439: UserWarning: The given buffer is not writable, and PyTorch does not support non-writable tensors. This means you can write to the underlying (supposedly non-writable) buffer using the tensor. You may want to copy the buffer to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_new.cpp:1561.)
+  object_tensor = torch.frombuffer(pickle.dumps(obj), dtype=torch.uint8)
+[rank0]:[W620 02:29:46.883564960 ProcessGroupNCCL.cpp:3436] Warning: TORCH_NCCL_AVOID_RECORD_STREAMS=1 has no effect for point-to-point collectives. (function operator())
+[36m(RayWorkerWrapper pid=17738, ip=192.168.0.88)[0m [rank4]:[W620 02:29:46.885427766 ProcessGroupNCCL.cpp:3436] Warning: TORCH_NCCL_AVOID_RECORD_STREAMS=1 has no effect for point-to-point collectives. (function operator())
+INFO 06-20 02:29:47 [async_llm_engine.py:179] Finished request cmpl-5040b7f426d245a8a6abb7e870bc8abb-0.
+INFO:     192.168.0.232:33394 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO 06-20 02:29:57 [metrics.py:481] Avg prompt throughput: 0.2 tokens/s, Avg generation throughput: 0.3 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 06-20 02:30:07 [metrics.py:481] Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Swapped: 0 reqs, Pending: 0 reqs, GPU KV cache usage: 0.0%, CPU KV cache usage: 0.0%.
+INFO 06-20 02:30:36 [api_server.py:330] Received shutdown request
+INFO:     192.168.0.232:58358 - "POST /shutdown HTTP/1.1" 200 OK
+INFO 06-20 02:30:37 [api_server.py:335] Initiating graceful shutdown...
+INFO 06-20 02:30:37 [launcher.py:74] Shutting down FastAPI HTTP server.
+INFO:     Shutting down
+ERROR:    Cancel 0 running task(s), timeout graceful shutdown exceeded
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO 06-20 02:30:37 [async_llm_engine.py:65] Engine is gracefully shutting down.
+[rank0]:[W620 02:30:37.670442979 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+/usr/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked shared_memory objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

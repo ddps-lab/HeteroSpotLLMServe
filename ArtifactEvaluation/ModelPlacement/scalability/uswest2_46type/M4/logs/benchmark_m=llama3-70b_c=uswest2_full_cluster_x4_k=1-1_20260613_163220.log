@@ -1,0 +1,27 @@
+2026-06-13 07:32:20 │ ════════════════════════════════════════════════════════
+2026-06-13 07:32:20 │ ShuntServe Top-K Benchmark — full us-west-2 NVIDIA cluster
+2026-06-13 07:32:20 │ ════════════════════════════════════════════════════════
+2026-06-13 07:32:20 │ Models    : ['llama3-70b']
+2026-06-13 07:32:20 │ Clusters  : ['uswest2_full_cluster']
+2026-06-13 07:32:20 │ K values  : [1]
+2026-06-13 07:32:20 │ Total runs: 1
+2026-06-13 07:32:20 │ Node mult : ×4 (184 nodes total)
+2026-06-13 07:32:20 │ Workers   : 1
+2026-06-13 07:32:20 │ Debug     : False
+2026-06-13 07:32:20 │ Mem limit : 29.7 GB per worker process
+2026-06-13 07:32:20 │ Log file  : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b_c=uswest2_full_cluster_x4_k=1-1_20260613_163220.log
+2026-06-13 07:32:20 │ Worker logs: /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/workers_20260613_163220/  (tail -f for per-round/per-layer progress)
+2026-06-13 07:32:20 │ ────────────────────────────────────────────────────────
+2026-06-14 05:32:07 │ [  1/1] llama3-70b   | uswest2_full_cluster   | k=  1 | wall=79169.60s | throughput= 939.371 req/s | pipelines=44
+2026-06-14 05:32:07 │ 
+2026-06-14 05:32:07 │ ════════════════════════════════════════════════════════
+2026-06-14 05:32:07 │ RESULTS SUMMARY  (total elapsed: 79186.4s)
+2026-06-14 05:32:07 │ ════════════════════════════════════════════════════════
+2026-06-14 05:32:07 │ 
+2026-06-14 05:32:07 │   [llama3-70b] [us-west-2 full NVIDIA cluster (46 types, 46 nodes, 139 GPUs)]
+2026-06-14 05:32:07 │       k │  wall_time │   opt_time │     throughput │ pipelines
+2026-06-14 05:32:07 │   ──────┼────────────┼────────────┼────────────────┼──────────
+2026-06-14 05:32:07 │       1 │  79169.60s │  79009.03s │     939.371    │        44
+2026-06-14 05:32:07 │ 
+2026-06-14 05:32:07 │ JSON results : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/json/results_m=llama3-70b_c=uswest2_full_cluster_x4_k=1-1.json
+2026-06-14 05:32:07 │ Log file     : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/top_k_beam/logs/benchmark_m=llama3-70b_c=uswest2_full_cluster_x4_k=1-1_20260613_163220.log

@@ -1,0 +1,2333 @@
+{
+  "experiment": "greedy_vs_joint_subset_dp",
+  "machine": {
+    "cores": 32,
+    "workers": 31
+  },
+  "cluster": [
+    2,
+    3,
+    4
+  ],
+  "num_unique_groups": 59,
+  "optimizer": {
+    "top_k": 3,
+    "max_stages": 13,
+    "mode": "soft_slo",
+    "untouched": true
+  },
+  "models": {
+    "llama3-70b": {
+      "greedy": {
+        "total": 2.8305132690479464,
+        "K": 2,
+        "optimizer_calls": 2,
+        "opt_cpu_s": 36.5575487613678,
+        "wall_s": 36.64121413230896
+      },
+      "greedy_calls": [
+        {
+          "iter": 1,
+          "phase": "extract",
+          "opt_time_s": 34.988736391067505,
+          "throughput": 1.9951945710714936,
+          "nodes": {
+            "g6": 2,
+            "g6e": 4
+          },
+          "tp": [
+            4,
+            4,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "iter": 2,
+          "phase": "extract",
+          "opt_time_s": 1.568812370300293,
+          "throughput": 0.835318697976453,
+          "nodes": {
+            "g5": 2,
+            "g6": 1
+          },
+          "tp": [
+            4,
+            4,
+            4
+          ]
+        }
+      ],
+      "joint": {
+        "total": 2.8305132690479464,
+        "optimizer_calls": 59,
+        "num_groups": 2,
+        "num_feasible_groups": 2,
+        "memo_serial_cpu_s": 497.76561212539673,
+        "memo_parallel_wall_s": 41.07036375999451,
+        "subset_dp_ms": 0.274658203125,
+        "partition": [
+          [
+            0,
+            2,
+            4
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ],
+        "per_group_times": [
+          {
+            "group": [
+              0,
+              0,
+              1
+            ],
+            "label": "{g6ex1}",
+            "opt_time_s": 0.009382963180541992,
+            "wall_time_s": 0.00996851921081543,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              0,
+              0,
+              2
+            ],
+            "label": "{g6ex2}",
+            "opt_time_s": 0.13048815727233887,
+            "wall_time_s": 0.13106155395507812,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              0,
+              0,
+              3
+            ],
+            "label": "{g6ex3}",
+            "opt_time_s": 0.45629286766052246,
+            "wall_time_s": 0.45687389373779297,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              0,
+              0,
+              4
+            ],
+            "label": "{g6ex4}",
+            "opt_time_s": 0.9062120914459229,
+            "wall_time_s": 0.9067530632019043,
+            "throughput": 0.28420347186857076,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              0
+            ],
+            "label": "{g6x1}",
+            "opt_time_s": 0.010477542877197266,
+            "wall_time_s": 0.011010408401489258,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              0,
+              1,
+              1
+            ],
+            "label": "{g6x1,g6ex1}",
+            "opt_time_s": 0.31560206413269043,
+            "wall_time_s": 0.31584715843200684,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              0,
+              1,
+              2
+            ],
+            "label": "{g6x1,g6ex2}",
+            "opt_time_s": 1.2624704837799072,
+            "wall_time_s": 1.2630140781402588,
+            "throughput": 0.265460468833457,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              3
+            ],
+            "label": "{g6x1,g6ex3}",
+            "opt_time_s": 2.7178823947906494,
+            "wall_time_s": 2.718440294265747,
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              4
+            ],
+            "label": "{g6x1,g6ex4}",
+            "opt_time_s": 4.500384092330933,
+            "wall_time_s": 4.50093936920166,
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              0
+            ],
+            "label": "{g6x2}",
+            "opt_time_s": 0.20884132385253906,
+            "wall_time_s": 0.20910334587097168,
+            "throughput": 0.43700675406876155,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              1
+            ],
+            "label": "{g6x2,g6ex1}",
+            "opt_time_s": 1.4312195777893066,
+            "wall_time_s": 1.4317646026611328,
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              2
+            ],
+            "label": "{g6x2,g6ex2}",
+            "opt_time_s": 3.472511053085327,
+            "wall_time_s": 3.4730732440948486,
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              3
+            ],
+            "label": "{g6x2,g6ex3}",
+            "opt_time_s": 6.312214374542236,
+            "wall_time_s": 6.312816381454468,
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              4
+            ],
+            "label": "{g6x2,g6ex4}",
+            "opt_time_s": 9.670693159103394,
+            "wall_time_s": 9.671267747879028,
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              0
+            ],
+            "label": "{g6x3}",
+            "opt_time_s": 0.7465896606445312,
+            "wall_time_s": 0.7472114562988281,
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              1
+            ],
+            "label": "{g6x3,g6ex1}",
+            "opt_time_s": 3.173906087875366,
+            "wall_time_s": 3.1744794845581055,
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              2
+            ],
+            "label": "{g6x3,g6ex2}",
+            "opt_time_s": 6.519592046737671,
+            "wall_time_s": 6.520159482955933,
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              3
+            ],
+            "label": "{g6x3,g6ex3}",
+            "opt_time_s": 10.458061695098877,
+            "wall_time_s": 10.45836591720581,
+            "throughput": 2.1608126977399937,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              4
+            ],
+            "label": "{g6x3,g6ex4}",
+            "opt_time_s": 15.02146291732788,
+            "wall_time_s": 15.02203369140625,
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              0
+            ],
+            "label": "{g5x1}",
+            "opt_time_s": 0.013580322265625,
+            "wall_time_s": 0.013870954513549805,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              1,
+              0,
+              1
+            ],
+            "label": "{g5x1,g6ex1}",
+            "opt_time_s": 0.31781816482543945,
+            "wall_time_s": 0.31814074516296387,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              1,
+              0,
+              2
+            ],
+            "label": "{g5x1,g6ex2}",
+            "opt_time_s": 1.2522261142730713,
+            "wall_time_s": 1.2525568008422852,
+            "throughput": 0.2581461586642406,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              3
+            ],
+            "label": "{g5x1,g6ex3}",
+            "opt_time_s": 2.66637921333313,
+            "wall_time_s": 2.6666862964630127,
+            "throughput": 0.5568732661243764,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              4
+            ],
+            "label": "{g5x1,g6ex4}",
+            "opt_time_s": 4.503188371658325,
+            "wall_time_s": 4.503537893295288,
+            "throughput": 0.9969912772844722,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              0
+            ],
+            "label": "{g5x1,g6x1}",
+            "opt_time_s": 0.40125370025634766,
+            "wall_time_s": 0.40157437324523926,
+            "throughput": 0.31225884603095433,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              1
+            ],
+            "label": "{g5x1,g6x1,g6ex1}",
+            "opt_time_s": 2.380755662918091,
+            "wall_time_s": 2.380946159362793,
+            "throughput": 0.6001019060150452,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              2
+            ],
+            "label": "{g5x1,g6x1,g6ex2}",
+            "opt_time_s": 5.54787278175354,
+            "wall_time_s": 5.548202037811279,
+            "throughput": 0.8631771459710357,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              3
+            ],
+            "label": "{g5x1,g6x1,g6ex3}",
+            "opt_time_s": 9.524112224578857,
+            "wall_time_s": 9.524460554122925,
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              4
+            ],
+            "label": "{g5x1,g6x1,g6ex4}",
+            "opt_time_s": 14.536115169525146,
+            "wall_time_s": 14.536455392837524,
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              0
+            ],
+            "label": "{g5x1,g6x2}",
+            "opt_time_s": 1.6441762447357178,
+            "wall_time_s": 1.644531011581421,
+            "throughput": 0.953407493304617,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              1
+            ],
+            "label": "{g5x1,g6x2,g6ex1}",
+            "opt_time_s": 5.712181806564331,
+            "wall_time_s": 5.712525844573975,
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              2
+            ],
+            "label": "{g5x1,g6x2,g6ex2}",
+            "opt_time_s": 9.932327508926392,
+            "wall_time_s": 9.932685852050781,
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              3
+            ],
+            "label": "{g5x1,g6x2,g6ex3}",
+            "opt_time_s": 15.423481702804565,
+            "wall_time_s": 15.42383861541748,
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              4
+            ],
+            "label": "{g5x1,g6x2,g6ex4}",
+            "opt_time_s": 21.774054527282715,
+            "wall_time_s": 21.774250745773315,
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              0
+            ],
+            "label": "{g5x1,g6x3}",
+            "opt_time_s": 3.52028751373291,
+            "wall_time_s": 3.5209312438964844,
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              1
+            ],
+            "label": "{g5x1,g6x3,g6ex1}",
+            "opt_time_s": 9.871307373046875,
+            "wall_time_s": 9.871524095535278,
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              2
+            ],
+            "label": "{g5x1,g6x3,g6ex2}",
+            "opt_time_s": 15.312930345535278,
+            "wall_time_s": 15.313108444213867,
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              3
+            ],
+            "label": "{g5x1,g6x3,g6ex3}",
+            "opt_time_s": 21.61472988128662,
+            "wall_time_s": 21.614943742752075,
+            "throughput": 2.1608126977399937,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              4
+            ],
+            "label": "{g5x1,g6x3,g6ex4}",
+            "opt_time_s": 28.561757564544678,
+            "wall_time_s": 28.561944246292114,
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              0
+            ],
+            "label": "{g5x2}",
+            "opt_time_s": 0.19705677032470703,
+            "wall_time_s": 0.19728922843933105,
+            "throughput": 0.3404037221151698,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              1
+            ],
+            "label": "{g5x2,g6ex1}",
+            "opt_time_s": 1.376969337463379,
+            "wall_time_s": 1.3771753311157227,
+            "throughput": 0.5988998825802754,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              2
+            ],
+            "label": "{g5x2,g6ex2}",
+            "opt_time_s": 3.467891216278076,
+            "wall_time_s": 3.4680726528167725,
+            "throughput": 0.7748117863897848,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              3
+            ],
+            "label": "{g5x2,g6ex3}",
+            "opt_time_s": 6.256218433380127,
+            "wall_time_s": 6.2564051151275635,
+            "throughput": 0.9978912001195509,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              4
+            ],
+            "label": "{g5x2,g6ex4}",
+            "opt_time_s": 9.629981756210327,
+            "wall_time_s": 9.630162715911865,
+            "throughput": 0.9969912772844722,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              0
+            ],
+            "label": "{g5x2,g6x1}",
+            "opt_time_s": 1.6380071640014648,
+            "wall_time_s": 1.6382050514221191,
+            "throughput": 0.835318697976453,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              1
+            ],
+            "label": "{g5x2,g6x1,g6ex1}",
+            "opt_time_s": 5.4881203174591064,
+            "wall_time_s": 5.48830246925354,
+            "throughput": 0.9047500300382072,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              2
+            ],
+            "label": "{g5x2,g6x1,g6ex2}",
+            "opt_time_s": 9.772027254104614,
+            "wall_time_s": 9.772210836410522,
+            "throughput": 0.8631771459710357,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              3
+            ],
+            "label": "{g5x2,g6x1,g6ex3}",
+            "opt_time_s": 15.044167280197144,
+            "wall_time_s": 15.044397115707397,
+            "throughput": 0.7712795532245826,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              4
+            ],
+            "label": "{g5x2,g6x1,g6ex4}",
+            "opt_time_s": 21.352908611297607,
+            "wall_time_s": 21.353107213974,
+            "throughput": 1.348022854185076,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              1,
+              1,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              0
+            ],
+            "label": "{g5x2,g6x2}",
+            "opt_time_s": 4.160821437835693,
+            "wall_time_s": 4.161004304885864,
+            "throughput": 0.953407493304617,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              1
+            ],
+            "label": "{g5x2,g6x2,g6ex1}",
+            "opt_time_s": 9.619521141052246,
+            "wall_time_s": 9.619762420654297,
+            "throughput": 0.9121613547486498,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              2
+            ],
+            "label": "{g5x2,g6x2,g6ex2}",
+            "opt_time_s": 14.479402780532837,
+            "wall_time_s": 14.479591369628906,
+            "throughput": 1.2435476795025422,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              3
+            ],
+            "label": "{g5x2,g6x2,g6ex3}",
+            "opt_time_s": 20.57909393310547,
+            "wall_time_s": 20.579344749450684,
+            "throughput": 1.505225410412343,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              4
+            ],
+            "label": "{g5x2,g6x2,g6ex4}",
+            "opt_time_s": 27.562750101089478,
+            "wall_time_s": 27.56296396255493,
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              0
+            ],
+            "label": "{g5x2,g6x3}",
+            "opt_time_s": 7.556655168533325,
+            "wall_time_s": 7.556899309158325,
+            "throughput": 1.2498656738950404,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              1
+            ],
+            "label": "{g5x2,g6x3,g6ex1}",
+            "opt_time_s": 14.888333082199097,
+            "wall_time_s": 14.888559103012085,
+            "throughput": 1.5369361032501982,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              4,
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              2
+            ],
+            "label": "{g5x2,g6x3,g6ex2}",
+            "opt_time_s": 20.379764318466187,
+            "wall_time_s": 20.380048990249634,
+            "throughput": 1.837005915350163,
+            "feasible": true,
+            "num_stages": 5,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              3
+            ],
+            "label": "{g5x2,g6x3,g6ex3}",
+            "opt_time_s": 27.33927822113037,
+            "wall_time_s": 27.339513540267944,
+            "throughput": 2.1608126977399937,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              4,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              4
+            ],
+            "label": "{g5x2,g6x3,g6ex4}",
+            "opt_time_s": 35.141823053359985,
+            "wall_time_s": 35.14206886291504,
+            "throughput": 1.9951945710714936,
+            "feasible": true,
+            "num_stages": 6,
+            "tp": [
+              4,
+              4,
+              1,
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      "equal_greedy_eq_joint_optimum": true,
+      "ratio_joint_over_greedy": {
+        "wall": 1.1208788991459777,
+        "cpu": 13.615946062866522
+      }
+    },
+    "qwen3-32b": {
+      "greedy": {
+        "total": 9.424062756635378,
+        "K": 4,
+        "optimizer_calls": 4,
+        "opt_cpu_s": 31.73304557800293,
+        "wall_s": 31.81329607963562
+      },
+      "greedy_calls": [
+        {
+          "iter": 1,
+          "phase": "extract",
+          "opt_time_s": 26.173463821411133,
+          "throughput": 5.865183789888193,
+          "nodes": {
+            "g6e": 4
+          },
+          "tp": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "iter": 2,
+          "phase": "extract",
+          "opt_time_s": 5.394754886627197,
+          "throughput": 2.627769793087521,
+          "nodes": {
+            "g6": 3
+          },
+          "tp": [
+            4,
+            4,
+            4
+          ]
+        },
+        {
+          "iter": 3,
+          "phase": "extract",
+          "opt_time_s": 0.15630817413330078,
+          "throughput": 0.46555458682983164,
+          "nodes": {
+            "g5": 1
+          },
+          "tp": [
+            4
+          ]
+        },
+        {
+          "iter": 4,
+          "phase": "extract",
+          "opt_time_s": 0.008518695831298828,
+          "throughput": 0.46555458682983164,
+          "nodes": {
+            "g5": 1
+          },
+          "tp": [
+            4
+          ]
+        }
+      ],
+      "joint": {
+        "total": 9.424062756635378,
+        "optimizer_calls": 59,
+        "num_groups": 4,
+        "num_feasible_groups": 4,
+        "memo_serial_cpu_s": 382.9269254207611,
+        "memo_parallel_wall_s": 31.295233488082886,
+        "subset_dp_ms": 0.26535987854003906,
+        "partition": [
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            0
+          ],
+          [
+            1,
+            0,
+            0
+          ]
+        ],
+        "per_group_times": [
+          {
+            "group": [
+              0,
+              0,
+              1
+            ],
+            "label": "{g6ex1}",
+            "opt_time_s": 0.007649898529052734,
+            "wall_time_s": 0.008021831512451172,
+            "throughput": 0.0,
+            "feasible": false,
+            "num_stages": 0,
+            "tp": []
+          },
+          {
+            "group": [
+              0,
+              0,
+              2
+            ],
+            "label": "{g6ex2}",
+            "opt_time_s": 0.12647652626037598,
+            "wall_time_s": 0.1268763542175293,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              0,
+              3
+            ],
+            "label": "{g6ex3}",
+            "opt_time_s": 0.470409631729126,
+            "wall_time_s": 0.4707968235015869,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              0,
+              4
+            ],
+            "label": "{g6ex4}",
+            "opt_time_s": 0.9055054187774658,
+            "wall_time_s": 0.905902624130249,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              0
+            ],
+            "label": "{g6x1}",
+            "opt_time_s": 0.008757591247558594,
+            "wall_time_s": 0.009118080139160156,
+            "throughput": 0.7198405644307841,
+            "feasible": true,
+            "num_stages": 1,
+            "tp": [
+              4
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              1
+            ],
+            "label": "{g6x1,g6ex1}",
+            "opt_time_s": 0.28606581687927246,
+            "wall_time_s": 0.2862412929534912,
+            "throughput": 1.176689943119053,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              4
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              2
+            ],
+            "label": "{g6x1,g6ex2}",
+            "opt_time_s": 1.1459016799926758,
+            "wall_time_s": 1.1462883949279785,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              3
+            ],
+            "label": "{g6x1,g6ex3}",
+            "opt_time_s": 2.392303705215454,
+            "wall_time_s": 2.392695188522339,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              1,
+              4
+            ],
+            "label": "{g6x1,g6ex4}",
+            "opt_time_s": 3.8768999576568604,
+            "wall_time_s": 3.8770458698272705,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              0
+            ],
+            "label": "{g6x2}",
+            "opt_time_s": 0.15778636932373047,
+            "wall_time_s": 0.15817570686340332,
+            "throughput": 1.622203161052409,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              1
+            ],
+            "label": "{g6x2,g6ex1}",
+            "opt_time_s": 1.161508560180664,
+            "wall_time_s": 1.1619093418121338,
+            "throughput": 2.536579678186235,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              2
+            ],
+            "label": "{g6x2,g6ex2}",
+            "opt_time_s": 2.9047811031341553,
+            "wall_time_s": 2.9051578044891357,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              3
+            ],
+            "label": "{g6x2,g6ex3}",
+            "opt_time_s": 5.214505434036255,
+            "wall_time_s": 5.214883327484131,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              2,
+              4
+            ],
+            "label": "{g6x2,g6ex4}",
+            "opt_time_s": 7.837309837341309,
+            "wall_time_s": 7.837685585021973,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              0
+            ],
+            "label": "{g6x3}",
+            "opt_time_s": 0.5696794986724854,
+            "wall_time_s": 0.5700652599334717,
+            "throughput": 2.627769793087521,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              1
+            ],
+            "label": "{g6x3,g6ex1}",
+            "opt_time_s": 2.4593517780303955,
+            "wall_time_s": 2.459709882736206,
+            "throughput": 2.536579678186235,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              2
+            ],
+            "label": "{g6x3,g6ex2}",
+            "opt_time_s": 5.287251949310303,
+            "wall_time_s": 5.28763484954834,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              3
+            ],
+            "label": "{g6x3,g6ex3}",
+            "opt_time_s": 8.328159809112549,
+            "wall_time_s": 8.328538179397583,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              0,
+              3,
+              4
+            ],
+            "label": "{g6x3,g6ex4}",
+            "opt_time_s": 11.980796337127686,
+            "wall_time_s": 11.981160163879395,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              0
+            ],
+            "label": "{g5x1}",
+            "opt_time_s": 0.008922100067138672,
+            "wall_time_s": 0.00927591323852539,
+            "throughput": 0.46555458682983164,
+            "feasible": true,
+            "num_stages": 1,
+            "tp": [
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              1
+            ],
+            "label": "{g5x1,g6ex1}",
+            "opt_time_s": 0.28734350204467773,
+            "wall_time_s": 0.2877054214477539,
+            "throughput": 0.6724649659492695,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              2
+            ],
+            "label": "{g5x1,g6ex2}",
+            "opt_time_s": 1.1569116115570068,
+            "wall_time_s": 1.1572866439819336,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              3
+            ],
+            "label": "{g5x1,g6ex3}",
+            "opt_time_s": 2.481694221496582,
+            "wall_time_s": 2.482081651687622,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              0,
+              4
+            ],
+            "label": "{g5x1,g6ex4}",
+            "opt_time_s": 3.818862199783325,
+            "wall_time_s": 3.8190176486968994,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              0
+            ],
+            "label": "{g5x1,g6x1}",
+            "opt_time_s": 0.31618237495422363,
+            "wall_time_s": 0.3165707588195801,
+            "throughput": 0.7198405644307841,
+            "feasible": true,
+            "num_stages": 1,
+            "tp": [
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              1
+            ],
+            "label": "{g5x1,g6x1,g6ex1}",
+            "opt_time_s": 1.968066930770874,
+            "wall_time_s": 1.968477725982666,
+            "throughput": 1.176689943119053,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              2
+            ],
+            "label": "{g5x1,g6x1,g6ex2}",
+            "opt_time_s": 4.547262668609619,
+            "wall_time_s": 4.54767107963562,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              3
+            ],
+            "label": "{g5x1,g6x1,g6ex3}",
+            "opt_time_s": 7.849308013916016,
+            "wall_time_s": 7.8496928215026855,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              1,
+              4
+            ],
+            "label": "{g5x1,g6x1,g6ex4}",
+            "opt_time_s": 11.711493492126465,
+            "wall_time_s": 11.71190094947815,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              0
+            ],
+            "label": "{g5x1,g6x2}",
+            "opt_time_s": 1.272698163986206,
+            "wall_time_s": 1.2731339931488037,
+            "throughput": 1.622203161052409,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              1
+            ],
+            "label": "{g5x1,g6x2,g6ex1}",
+            "opt_time_s": 4.366265058517456,
+            "wall_time_s": 4.366674900054932,
+            "throughput": 2.536579678186235,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              2
+            ],
+            "label": "{g5x1,g6x2,g6ex2}",
+            "opt_time_s": 7.6795313358306885,
+            "wall_time_s": 7.679977178573608,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              3
+            ],
+            "label": "{g5x1,g6x2,g6ex3}",
+            "opt_time_s": 12.078959703445435,
+            "wall_time_s": 12.079380989074707,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              2,
+              4
+            ],
+            "label": "{g5x1,g6x2,g6ex4}",
+            "opt_time_s": 16.729846715927124,
+            "wall_time_s": 16.73026418685913,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              0
+            ],
+            "label": "{g5x1,g6x3}",
+            "opt_time_s": 2.6128218173980713,
+            "wall_time_s": 2.6129605770111084,
+            "throughput": 2.627769793087521,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              1
+            ],
+            "label": "{g5x1,g6x3,g6ex1}",
+            "opt_time_s": 7.345003604888916,
+            "wall_time_s": 7.345149993896484,
+            "throughput": 2.536579678186235,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              2
+            ],
+            "label": "{g5x1,g6x3,g6ex2}",
+            "opt_time_s": 11.451904058456421,
+            "wall_time_s": 11.452049016952515,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              3
+            ],
+            "label": "{g5x1,g6x3,g6ex3}",
+            "opt_time_s": 16.10699963569641,
+            "wall_time_s": 16.10713768005371,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              1,
+              3,
+              4
+            ],
+            "label": "{g5x1,g6x3,g6ex4}",
+            "opt_time_s": 21.164097785949707,
+            "wall_time_s": 21.16423273086548,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              0
+            ],
+            "label": "{g5x2}",
+            "opt_time_s": 0.16499996185302734,
+            "wall_time_s": 0.16514039039611816,
+            "throughput": 0.46555458682983164,
+            "feasible": true,
+            "num_stages": 1,
+            "tp": [
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              1
+            ],
+            "label": "{g5x2,g6ex1}",
+            "opt_time_s": 1.1350607872009277,
+            "wall_time_s": 1.1351943016052246,
+            "throughput": 1.5563291536111217,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              2
+            ],
+            "label": "{g5x2,g6ex2}",
+            "opt_time_s": 2.862020254135132,
+            "wall_time_s": 2.8621485233306885,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              3
+            ],
+            "label": "{g5x2,g6ex3}",
+            "opt_time_s": 5.144062519073486,
+            "wall_time_s": 5.144227504730225,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              0,
+              4
+            ],
+            "label": "{g5x2,g6ex4}",
+            "opt_time_s": 7.763625383377075,
+            "wall_time_s": 7.763758897781372,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              0
+            ],
+            "label": "{g5x2,g6x1}",
+            "opt_time_s": 1.2416343688964844,
+            "wall_time_s": 1.24178147315979,
+            "throughput": 0.7198405644307841,
+            "feasible": true,
+            "num_stages": 1,
+            "tp": [
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              1
+            ],
+            "label": "{g5x2,g6x1,g6ex1}",
+            "opt_time_s": 4.278131484985352,
+            "wall_time_s": 4.278266668319702,
+            "throughput": 1.176689943119053,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              2
+            ],
+            "label": "{g5x2,g6x1,g6ex2}",
+            "opt_time_s": 7.6305742263793945,
+            "wall_time_s": 7.630718946456909,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              3
+            ],
+            "label": "{g5x2,g6x1,g6ex3}",
+            "opt_time_s": 11.88477110862732,
+            "wall_time_s": 11.884905576705933,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              1,
+              4
+            ],
+            "label": "{g5x2,g6x1,g6ex4}",
+            "opt_time_s": 16.545257329940796,
+            "wall_time_s": 16.545401573181152,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              0
+            ],
+            "label": "{g5x2,g6x2}",
+            "opt_time_s": 3.10988450050354,
+            "wall_time_s": 3.110020399093628,
+            "throughput": 1.622203161052409,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              1
+            ],
+            "label": "{g5x2,g6x2,g6ex1}",
+            "opt_time_s": 6.983205318450928,
+            "wall_time_s": 6.983347177505493,
+            "throughput": 2.536579678186235,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              2
+            ],
+            "label": "{g5x2,g6x2,g6ex2}",
+            "opt_time_s": 10.646461009979248,
+            "wall_time_s": 10.646642446517944,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              3
+            ],
+            "label": "{g5x2,g6x2,g6ex3}",
+            "opt_time_s": 15.428390264511108,
+            "wall_time_s": 15.428526401519775,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              2,
+              4
+            ],
+            "label": "{g5x2,g6x2,g6ex4}",
+            "opt_time_s": 20.966228485107422,
+            "wall_time_s": 20.966366291046143,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              0
+            ],
+            "label": "{g5x2,g6x3}",
+            "opt_time_s": 5.525587320327759,
+            "wall_time_s": 5.52573299407959,
+            "throughput": 2.627769793087521,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              4
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              1
+            ],
+            "label": "{g5x2,g6x3,g6ex1}",
+            "opt_time_s": 10.702980518341064,
+            "wall_time_s": 10.703118562698364,
+            "throughput": 2.536579678186235,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              4,
+              4,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              2
+            ],
+            "label": "{g5x2,g6x3,g6ex2}",
+            "opt_time_s": 14.489430904388428,
+            "wall_time_s": 14.489589214324951,
+            "throughput": 1.152273137928282,
+            "feasible": true,
+            "num_stages": 2,
+            "tp": [
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              3
+            ],
+            "label": "{g5x2,g6x3,g6ex3}",
+            "opt_time_s": 19.788824558258057,
+            "wall_time_s": 19.78896164894104,
+            "throughput": 3.626648433785365,
+            "feasible": true,
+            "num_stages": 3,
+            "tp": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "group": [
+              2,
+              3,
+              4
+            ],
+            "label": "{g5x2,g6x3,g6ex4}",
+            "opt_time_s": 26.560519218444824,
+            "wall_time_s": 26.56068229675293,
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "num_stages": 4,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      "equal_greedy_eq_joint_optimum": true,
+      "ratio_joint_over_greedy": {
+        "wall": 0.9837155323278698,
+        "cpu": 12.067134384548412
+      }
+    }
+  }
+}

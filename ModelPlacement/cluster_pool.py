@@ -5,19 +5,46 @@ from hardware_specs import INSTANCE_SPEC
 MAX_PRICE = 9876
 DEFAULT_AVAILABILITY = 0
 
-# Default OnDemand instance prices (USD per hour)
+# Default OnDemand instance prices (USD per hour, us-west-2)
 DEFAULT_ONDEMAND_PRICES = {
     "g4dn.xlarge":      0.526,
+    "g4dn.2xlarge":     0.752,
+    "g4dn.4xlarge":     1.204,
+    "g4dn.8xlarge":     2.176,
+    "g4dn.16xlarge":    4.352,
     "g4dn.12xlarge":    3.912,
     "g4dn.metal":       7.824,
     "g5.xlarge":        1.006,
+    "g5.2xlarge":       1.212,
+    "g5.4xlarge":       1.624,
+    "g5.8xlarge":       2.448,
+    "g5.16xlarge":      4.096,
     "g5.12xlarge":      5.672,
+    "g5.24xlarge":      8.144,
     "g5.48xlarge":      16.288,
     "g6.xlarge":        0.8048,
+    "g6.2xlarge":       0.9776,
+    "g6.4xlarge":       1.3232,
+    "g6.8xlarge":       2.0144,
+    "g6.16xlarge":      3.3968,
     "g6.12xlarge":      4.6016,
+    "g6.24xlarge":      6.6752,
     "g6.48xlarge":      13.3504,
+    "gr6.4xlarge":      1.5392,
+    "gr6.8xlarge":      2.4464,
+    "g5g.xlarge":       0.42,
+    "g5g.2xlarge":      0.556,
+    "g5g.4xlarge":      0.828,
+    "g5g.8xlarge":      1.372,
+    "g5g.16xlarge":     2.744,
+    "g5g.metal":        2.744,
     "g6e.xlarge":       1.861,
+    "g6e.2xlarge":      2.24208,
+    "g6e.4xlarge":      3.00424,
+    "g6e.8xlarge":      4.52856,
+    "g6e.16xlarge":     7.57719,
     "g6e.12xlarge":     10.49264,
+    "g6e.24xlarge":     15.06559,
     "g6e.48xlarge":     30.13118,
     "p4d.24xlarge":     21.95764,
     "p4de.24xlarge":    27.44705,
@@ -26,6 +53,7 @@ DEFAULT_ONDEMAND_PRICES = {
     "p5e.48xlarge":     MAX_PRICE,  # No On-demand price available
     "p5en.48xlarge":    63.296,
     "p6-b200.48xlarge": 113.9328,
+    "p6-b300.48xlarge": 142.416,
 }
 
 

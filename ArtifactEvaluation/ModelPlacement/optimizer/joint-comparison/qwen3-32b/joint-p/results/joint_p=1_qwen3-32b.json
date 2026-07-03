@@ -1,0 +1,180 @@
+{
+  "model": "Qwen/Qwen3-32B",
+  "model_short": "qwen3-32b",
+  "p": 1,
+  "cluster": [
+    2,
+    3,
+    4
+  ],
+  "prices": {
+    "(spot)g5.12xlarge": 2.2915,
+    "(spot)g6.12xlarge": 1.9445,
+    "(spot)g6e.xlarge": 0.704
+  },
+  "optimizer": {
+    "top_k": 3,
+    "max_stages": 13
+  },
+  "num_partitions": 1,
+  "memo_wall_clock_s": 0.8306210041046143,
+  "rankings": {
+    "soft_slo": [
+      {
+        "partition": [
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "total_throughput": 5.865183789888193,
+        "n_feasible_parts": 1,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              2,
+              3,
+              4
+            ],
+            "throughput": 5.865183789888193,
+            "feasible": true,
+            "tp": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              3,
+              0
+            ]
+          }
+        ],
+        "rank": 1
+      }
+    ],
+    "only_throughput": [
+      {
+        "partition": [
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "total_throughput": 6.728097715305131,
+        "n_feasible_parts": 1,
+        "all_feasible": true,
+        "parts": [
+          {
+            "group": [
+              2,
+              3,
+              4
+            ],
+            "throughput": 6.728097715305131,
+            "feasible": true,
+            "tp": [
+              4,
+              1,
+              1,
+              1,
+              4,
+              4,
+              1
+            ],
+            "nodes_idle": [
+              2,
+              0,
+              0
+            ]
+          }
+        ],
+        "rank": 1
+      }
+    ]
+  },
+  "algorithm_time": {
+    "soft_slo": {
+      "num_partitions": 1,
+      "num_unique_groups_used": 1,
+      "memoized_optimizer_time_s": 38.2562689781189,
+      "naive_optimizer_time_s": 38.2562689781189,
+      "max_single_group_time_s": 38.2562689781189,
+      "num_optimizer_invocations_memoized": 1,
+      "num_optimizer_invocations_naive": 1
+    },
+    "only_throughput": {
+      "num_partitions": 1,
+      "num_unique_groups_used": 1,
+      "memoized_optimizer_time_s": 38.51083707809448,
+      "naive_optimizer_time_s": 38.51083707809448,
+      "max_single_group_time_s": 38.51083707809448,
+      "num_optimizer_invocations_memoized": 1,
+      "num_optimizer_invocations_naive": 1
+    }
+  },
+  "greedy": {
+    "K": 4,
+    "paper_total": 9.424062756635378,
+    "memo_total": 9.424062756635378,
+    "parts": [
+      {
+        "group": [
+          0,
+          0,
+          4
+        ],
+        "memo_thr": 5.865183789888193,
+        "ref_thr": 5.865183789888193,
+        "tp": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "group": [
+          0,
+          3,
+          0
+        ],
+        "memo_thr": 2.627769793087521,
+        "ref_thr": 2.627769793087521,
+        "tp": [
+          4,
+          4,
+          4
+        ]
+      },
+      {
+        "group": [
+          1,
+          0,
+          0
+        ],
+        "memo_thr": 0.46555458682983164,
+        "ref_thr": 0.46555458682983164,
+        "tp": [
+          4
+        ]
+      },
+      {
+        "group": [
+          1,
+          0,
+          0
+        ],
+        "memo_thr": 0.46555458682983164,
+        "ref_thr": 0.46555458682983164,
+        "tp": [
+          4
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "model": "meta-llama/Llama-3.1-70B-Instruct",
+  "model_key": "llama3-70b",
+  "total_num_layers": 80,
+  "total_throughput_rps": 0.43493929085860716,
+  "pipelines": [
+    {
+      "label": "SS-P1",
+      "predicted_throughput_rps": 0.306698700032137,
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-70B-Instruct",
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "16,16,12,12,12,12",
+        "parallel_strategy": [
+          4,
+          4,
+          1,
+          1,
+          1,
+          1
+        ],
+        "max_model_len": 18022,
+        "max_num_batched_tokens": 18022,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct",
+        "num_gpu_blocks": 17328,
+        "max_batch_size": 46
+      },
+      "node_layer_mapping": [
+        [
+          "spot_g6_12xlarge_node_ip_1",
+          16
+        ],
+        [
+          "spot_g6_12xlarge_node_ip_2",
+          16
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_1",
+          12
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_2",
+          12
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_3",
+          12
+        ],
+        [
+          "spot_g6e_xlarge_node_ip_4",
+          12
+        ]
+      ]
+    },
+    {
+      "label": "SS-P2",
+      "predicted_throughput_rps": 0.12824059082647016,
+      "config": {
+        "model_name": "meta-llama/Llama-3.1-70B-Instruct",
+        "total_num_layers": 80,
+        "gpu_memory_utilization": 0.85,
+        "pp_layer_partition": "26,26,28",
+        "parallel_strategy": [
+          4,
+          4,
+          4
+        ],
+        "max_model_len": 18022,
+        "max_num_batched_tokens": 18022,
+        "max_num_seqs": 512,
+        "model_source": "s3",
+        "s3_path": "s3://hetero-spot-llm-serve-models/meta-llama/Llama-3.1-70B-Instruct",
+        "num_gpu_blocks": 13272,
+        "max_batch_size": 35
+      },
+      "node_layer_mapping": [
+        [
+          "on_demand_g5_12xlarge_node_ip_1",
+          26
+        ],
+        [
+          "on_demand_g5_12xlarge_node_ip_2",
+          26
+        ],
+        [
+          "spot_g6_12xlarge_node_ip_3",
+          28
+        ]
+      ]
+    }
+  ]
+}

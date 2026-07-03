@@ -1,0 +1,40 @@
+2026-06-18 07:55:07 │ ════════════════════════════════════════════════════════
+2026-06-18 07:55:07 │ ShuntServe Cluster-SIZE Sensitivity Sweep
+2026-06-18 07:55:07 │ ════════════════════════════════════════════════════════
+2026-06-18 07:55:07 │ Models    : ['llama3-70b']
+2026-06-18 07:55:07 │ Clusters  : ['uswest2_full_cluster']
+2026-06-18 07:55:07 │ K values  : [1]
+2026-06-18 07:55:07 │ Node mult : [8, 10, 12, 14, 16, 20, 24]  (nodes: M8=368, M10=460, M12=552, M14=644, M16=736, M20=920, M24=1104)
+2026-06-18 07:55:07 │ Total runs: 7  (models × clusters × k × M)
+2026-06-18 07:55:07 │ Mode      : first-pipeline-only (round 1)
+2026-06-18 07:55:07 │ Workers   : 7
+2026-06-18 07:55:07 │ Debug     : False
+2026-06-18 07:55:07 │ Mem limit : 122.5 GB per worker process
+2026-06-18 07:55:07 │ Log file  : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/scalability/logs/benchmark_m=llama3-70b_c=uswest2_full_cluster_k=1-1_M8+10+12+14+16+20+24_p1_20260618_165507.log
+2026-06-18 07:55:07 │ Worker logs: /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/scalability/logs/workers_20260618_165507/  (tail -f for per-round/per-layer progress)
+2026-06-18 07:55:07 │ ────────────────────────────────────────────────────────
+2026-06-18 08:48:35 │ [  1/7] llama3-70b   | M= 8 (N=368) | k=  1 | wall= 3197.65s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:50:12 │ [  2/7] llama3-70b   | M=10 (N=460) | k=  1 | wall= 3294.66s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:50:53 │ [  3/7] llama3-70b   | M=12 (N=552) | k=  1 | wall= 3335.38s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:51:07 │ [  4/7] llama3-70b   | M=14 (N=644) | k=  1 | wall= 3349.54s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:52:02 │ [  5/7] llama3-70b   | M=16 (N=736) | k=  1 | wall= 3404.37s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:52:06 │ [  6/7] llama3-70b   | M=20 (N=920) | k=  1 | wall= 3409.13s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:52:47 │ [  7/7] llama3-70b   | M=24 (N=1104) | k=  1 | wall= 3449.64s | throughput=  27.737 req/s | pipelines=1
+2026-06-18 08:52:47 │ 
+2026-06-18 08:52:47 │ ════════════════════════════════════════════════════════
+2026-06-18 08:52:47 │ RESULTS SUMMARY  (total elapsed: 3459.6s)
+2026-06-18 08:52:47 │ ════════════════════════════════════════════════════════
+2026-06-18 08:52:47 │ 
+2026-06-18 08:52:47 │   [llama3-70b] [us-west-2 full NVIDIA cluster (46 instance types, 46*M nodes, 139 GPUs)]
+2026-06-18 08:52:47 │     M │    N │   k │  wall_time │   opt_time │     throughput │ pipelines
+2026-06-18 08:52:47 │   ────┼──────┼─────┼────────────┼────────────┼────────────────┼──────────
+2026-06-18 08:52:47 │     8 │  368 │   1 │   3197.65s │   3191.51s │      27.737    │         1
+2026-06-18 08:52:47 │    10 │  460 │   1 │   3294.66s │   3288.59s │      27.737    │         1
+2026-06-18 08:52:47 │    12 │  552 │   1 │   3335.38s │   3329.03s │      27.737    │         1
+2026-06-18 08:52:47 │    14 │  644 │   1 │   3349.54s │   3343.24s │      27.737    │         1
+2026-06-18 08:52:47 │    16 │  736 │   1 │   3404.37s │   3398.27s │      27.737    │         1
+2026-06-18 08:52:47 │    20 │  920 │   1 │   3409.13s │   3402.92s │      27.737    │         1
+2026-06-18 08:52:47 │    24 │ 1104 │   1 │   3449.64s │   3443.82s │      27.737    │         1
+2026-06-18 08:52:47 │ 
+2026-06-18 08:52:47 │ JSON results : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/scalability/json/results_m=llama3-70b_c=uswest2_full_cluster_k=1-1_M8+10+12+14+16+20+24_p1.json
+2026-06-18 08:52:47 │ Log file     : /home/ubuntu/ShuntServe/ArtifactEvaluation/ModelPlacement/scalability/logs/benchmark_m=llama3-70b_c=uswest2_full_cluster_k=1-1_M8+10+12+14+16+20+24_p1_20260618_165507.log
