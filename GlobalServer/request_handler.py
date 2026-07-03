@@ -208,11 +208,23 @@ async def async_request_without_migration(request: Request, logger: logging.Logg
                     output.success = True
                     output.latency = time.time() - request.sended_at
 
-                    # Sanity checks
-                    assert output.output_tokens == request_input.expected_output_len, (
-                        f"Request {request.request_id}: output_tokens mismatch — "
-                        f"expected {request_input.expected_output_len}, got {output.output_tokens}"
-                    )
+                    # A request is complete once it has produced AT LEAST the expected number
+                    # of tokens. Overshoot (off-by-one from a streaming finish chunk, or token
+                    # accumulation across migration retries) is accepted — a strict "==" check
+                    # would trap overshot requests in an endless retry loop, since output_tokens
+                    # only keeps growing once it passes expected. Only an UNDER-count is a
+                    # genuinely incomplete generation that must fail so the request is resumed.
+                    if output.output_tokens < request_input.expected_output_len:
+                        raise AssertionError(
+                            f"Request {request.request_id}: output incomplete — "
+                            f"expected {request_input.expected_output_len}, got {output.output_tokens}"
+                        )
+                    elif output.output_tokens > request_input.expected_output_len:
+                        logger.warning(
+                            f"Request {request.request_id}: output_tokens overshoot — "
+                            f"expected {request_input.expected_output_len}, "
+                            f"got {output.output_tokens} (accepted, >= expected)"
+                        )
                     token_time = output.ttft + sum(output.itl)
                     tolerance = max(1.0, output.latency * 0.1)
                     assert abs(token_time - output.latency) <= tolerance, (
@@ -345,11 +357,23 @@ async def async_request(request: Request, logger: logging.Logger) -> RequestOutp
                     output.success = True
                     output.latency = time.time() - request.sended_at
 
-                    # Sanity checks
-                    assert output.output_tokens == request_input.expected_output_len, (
-                        f"Request {request.request_id}: output_tokens mismatch — "
-                        f"expected {request_input.expected_output_len}, got {output.output_tokens}"
-                    )
+                    # A request is complete once it has produced AT LEAST the expected number
+                    # of tokens. Overshoot (off-by-one from a streaming finish chunk, or token
+                    # accumulation across migration retries) is accepted — a strict "==" check
+                    # would trap overshot requests in an endless retry loop, since output_tokens
+                    # only keeps growing once it passes expected. Only an UNDER-count is a
+                    # genuinely incomplete generation that must fail so the request is resumed.
+                    if output.output_tokens < request_input.expected_output_len:
+                        raise AssertionError(
+                            f"Request {request.request_id}: output incomplete — "
+                            f"expected {request_input.expected_output_len}, got {output.output_tokens}"
+                        )
+                    elif output.output_tokens > request_input.expected_output_len:
+                        logger.warning(
+                            f"Request {request.request_id}: output_tokens overshoot — "
+                            f"expected {request_input.expected_output_len}, "
+                            f"got {output.output_tokens} (accepted, >= expected)"
+                        )
                     # Only check latency consistency for non-migration requests
                     if request.retry_count == 0:
                         token_time = output.ttft + sum(output.itl)

@@ -1,0 +1,84 @@
+{
+  "spot": [
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g5.12xlarge",
+      "Price": "1.926600",
+      "Time": "2026-03-18T08:32:37+00:00"
+    },
+    {
+      "AZ": "us-west-2b",
+      "Instance": "g5.12xlarge",
+      "Price": "2.366900",
+      "Time": "2026-03-18T07:17:47+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g5.12xlarge",
+      "Price": "2.418000",
+      "Time": "2026-03-18T12:02:43+00:00"
+    },
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g6.12xlarge",
+      "Price": "2.440600",
+      "Time": "2026-03-18T12:48:33+00:00"
+    },
+    {
+      "AZ": "us-west-2b",
+      "Instance": "g6.12xlarge",
+      "Price": "2.588000",
+      "Time": "2026-03-18T08:02:37+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g6.12xlarge",
+      "Price": "2.113500",
+      "Time": "2026-03-18T10:18:47+00:00"
+    },
+    {
+      "AZ": "us-west-2d",
+      "Instance": "g6.12xlarge",
+      "Price": "2.124300",
+      "Time": "2026-03-18T06:32:38+00:00"
+    },
+    {
+      "AZ": "us-west-2a",
+      "Instance": "g6e.xlarge",
+      "Price": "0.828100",
+      "Time": "2026-03-18T10:02:41+00:00"
+    },
+    {
+      "AZ": "us-west-2b",
+      "Instance": "g6e.xlarge",
+      "Price": "1.335500",
+      "Time": "2026-03-18T10:32:41+00:00"
+    },
+    {
+      "AZ": "us-west-2c",
+      "Instance": "g6e.xlarge",
+      "Price": "0.870400",
+      "Time": "2026-03-18T12:48:40+00:00"
+    },
+    {
+      "AZ": "us-west-2d",
+      "Instance": "g6e.xlarge",
+      "Price": "1.267500",
+      "Time": "2026-03-18T08:17:43+00:00"
+    }
+  ],
+  "ondemand": [
+    {
+      "Instance": "g5.12xlarge",
+      "PricePerHour_USD": "5.6720000000"
+    },
+    {
+      "Instance": "g6.12xlarge",
+      "PricePerHour_USD": "4.6016000000"
+    },
+    {
+      "Instance": "g6e.xlarge",
+      "PricePerHour_USD": "1.8610000000"
+    }
+  ]
+}
