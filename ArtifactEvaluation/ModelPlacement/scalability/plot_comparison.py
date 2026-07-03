@@ -5,15 +5,16 @@ node-multiplier M. Two panels:
   (a) first-pipeline (round-1) search time vs nodes
   (b) full extraction time vs nodes
 
-Data is parsed directly from the collected sweeps:
-  uswest2_46type/M*/{json,logs}       — 46-type, one dir per M
-  large_hetero_15type/{json,logs}     — 15-type, one combined run
+Data sources:
+  uswest2_46type/M*/json, large_hetero_15type/json — full-run wall times
+  firstpipe_p1/json                                — p1 round-1 times
+                                                     (= optimizer_time_sec)
+  ROUND1_SEC_* tables below                        — full-run round-1 times
 
 Run: python3 plot_comparison.py   →   cluster_type_comparison.png
 """
 
 import os
-import re
 import glob
 import json
 
@@ -66,39 +67,25 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 # ── Data parsing ──────────────────────────────────────────────────────
-def round1_time_sec(worker_log: str) -> float:
-    """Total optimizer time of round 1 (first pipeline) = last layer-80 total."""
-    last = 0.0
-    for line in open(worker_log):
-        if "══ Round 2" in line:
-            break
-        m = re.search(r"Layer\s+\d+/80 done .*?total=\s*([\d.]+)s", line)
-        if m:
-            last = float(m.group(1))
-    return last
+# Round-1 (first-pipeline) time of the FULL runs, keyed by M. Originally
+# parsed from the per-layer worker logs (last "Layer 80/80 done ... total="
+# before Round 2); those logs are gone, so the parsed values are transcribed
+# from the tables in SCALING_COMPARISON.md (1 s resolution — invisible at
+# plot scale).
+ROUND1_SEC_46TYPE = {1: 1404, 2: 2357, 3: 2690, 4: 2850, 6: 3058}
+ROUND1_SEC_15TYPE = {1: 106, 2: 329, 3: 564, 4: 769, 6: 1015,
+                     8: 1136, 12: 1233, 16: 1283, 24: 1340, 32: 1346}
 
 
-def worker_log_for(run_dir: str, M: int) -> str:
-    suffix = "" if M == 1 else f"_x{M}"
-    for p in glob.glob(os.path.join(run_dir, "logs", "workers_*", "m=*.log")):
-        if p.endswith(f"full_cluster{suffix}_k=1.log"):
-            return p
-    raise FileNotFoundError(f"worker log for M={M} under {run_dir}")
-
-
-def p1_rows(json_glob, worker_subdir):
+def p1_rows(json_glob):
     """First-pipeline-only runs (firstpipe_p1/): extend the 1st-pipeline curve
     to large M. They have NO full-extraction time → full column is NaN, so they
-    appear only in panel (a). round-1 time is parsed from the p1 worker log,
-    identical in definition to the full-run points."""
+    appear only in panel (a). A p1 run stops after round 1, so its JSON
+    optimizer_time_sec IS the round-1 time (a few s of round overhead above
+    the last layer-80 total, invisible at plot scale)."""
     jf = glob.glob(os.path.join(_HERE, "firstpipe_p1", "json", json_glob))[0]
-    rows = []
-    for r in [x for x in json.load(open(jf))["results"] if "error" not in x]:
-        M = r["node_multiplier"]
-        wl = glob.glob(os.path.join(_HERE, "firstpipe_p1", "logs", worker_subdir,
-                                    f"*_x{M}_p1_k=1.log"))[0]
-        rows.append((r["total_nodes"], round1_time_sec(wl), float("nan")))
-    return rows
+    return [(r["total_nodes"], r["optimizer_time_sec"], float("nan"))
+            for r in json.load(open(jf))["results"] if "error" not in r]
 
 
 def _capped(rows):
@@ -108,26 +95,24 @@ def _capped(rows):
 def load_46type():
     """46-type: per-M full runs (M=1..6) + first-pipeline-only runs (M=8..)."""
     rows = []
-    for M in (1, 2, 3, 4, 6):
+    for M, round1_s in ROUND1_SEC_46TYPE.items():
         base = os.path.join(_HERE, "uswest2_46type", f"M{M}")
-        jf = glob.glob(os.path.join(base, "json", "*.json"))[0]
+        suffix = "" if M == 1 else f"_x{M}"
+        jf = glob.glob(os.path.join(base, "json", f"*cluster{suffix}_k=1-1.json"))[0]
         r = [x for x in json.load(open(jf))["results"] if "error" not in x][0]
-        rows.append((r["total_nodes"], round1_time_sec(worker_log_for(base, M)),
-                     r["wall_time_sec"]))
-    rows += p1_rows("results_*uswest2_full_cluster*p1.json", "workers_46type_M8-24")
+        rows.append((r["total_nodes"], round1_s, r["wall_time_sec"]))
+    rows += p1_rows("results_*uswest2_full_cluster*p1.json")
     return _capped(rows)
 
 
 def load_15type():
     """15-type: combined full run (M=1..32) + first-pipeline-only runs (M=40..)."""
-    run_dir = os.path.join(_HERE, "large_hetero_15type")
-    jf = glob.glob(os.path.join(run_dir, "json", "*.json"))[0]
+    jf = glob.glob(os.path.join(_HERE, "large_hetero_15type", "json", "*.json"))[0]
     rows = []
     for r in [x for x in json.load(open(jf))["results"] if "error" not in x]:
-        M = r["node_multiplier"]
-        rows.append((r["total_nodes"], round1_time_sec(worker_log_for(run_dir, M)),
+        rows.append((r["total_nodes"], ROUND1_SEC_15TYPE[r["node_multiplier"]],
                      r["wall_time_sec"]))
-    rows += p1_rows("results_*large_hetero_cluster*p1.json", "workers_15type_M40-80")
+    rows += p1_rows("results_*large_hetero_cluster*p1.json")
     return _capped(rows)
 
 
